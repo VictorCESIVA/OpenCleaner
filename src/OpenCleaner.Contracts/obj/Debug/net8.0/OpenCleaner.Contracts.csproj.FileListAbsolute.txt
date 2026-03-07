@@ -1,0 +1,11 @@
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\bin\Debug\net8.0\OpenCleaner.Contracts.deps.json
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\bin\Debug\net8.0\OpenCleaner.Contracts.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\bin\Debug\net8.0\OpenCleaner.Contracts.pdb
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\OpenCleaner.Contracts.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\OpenCleaner.Contracts.AssemblyInfoInputs.cache
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\OpenCleaner.Contracts.AssemblyInfo.cs
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\OpenCleaner.Contracts.csproj.CoreCompileInputs.cache
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\OpenCleaner.Contracts.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\refint\OpenCleaner.Contracts.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\OpenCleaner.Contracts.pdb
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\ref\OpenCleaner.Contracts.dll

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <RootNamespace>OpenCleaner.Plugins.System</RootNamespace>
+    <AssemblyName>OpenCleaner.Plugins.System</AssemblyName>
+    <Description>System plugins for OpenCleaner</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\OpenCleaner.Contracts\OpenCleaner.Contracts.csproj" />
+    <ProjectReference Include="..\OpenCleaner.Core\OpenCleaner.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Models\**" />
+    <Folder Include="Security\**" />
+    <Folder Include="Transactions\**" />
+    <Folder Include="Plugins\**" />
+  </ItemGroup>
+
+</Project>

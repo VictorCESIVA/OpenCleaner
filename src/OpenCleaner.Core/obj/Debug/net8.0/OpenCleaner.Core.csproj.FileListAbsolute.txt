@@ -1,0 +1,15 @@
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\bin\Debug\net8.0\OpenCleaner.Core.deps.json
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\bin\Debug\net8.0\OpenCleaner.Core.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\bin\Debug\net8.0\OpenCleaner.Core.pdb
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\bin\Debug\net8.0\OpenCleaner.Contracts.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\bin\Debug\net8.0\OpenCleaner.Contracts.pdb
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\OpenCleaner.Core.csproj.AssemblyReference.cache
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\OpenCleaner.Core.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\OpenCleaner.Core.AssemblyInfoInputs.cache
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\OpenCleaner.Core.AssemblyInfo.cs
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\OpenCleaner.Core.csproj.CoreCompileInputs.cache
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\OpenClea.A506856E.Up2Date
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\OpenCleaner.Core.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\refint\OpenCleaner.Core.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\OpenCleaner.Core.pdb
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\ref\OpenCleaner.Core.dll

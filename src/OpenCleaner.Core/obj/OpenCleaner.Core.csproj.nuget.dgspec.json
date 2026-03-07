@@ -1,0 +1,130 @@
+{
+  "format": 1,
+  "restore": {
+    "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Core\\OpenCleaner.Core.csproj": {}
+  },
+  "projects": {
+    "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Contracts\\OpenCleaner.Contracts.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Contracts\\OpenCleaner.Contracts.csproj",
+        "projectName": "OpenCleaner.Contracts",
+        "projectPath": "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Contracts\\OpenCleaner.Contracts.csproj",
+        "packagesPath": "C:\\Users\\noela\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Contracts\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\noela\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "allWarningsAsErrors": true,
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.418/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    },
+    "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Core\\OpenCleaner.Core.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Core\\OpenCleaner.Core.csproj",
+        "projectName": "OpenCleaner.Core",
+        "projectPath": "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Core\\OpenCleaner.Core.csproj",
+        "packagesPath": "C:\\Users\\noela\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Core\\obj\\",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "C:\\Users\\noela\\AppData\\Roaming\\NuGet\\NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net8.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net8.0": {
+            "targetAlias": "net8.0",
+            "projectReferences": {
+              "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Contracts\\OpenCleaner.Contracts.csproj": {
+                "projectPath": "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Contracts\\OpenCleaner.Contracts.csproj"
+              }
+            }
+          }
+        },
+        "warningProperties": {
+          "allWarningsAsErrors": true,
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        }
+      },
+      "frameworks": {
+        "net8.0": {
+          "targetAlias": "net8.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\8.0.418/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
