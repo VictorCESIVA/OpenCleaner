@@ -13,3 +13,4 @@ C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\OpenC
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\refint\OpenCleaner.Core.dll
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\OpenCleaner.Core.pdb
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\ref\OpenCleaner.Core.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Core\obj\Debug\net8.0\OpenCleaner.Core.sourcelink.json

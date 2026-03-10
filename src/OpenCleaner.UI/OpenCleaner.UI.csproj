@@ -1,32 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows10.0.19041.0</TargetFramework>
-    <TargetPlatformMinVersion>10.0.17763.0</TargetPlatformMinVersion>
-    <UseWindowsAppSDK>true</UseWindowsAppSDK>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetFramework>net8.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <RootNamespace>OpenCleaner.UI</RootNamespace>
-    <AssemblyName>OpenCleaner.UI</AssemblyName>
-    <EnableMsixTooling>true</EnableMsixTooling>
-    <Platforms>x86;x64;ARM64</Platforms>
-    <RuntimeIdentifiers Condition="$([MSBuild]::GetTargetFrameworkVersion('$(TargetFramework)')) >= 8">win-x86;win-x64;win-arm64</RuntimeIdentifiers>
-    <PublishProfile>win-$(Platform).pubxml</PublishProfile>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
   </PropertyGroup>
-
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="8.0.0" />
+  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OpenCleaner.Contracts\OpenCleaner.Contracts.csproj" />
     <ProjectReference Include="..\OpenCleaner.Core\OpenCleaner.Core.csproj" />
     <ProjectReference Include="..\OpenCleaner.Plugins.System\OpenCleaner.Plugins.System.csproj" />
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Models\**" />
-    <Folder Include="Security\**" />
-    <Folder Include="Transactions\**" />
-    <Folder Include="Plugins\**" />
-  </ItemGroup>
-
 </Project>

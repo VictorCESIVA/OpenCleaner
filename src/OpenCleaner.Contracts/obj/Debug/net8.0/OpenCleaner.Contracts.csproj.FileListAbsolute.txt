@@ -9,3 +9,4 @@ C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\refint\OpenCleaner.Contracts.dll
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\OpenCleaner.Contracts.pdb
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\ref\OpenCleaner.Contracts.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.Contracts\obj\Debug\net8.0\OpenCleaner.Contracts.sourcelink.json

@@ -1,0 +1,25 @@
+﻿using Microsoft.Extensions.DependencyInjection;
+using OpenCleaner.Contracts;
+using OpenCleaner.Core.Security;
+using OpenCleaner.Plugins.System;
+using System.Windows;
+using OpenCleaner.Plugins.System;
+namespace OpenCleaner.UI;
+
+public partial class App : Application
+{
+    public static IServiceProvider Services { get; private set; } = null!;
+
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+
+        var services = new ServiceCollection();
+        services.AddSingleton<IBackupManager, BackupManager>();
+        services.AddSingleton<IFileGuardian, FileGuardian>();
+        services.AddTransient<SystemTempPlugin>();
+        Services = services.BuildServiceProvider();
+
+        new MainWindow().Show();
+    }
+}

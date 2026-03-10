@@ -1,7 +1,10 @@
 {
   "permissions": {
     "allow": [
-      "Bash(dotnet new:*)"
+      "Bash(dotnet new:*)",
+      "Bash(dotnet build:*)",
+      "Bash(\"/c/Program Files/dotnet/dotnet.exe\" build:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }

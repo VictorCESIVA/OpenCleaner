@@ -14,13 +14,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Data.Sqlite" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.Logging" Version="8.0.0" />
+    <PackageReference Include="Microsoft.Win32.Registry" Version="5.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="Models\**" />
-    <Folder Include="Security\**" />
-    <Folder Include="Transactions\**" />
     <Folder Include="Plugins\**" />
   </ItemGroup>
 

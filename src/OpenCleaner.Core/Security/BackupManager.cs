@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using OpenCleaner.Core.Models;
+using OpenCleaner.Contracts;
 
 namespace OpenCleaner.Core.Security;
 
@@ -209,6 +209,65 @@ public sealed class BackupManager : IBackupManager, IDisposable
         }
 
         return Task.FromResult<IReadOnlyList<BackupInfo>>(backups);
+    }
+
+    public Task<IReadOnlyList<BackupInfo>> GetAllBackupsAsync()
+    {
+        var backups = new List<BackupInfo>();
+        string backupsRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenCleaner", "Backups");
+
+        if (!Directory.Exists(backupsRoot))
+        {
+            return Task.FromResult<IReadOnlyList<BackupInfo>>(backups);
+        }
+
+        foreach (string dateDirectory in Directory.GetDirectories(backupsRoot))
+        {
+            foreach (string backupDirectory in Directory.GetDirectories(dateDirectory))
+            {
+                string metadataPath = Path.Combine(backupDirectory, "metadata.json");
+                if (!File.Exists(metadataPath))
+                {
+                    continue;
+                }
+
+                try
+                {
+                    string metadataJson = File.ReadAllText(metadataPath);
+                    BackupMetadata? metadata = JsonSerializer.Deserialize<BackupMetadata>(metadataJson);
+
+                    if (metadata != null)
+                    {
+                        string backupId = Path.GetFileName(backupDirectory);
+                        string dataDirectory = Path.Combine(backupDirectory, "data");
+                        string? backupFile = Directory.GetFiles(dataDirectory).FirstOrDefault();
+
+                        if (backupFile != null)
+                        {
+                            backups.Add(new BackupInfo(
+                                BackupId: backupId,
+                                OriginalPath: metadata.OriginalPath,
+                                BackupPath: backupFile,
+                                CreatedAt: metadata.CreationDate,
+                                Size: metadata.FileSize,
+                                ContentHash: metadata.OriginalHash
+                            ));
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Failed to read backup metadata from: {Directory}", backupDirectory);
+                }
+            }
+        }
+
+        return Task.FromResult<IReadOnlyList<BackupInfo>>(backups);
+    }
+
+    public Task<bool> RestoreFileAsync(string backupId)
+    {
+        return RestoreAsync(backupId);
     }
 
     private static async Task<string> ComputeHashAsync(string filePath, CancellationToken ct)

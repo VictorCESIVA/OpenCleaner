@@ -11,9 +11,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Models\**" />
-    <Folder Include="Security\**" />
-    <Folder Include="Transactions\**" />
     <Folder Include="Plugins\**" />
   </ItemGroup>
 
