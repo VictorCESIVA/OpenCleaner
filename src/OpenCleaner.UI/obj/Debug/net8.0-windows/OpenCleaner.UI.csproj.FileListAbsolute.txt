@@ -59,3 +59,4 @@ C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\bin\Debug\net8.0-windows
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Debug\net8.0-windows\RestoreWindow.baml
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Debug\net8.0-windows\RestoreWindow.g.cs
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Debug\net8.0-windows\OpenCleaner.UI.sourcelink.json
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Debug\net8.0-windows\OpenCleaner.UI_MarkupCompile.lref
