@@ -29,8 +29,18 @@ L'application est construite avec **.NET 8** et **WPF**, garantissant des perfor
 - 🛡️ **Gardien (FileGuardian) :** Un système de sécurité robuste qui empêche la suppression des fichiers systèmes critiques, incluant une gestion de sauvegardes automatiques.
 
 ---
+## 🛡️ Sécurité & SmartScreen
 
+OpenCleaner n'est pas encore signé numériquement (coût ~300€/an). Windows Defender peut afficher un avertissement.
 
+**C'est normal et sûr** : Le code est 100% open source et audité.
+
+Pour lancer :
+- **Méthode 1** : Clic droit sur l'exe → Propriétés → ✅ Débloquer
+- **Méthode 2** : Cliquer "Informations complémentaires" → "Exécuter quand même"
+
+VirusTotal : [Lien vers l'analyse si tu l'as uploadé]
+---
 ## 🛠️ Installation et Utilisation
 
 ### Télécharger la version prête à l'emploi (Recommandé)
