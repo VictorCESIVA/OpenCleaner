@@ -30,14 +30,6 @@ L'application est construite avec **.NET 8** et **WPF**, garantissant des perfor
 
 ---
 
-## 🖼️ Aperçus
-
-*(Ajoutez ici des captures d'écran de l'application)*
-- `Screenshot 1 : Le Tableau de bord (Smart Clean)`
-- `Screenshot 2 : L'Analyseur d'espace`
-- `Screenshot 3 : Le Nettoyeur Dev`
-
----
 
 ## 🛠️ Installation et Utilisation
 
