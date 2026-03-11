@@ -1,11 +1,10 @@
-﻿using Xunit;
+using Xunit;
 using Moq;
 using OpenCleaner.Core.Security;
 using Microsoft.Extensions.Logging;
 using System.IO;
 using System.Threading.Tasks;
-using OpenCleaner.Core.Models;
-
+using OpenCleaner.Contracts;
 public class FileGuardianTests
 {
     private readonly Mock<IBackupManager> _backupMock;

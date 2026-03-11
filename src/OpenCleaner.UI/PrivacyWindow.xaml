@@ -1,0 +1,157 @@
+<Window x:Class="OpenCleaner.UI.PrivacyWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Analyse de confidentialité" Height="640" Width="860"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <SolidColorBrush x:Key="BgMain"    Color="#1C1C1C"/>
+        <SolidColorBrush x:Key="BgCard"    Color="#252525"/>
+        <SolidColorBrush x:Key="BgHover"   Color="#2D2D2D"/>
+        <SolidColorBrush x:Key="Accent"    Color="#0078D4"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextSecond"  Color="#ABABAB"/>
+        <SolidColorBrush x:Key="Border"    Color="#333333"/>
+
+        <Style x:Key="AccentBtn" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource Accent}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#1084D9"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{DynamicResource BgMain}">
+        <Grid Margin="24,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- EN-TÊTE -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,14">
+                <TextBlock Text="🔒  Analyse de confidentialité"
+                           FontSize="22" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Text="Détecte les fichiers potentiellement sensibles dans vos dossiers : mots de passe, tokens, clés API…"
+                           FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- STATS -->
+            <Border Grid.Row="1" Background="{DynamicResource BgCard}" CornerRadius="10"
+                    Padding="20,10" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock x:Name="StatCritical" Text="—" FontSize="20" FontWeight="Bold"
+                                   Foreground="#C42B1C"/>
+                        <TextBlock Text="🔴 Critique (contenu)" FontSize="11"
+                                   Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock x:Name="StatMedium" Text="—" FontSize="20" FontWeight="Bold"
+                                   Foreground="#FF8C00"/>
+                        <TextBlock Text="🟠 Moyen (nom)" FontSize="11"
+                                   Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock x:Name="StatTotal" Text="—" FontSize="20" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock Text="Total alertes" FontSize="11"
+                                   Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- LISTE DES ALERTES -->
+            <Border Grid.Row="2" Background="{DynamicResource BgCard}" CornerRadius="10" Padding="0">
+                <ListView x:Name="AlertList"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          Foreground="{DynamicResource TextPrimary}"
+                          FontSize="12"
+                          SelectionMode="Multiple">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Risque" Width="80">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding RiskIcon}" FontSize="14"
+                                                   HorizontalAlignment="Center"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Alerte" Width="280">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Alert}"
+                                                   Foreground="{Binding AlertColor}"
+                                                   FontWeight="SemiBold" TextWrapping="NoWrap"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Chemin" Width="380">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Path}"
+                                                   Foreground="{DynamicResource TextSecond}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Border>
+
+            <!-- ACTIONS -->
+            <Border Grid.Row="3" Background="{DynamicResource BgCard}" CornerRadius="10"
+                    Padding="16,12" Margin="0,10,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" x:Name="StatusText"
+                               Text="Lance une analyse pour détecter les fichiers sensibles."
+                               Foreground="{DynamicResource TextSecond}"
+                               VerticalAlignment="Center" FontSize="12"/>
+                    <Button Grid.Column="1" Content="🔍  Analyser"
+                            Style="{StaticResource AccentBtn}"
+                            Click="Scan_Click" x:Name="ScanBtn"
+                            Margin="0,0,10,0"/>
+                    <Button Grid.Column="2" Content="🗑  Sécuriser (supprimer sélection)"
+                            Style="{StaticResource AccentBtn}"
+                            Click="SecureSelected_Click"
+                            x:Name="SecureBtn" IsEnabled="False"/>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

@@ -8,6 +8,7 @@
     <RootNamespace>OpenCleaner.Core.Tests</RootNamespace>
     <AssemblyName>OpenCleaner.Core.Tests</AssemblyName>
     <IsPackable>false</IsPackable>
+    <NoWarn>$(NoWarn);CA1416</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
@@ -30,11 +31,5 @@
     <ProjectReference Include="..\..\src\OpenCleaner.Contracts\OpenCleaner.Contracts.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Models\**" />
-    <Folder Include="Security\**" />
-    <Folder Include="Transactions\**" />
-    <Folder Include="Plugins\**" />
-  </ItemGroup>
 
 </Project>

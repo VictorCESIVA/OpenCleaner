@@ -166,7 +166,7 @@ public class SteamCleanerPlugin : ICleanerPlugin
             }
             catch { }
 
-            progress?.Report((double)success / itemsList.Count * 100);
+            progress?.Report((double)success / itemsList.Count);
         }
 
         return new OperationResult(

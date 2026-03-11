@@ -10,8 +10,5 @@
     <Description>Interfaces and contracts for OpenCleaner</Description>
   </PropertyGroup>
 
-  <ItemGroup>
-    <Folder Include="Plugins\**" />
-  </ItemGroup>
 
 </Project>

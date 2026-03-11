@@ -141,7 +141,7 @@ public class SystemTempPlugin : ICleanerPlugin
             progress?.Report((double)current / total);
         }
 
-        var message = $"Supprimé {successCount}/{total} fichiers ({totalSize.BytesToHuman()} libérés)";
+        var message = $"Supprimé {successCount}/{total} fichiers ({SizeFormatter.Format(totalSize)} libérés)";
         return new OperationResult(
             Success: successCount > 0,
             Message: message,
@@ -152,21 +152,5 @@ public class SystemTempPlugin : ICleanerPlugin
     public Task<long> EstimateSizeAsync(CancellationToken ct = default)
     {
         return Task.FromResult(0L);
-    }
-}
-
-internal static class ByteExtensions
-{
-    public static string BytesToHuman(this long bytes)
-    {
-        string[] sizes = { "B", "KB", "MB", "GB" };
-        int order = 0;
-        double size = bytes;
-        while (size >= 1024 && order < sizes.Length - 1)
-        {
-            order++;
-            size /= 1024;
-        }
-        return $"{size:0.##} {sizes[order]}";
     }
 }

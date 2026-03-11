@@ -16,6 +16,18 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        DispatcherUnhandledException += (s, args) =>
+        {
+            MessageBox.Show($"Une erreur inattendue est survenue :\n\n{args.Exception.Message}", "Erreur critique", MessageBoxButton.OK, MessageBoxImage.Error);
+            args.Handled = true;
+        };
+        
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (s, args) =>
+        {
+            args.SetObserved();
+        };
+
         BuildServices();
 
         // ── Mode background (lancé par le planificateur Windows) ──────────
@@ -41,20 +53,7 @@ public partial class App : System.Windows.Application
         services.AddSingleton<IFileGuardian, FileGuardian>();
         services.AddSingleton<IRegistryGuardian, RegistryGuardian>();
 
-        // Loggers individuels
-        void AddLogger<T>() =>
-            services.AddSingleton<ILogger<T>>(sp =>
-                sp.GetRequiredService<ILoggerFactory>().CreateLogger<T>());
 
-        AddLogger<SystemTempPlugin>();
-        AddLogger<ChromeCleanerPlugin>();
-        AddLogger<RegistryCleanerPlugin>();
-        AddLogger<SteamCleanerPlugin>();
-        AddLogger<WindowsUpdatePlugin>();
-        AddLogger<OfficeCleanerPlugin>();
-        AddLogger<ThumbnailCachePlugin>();
-        AddLogger<DuplicateFinderPlugin>();
-        AddLogger<SchedulerService>();
 
         // Plugins
         services.AddTransient<SystemTempPlugin>();
@@ -65,6 +64,9 @@ public partial class App : System.Windows.Application
         services.AddTransient<OfficeCleanerPlugin>();
         services.AddTransient<ThumbnailCachePlugin>();
         services.AddTransient<DuplicateFinderPlugin>();
+        services.AddTransient<PrivacyScannerPlugin>();
+        services.AddTransient<DevCleanerPlugin>();
+        services.AddTransient<DiskAnalyzerPlugin>();
 
         Services = services.BuildServiceProvider();
     }
@@ -93,15 +95,15 @@ public partial class App : System.Windows.Application
             {
                 "system.temp"       => new SystemTempPlugin(fileGuardian,
                                            logFactory.CreateLogger<SystemTempPlugin>()),
-                "system.winupdate"  => new WindowsUpdatePlugin(fileGuardian,
+                "system.windowsupdate"  => new WindowsUpdatePlugin(fileGuardian,
                                            logFactory.CreateLogger<WindowsUpdatePlugin>()),
-                "system.thumbnails" => new ThumbnailCachePlugin(fileGuardian,
+                "system.thumbnailcache" => new ThumbnailCachePlugin(fileGuardian,
                                            logFactory.CreateLogger<ThumbnailCachePlugin>()),
                 "browser.chrome"    => new ChromeCleanerPlugin(fileGuardian,
                                            logFactory.CreateLogger<ChromeCleanerPlugin>()),
-                "system.office"     => new OfficeCleanerPlugin(fileGuardian,
+                "applications.office"     => new OfficeCleanerPlugin(fileGuardian,
                                            logFactory.CreateLogger<OfficeCleanerPlugin>()),
-                "system.steam"      => new SteamCleanerPlugin(fileGuardian,
+                "games.steam"      => new SteamCleanerPlugin(fileGuardian,
                                            logFactory.CreateLogger<SteamCleanerPlugin>()),
                 _                   => null
             };

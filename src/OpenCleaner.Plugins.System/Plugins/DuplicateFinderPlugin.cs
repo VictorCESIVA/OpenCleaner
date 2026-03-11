@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
 using System.Security.Cryptography;
+using OpenCleaner.Core;
 
 namespace OpenCleaner.Plugins.System.Plugins;
 
@@ -43,6 +44,8 @@ public class DuplicateFinderPlugin : ICleanerPlugin
         _logger = logger;
     }
 
+    public event Action<string>? OnFileHashing;
+
     // ─────────────────────────────────────────────────────────────────────
     //  ANALYZE
     // ─────────────────────────────────────────────────────────────────────
@@ -56,22 +59,43 @@ public class DuplicateFinderPlugin : ICleanerPlugin
         // 1. Collecte tous les fichiers éligibles
         var allFiles = CollectFiles();
         int total = allFiles.Count;
+
         if (total == 0)
         {
             progress?.Report(1.0);
             return items;
         }
 
-        // 2. Hash SHA-256 par blocs de 64 Ko → dict hash → chemins
+        // 2. Passe préliminaire : Grouper par taille (ceux ayant une taille unique n'ont aucun doublon possible)
+        var sizeGroups = allFiles
+            .GroupBy(f =>
+            {
+                try { return new FileInfo(f).Length; }
+                catch { return -1L; }
+            })
+            .Where(g => g.Key > 0 && g.Count() > 1)
+            .ToList();
+
+        var suspectedFiles = sizeGroups.SelectMany(g => g).ToList();
+        var totalToHash = suspectedFiles.Count;
+
+        if (totalToHash == 0)
+        {
+            progress?.Report(1.0);
+            return items;
+        }
+
+        // 3. Passe de validation : Hash complet uniquement sur les suspects
         var hashMap = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
         int done = 0;
 
-        foreach (var file in allFiles)
+        foreach (var file in suspectedFiles)
         {
             ct.ThrowIfCancellationRequested();
             try
             {
-                var hash = await ComputeHashAsync(file, ct);
+                OnFileHashing?.Invoke(file);
+                var hash = await HashHelper.ComputeHashAsync(file, ct);
                 if (!hashMap.TryGetValue(hash, out var paths))
                 {
                     paths = [];
@@ -85,10 +109,10 @@ public class DuplicateFinderPlugin : ICleanerPlugin
             }
 
             done++;
-            progress?.Report((double)done / total);
+            progress?.Report((double)done / totalToHash);
         }
 
-        // 3. Seuls les groupes avec >= 2 fichiers sont des doublons
+        // 4. Seuls les groupes avec >= 2 fichiers sont des doublons
         foreach (var kvp in hashMap)
         {
             if (kvp.Value.Count < 2) continue;
@@ -224,20 +248,5 @@ public class DuplicateFinderPlugin : ICleanerPlugin
         return [.. files];
     }
 
-    private static async Task<string> ComputeHashAsync(string path, CancellationToken ct)
-    {
-        const int BufferSize = 64 * 1024; // 64 Ko
-        using var sha = SHA256.Create();
-        await using var stream = new FileStream(
-            path, FileMode.Open, FileAccess.Read, FileShare.Read,
-            bufferSize: BufferSize, useAsync: true);
 
-        var buffer = new byte[BufferSize];
-        int read;
-        while ((read = await stream.ReadAsync(buffer, ct)) > 0)
-            sha.TransformBlock(buffer, 0, read, null, 0);
-
-        sha.TransformFinalBlock([], 0, 0);
-        return Convert.ToHexString(sha.Hash!);
-    }
 }

@@ -39,7 +39,7 @@ public partial class RestoreWindow : Window
         try
         {
             var backupManager = App.Services.GetRequiredService<IBackupManager>();
-            var success = await backupManager.RestoreFileAsync(backup.BackupId);
+            var success = await backupManager.RestoreAsync(backup.BackupId);
 
             if (success)
             {

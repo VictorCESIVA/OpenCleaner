@@ -344,6 +344,18 @@
                             <TextBlock Text="🛡️  Restauration"/>
                         </Button>
                         <Button Style="{StaticResource SidebarBtnStyle}"
+                                Click="OpenDiskAnalyzer_Click">
+                            <TextBlock Text="🗺️  Analyse Disque"/>
+                        </Button>
+                        <Button Style="{StaticResource SidebarBtnStyle}"
+                                Click="OpenPrivacy_Click">
+                            <TextBlock Text="🔒  Privacy"/>
+                        </Button>
+                        <Button Style="{StaticResource SidebarBtnStyle}"
+                                Click="OpenDevCleaner_Click">
+                            <TextBlock Text="🧑‍💻  Dev Tools"/>
+                        </Button>
+                        <Button Style="{StaticResource SidebarBtnStyle}"
                                 Click="OpenSettings_Click">
                             <TextBlock Text="⚙️  Paramètres"/>
                         </Button>
@@ -362,6 +374,8 @@
             ═══════════════════════════════════════════════ -->
             <Grid Grid.Column="1" Margin="28,24,28,20">
                 <Grid.RowDefinitions>
+                    <!-- Card Smart Clean -->
+                    <RowDefinition Height="Auto"/>
                     <!-- Header plugin sélectionné -->
                     <RowDefinition Height="Auto"/>
                     <!-- Barre de stats (card) -->
@@ -374,8 +388,75 @@
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
+                <!-- ⚡ SMART CLEAN CARD -->
+                <Border Grid.Row="0" Margin="0,0,0,14"
+                        CornerRadius="12"
+                        Padding="20,14">
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                            <GradientStop Color="#0D5C26" Offset="0"/>
+                            <GradientStop Color="#107C10" Offset="1"/>
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0">
+                            <TextBlock Text="⚡  Smart Clean"
+                                       FontSize="18" FontWeight="Bold"
+                                       Foreground="White"/>
+                            <TextBlock x:Name="SmartCleanDesc"
+                                       Text="Analyse intelligente — trouve les 3 meilleurs gains en 5 secondes"
+                                       FontSize="11" Foreground="#CCFFCC"
+                                       Margin="0,3,0,0"/>
+                            <TextBlock x:Name="SmartCleanResult"
+                                       Text="" FontSize="14" FontWeight="SemiBold"
+                                       Foreground="White" Margin="0,6,0,0"
+                                       Visibility="Collapsed"/>
+                        </StackPanel>
+                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                            <Button x:Name="SmartScanBtn"
+                                    Content="🔍  Analyser"
+                                    Background="#FFFFFF20" Foreground="White"
+                                    BorderThickness="0" Padding="14,8"
+                                    Cursor="Hand" Margin="0,0,10,0"
+                                    Click="SmartScan_Click">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                                        </Border>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                            <Button x:Name="SmartCleanBtn"
+                                    Content="⚡  Nettoyer automatiquement"
+                                    Background="White" Foreground="#107C10"
+                                    BorderThickness="0" Padding="14,8"
+                                    FontWeight="SemiBold" Cursor="Hand"
+                                    IsEnabled="False"
+                                    Click="SmartClean_Click">
+                                <Button.Template>
+                                    <ControlTemplate TargetType="Button">
+                                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="6" Opacity="{TemplateBinding Opacity}">
+                                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                                        </Border>
+                                        <ControlTemplate.Triggers>
+                                            <Trigger Property="IsEnabled" Value="False">
+                                                <Setter TargetName="bg" Property="Opacity" Value="0.4"/>
+                                            </Trigger>
+                                        </ControlTemplate.Triggers>
+                                    </ControlTemplate>
+                                </Button.Template>
+                            </Button>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+
                 <!-- HEADER : nom plugin + status -->
-                <Grid Grid.Row="0" Margin="0,0,0,16">
+                <Grid Grid.Row="1" Margin="0,0,0,16">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
@@ -400,7 +481,7 @@
                 </Grid>
 
                 <!-- STATS CARD -->
-                <Border Grid.Row="1"
+                <Border Grid.Row="2"
                         Background="{DynamicResource BgCard}"
                         CornerRadius="10"
                         Padding="20,14"
@@ -436,7 +517,7 @@
                 </Border>
 
                 <!-- PROGRESSBAR FINE -->
-                <ProgressBar Grid.Row="2"
+                <ProgressBar Grid.Row="3"
                              x:Name="ProgressBar"
                              Style="{StaticResource ModernProgressBar}"
                              Margin="0,0,0,12"
@@ -444,7 +525,7 @@
                              Visibility="Collapsed"/>
 
                 <!-- LISTE DES RÉSULTATS -->
-                <Border Grid.Row="3"
+                <Border Grid.Row="4"
                         Background="{DynamicResource BgCard}"
                         CornerRadius="10"
                         Padding="4">
@@ -530,7 +611,7 @@
                 </Border>
 
                 <!-- OVERLAY CHARGEMENT (par-dessus la liste) -->
-                <Border Grid.Row="3"
+                <Border Grid.Row="4"
                         x:Name="LoadingOverlay"
                         Background="{DynamicResource BgCard}"
                         CornerRadius="10"
@@ -574,7 +655,7 @@
                 </Border>
 
                 <!-- BARRE D'ACTIONS -->
-                <Border Grid.Row="4"
+                <Border Grid.Row="5"
                         Background="{DynamicResource BgCard}"
                         CornerRadius="10"
                         Padding="16,12"

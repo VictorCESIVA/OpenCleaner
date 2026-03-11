@@ -44,7 +44,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
 
             File.Copy(originalPath, backupFilePath, overwrite: false);
 
-            string contentHash = await ComputeHashAsync(originalPath, ct);
+            string contentHash = await HashHelper.ComputeHashAsync(originalPath, ct);
             long fileSize = new FileInfo(originalPath).Length;
 
             var metadata = new BackupMetadata
@@ -161,55 +161,6 @@ public sealed class BackupManager : IBackupManager, IDisposable
         return Task.CompletedTask;
     }
 
-    public Task<IReadOnlyList<BackupInfo>> GetExistingBackupsAsync()
-    {
-        var backups = new List<BackupInfo>();
-
-        if (!Directory.Exists(_baseBackupDirectory))
-        {
-            return Task.FromResult<IReadOnlyList<BackupInfo>>(backups);
-        }
-
-        foreach (string backupDirectory in Directory.GetDirectories(_baseBackupDirectory))
-        {
-            string metadataPath = Path.Combine(backupDirectory, "metadata.json");
-            if (!File.Exists(metadataPath))
-            {
-                continue;
-            }
-
-            try
-            {
-                string metadataJson = File.ReadAllText(metadataPath);
-                BackupMetadata? metadata = JsonSerializer.Deserialize<BackupMetadata>(metadataJson);
-
-                if (metadata != null)
-                {
-                    string backupId = Path.GetFileName(backupDirectory);
-                    string dataDirectory = Path.Combine(backupDirectory, "data");
-                    string? backupFile = Directory.GetFiles(dataDirectory).FirstOrDefault();
-
-                    if (backupFile != null)
-                    {
-                        backups.Add(new BackupInfo(
-                            BackupId: backupId,
-                            OriginalPath: metadata.OriginalPath,
-                            BackupPath: backupFile,
-                            CreatedAt: metadata.CreationDate,
-                            Size: metadata.FileSize,
-                            ContentHash: metadata.OriginalHash
-                        ));
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Failed to read backup metadata from: {Directory}", backupDirectory);
-            }
-        }
-
-        return Task.FromResult<IReadOnlyList<BackupInfo>>(backups);
-    }
 
     public Task<IReadOnlyList<BackupInfo>> GetAllBackupsAsync()
     {
@@ -265,18 +216,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
         return Task.FromResult<IReadOnlyList<BackupInfo>>(backups);
     }
 
-    public Task<bool> RestoreFileAsync(string backupId)
-    {
-        return RestoreAsync(backupId);
-    }
 
-    private static async Task<string> ComputeHashAsync(string filePath, CancellationToken ct)
-    {
-        using SHA256 sha256 = SHA256.Create();
-        await using FileStream stream = File.OpenRead(filePath);
-        byte[] hash = await sha256.ComputeHashAsync(stream, ct);
-        return Convert.ToHexString(hash);
-    }
 
     public void Dispose()
     {

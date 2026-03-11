@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
@@ -407,6 +408,96 @@ public partial class MainWindow : Window
 
     private void OpenSettings_Click(object sender, RoutedEventArgs e)
         => new SettingsWindow { Owner = this }.ShowDialog();
+
+    private void OpenDiskAnalyzer_Click(object sender, RoutedEventArgs e)
+        => new DiskSpaceWindow { Owner = this }.Show();
+
+    private void OpenPrivacy_Click(object sender, RoutedEventArgs e)
+        => new PrivacyWindow { Owner = this }.Show();
+
+    private void OpenDevCleaner_Click(object sender, RoutedEventArgs e)
+        => new DevCleanerWindow { Owner = this }.Show();
+
+    // ── SMART CLEAN ──────────────────────────────────────────────────────────
+
+    private OpenCleaner.Core.SmartScanResult[]? _smartScanResults;
+
+    private async void SmartScan_Click(object sender, RoutedEventArgs e)
+    {
+        SmartScanBtn.IsEnabled  = false;
+        SmartCleanBtn.IsEnabled = false;
+        SmartCleanDesc.Text     = "Analyse en cours…";
+        SmartCleanResult.Visibility = System.Windows.Visibility.Collapsed;
+
+        try
+        {
+            var fileGuardian  = App.Services.GetRequiredService<IFileGuardian>();
+            var backupManager = App.Services.GetRequiredService<IBackupManager>();
+            var logFactory    = App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>();
+
+            // Construction des plugins dans l'UI (pas dans Core)
+            ICleanerPlugin[] plugins =
+            [
+                new SystemTempPlugin(fileGuardian,     logFactory.CreateLogger<SystemTempPlugin>()),
+                new WindowsUpdatePlugin(fileGuardian,  logFactory.CreateLogger<WindowsUpdatePlugin>()),
+                new ThumbnailCachePlugin(fileGuardian, logFactory.CreateLogger<ThumbnailCachePlugin>()),
+                new ChromeCleanerPlugin(fileGuardian,  logFactory.CreateLogger<ChromeCleanerPlugin>()),
+            ];
+
+            var svc = new OpenCleaner.Core.SmartCleanService(backupManager);
+            _smartScanResults = await svc.QuickScanAsync(plugins);
+
+            long total = _smartScanResults.Sum(r => r.TotalSize);
+            var names  = string.Join(", ", _smartScanResults.Where(r => r.TotalSize > 0).Select(r => r.Plugin.Name));
+
+            SmartCleanDesc.Text = $"Analyse terminée — {_smartScanResults.Length} plugin(s) analysés";
+            SmartCleanResult.Text = $"⚡ {SizeFormatter.Format(total)} libérables — {names}";
+            SmartCleanResult.Visibility = System.Windows.Visibility.Visible;
+            SmartCleanBtn.IsEnabled = total > 0;
+        }
+        catch (Exception ex)
+        {
+            SmartCleanDesc.Text = "❌ " + ex.Message;
+        }
+        finally
+        {
+            SmartScanBtn.IsEnabled = true;
+        }
+    }
+
+    private async void SmartClean_Click(object sender, RoutedEventArgs e)
+    {
+        if (_smartScanResults == null) return;
+
+        SmartCleanBtn.IsEnabled = false;
+        SmartScanBtn.IsEnabled  = false;
+        SmartCleanDesc.Text     = "Nettoyage en cours…";
+
+        try
+        {
+            var backupManager = App.Services.GetRequiredService<IBackupManager>();
+
+            var svc    = new OpenCleaner.Core.SmartCleanService(backupManager);
+            var result = await svc.ExecuteSmartCleanAsync(_smartScanResults,
+                new Progress<(int current, int total, string plugin)>(p =>
+                    SmartCleanDesc.Text = $"Nettoyage {p.plugin}… ({p.current}/{p.total})"));
+
+            SmartCleanDesc.Text = result.Success
+                ? $"✅ {result.ItemsCleaned} fichiers supprimés — {SizeFormatter.Format(result.BytesFreed)} libérés"
+                : $"⚠️ Terminé avec {result.Errors.Count} erreur(s)";
+            SmartCleanResult.Visibility = System.Windows.Visibility.Collapsed;
+            _smartScanResults = null;
+        }
+        catch (Exception ex)
+        {
+            SmartCleanDesc.Text = "❌ " + ex.Message;
+        }
+        finally
+        {
+            SmartScanBtn.IsEnabled = true;
+        }
+    }
+
 
     private static Microsoft.Extensions.Logging.ILogger<T> GetLogger<T>()
         => App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<T>>();

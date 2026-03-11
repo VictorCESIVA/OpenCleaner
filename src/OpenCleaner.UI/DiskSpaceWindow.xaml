@@ -1,0 +1,228 @@
+<Window x:Class="OpenCleaner.UI.DiskSpaceWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Analyseur d'espace disque" Height="720" Width="1000"
+        WindowStartupLocation="CenterOwner">
+    <Window.Resources>
+        <SolidColorBrush x:Key="BgMain"    Color="#1C1C1C"/>
+        <SolidColorBrush x:Key="BgCard"    Color="#252525"/>
+        <SolidColorBrush x:Key="BgHover"   Color="#2D2D2D"/>
+        <SolidColorBrush x:Key="Accent"    Color="#0078D4"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextSecond"  Color="#ABABAB"/>
+        <SolidColorBrush x:Key="Border"    Color="#333333"/>
+        <SolidColorBrush x:Key="SizeHuge"  Color="#C42B1C"/>
+        <SolidColorBrush x:Key="SizeLarge" Color="#FF8C00"/>
+        <SolidColorBrush x:Key="SizeMed"   Color="#FFD700"/>
+        <SolidColorBrush x:Key="SizeSmall" Color="#107C10"/>
+
+        <Style x:Key="AccentBtn" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource Accent}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,8"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#1084D9"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="SecondBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="14,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="{DynamicResource BgHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="{DynamicResource BgMain}">
+        <Grid Margin="24,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- EN-TÊTE -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,14">
+                <TextBlock Text="🗺️  Analyseur d'espace disque"
+                           FontSize="22" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Text="Cartographie récursive de votre disque. Identifiez les dossiers et fichiers volumineux en quelques secondes."
+                           FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- STATS -->
+            <Border Grid.Row="1" Background="{DynamicResource BgCard}" CornerRadius="10"
+                    Padding="20,10" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock x:Name="StatTotal" Text="—" FontSize="20" FontWeight="Bold"
+                                   Foreground="{DynamicResource Accent}"/>
+                        <TextBlock Text="Total scanné" FontSize="11"
+                                   Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock x:Name="StatHuge" Text="—" FontSize="20" FontWeight="Bold"
+                                   Foreground="{DynamicResource SizeHuge}"/>
+                        <TextBlock Text="≥ 1 Go" FontSize="11"
+                                   Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock x:Name="StatLarge" Text="—" FontSize="20" FontWeight="Bold"
+                                   Foreground="{DynamicResource SizeLarge}"/>
+                        <TextBlock Text="≥ 100 Mo" FontSize="11"
+                                   Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3">
+                        <TextBlock x:Name="StatFiles" Text="—" FontSize="20" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock Text="Entrées scannées" FontSize="11"
+                                   Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- BARRE DE CONTRÔLE -->
+            <Border Grid.Row="2" Background="{DynamicResource BgCard}" CornerRadius="10"
+                    Padding="16,10" Margin="0,0,0,10">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="120"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" Text="Lecteur :"
+                               Foreground="{DynamicResource TextSecond}"
+                               VerticalAlignment="Center" Margin="0,0,8,0" FontSize="12"/>
+                    <ComboBox x:Name="DriveCombo" Grid.Column="1"
+                              Background="#1A1A1A" Foreground="White"
+                              BorderBrush="{DynamicResource Border}"
+                              SelectionChanged="DriveCombo_Changed"
+                              Height="32"/>
+                    <TextBlock Grid.Column="2" x:Name="PathBreadcrumb"
+                               Text="" FontSize="11"
+                               Foreground="{DynamicResource TextSecond}"
+                               VerticalAlignment="Center" Margin="12,0"/>
+                    <Button Grid.Column="3" Content="← Remonter"
+                            Style="{StaticResource SecondBtn}"
+                            Click="GoUp_Click" Margin="0,0,8,0"
+                            x:Name="GoUpBtn" IsEnabled="False"/>
+                    <Button Grid.Column="4" Content="⚠️ Gros fichiers >500 Mo"
+                            Style="{StaticResource SecondBtn}"
+                            Click="FilterLarge_Click" Margin="0,0,8,0"/>
+                    <Button Grid.Column="5" Content="🔍 Analyser"
+                            Style="{StaticResource AccentBtn}"
+                            Click="Scan_Click" x:Name="ScanBtn"/>
+                </Grid>
+            </Border>
+
+            <!-- LISTVIEW PRINCIPALE -->
+            <Border Grid.Row="3" Background="{DynamicResource BgCard}" CornerRadius="10" Padding="0">
+                <ListView x:Name="ResultList"
+                          Background="Transparent"
+                          BorderThickness="0"
+                          Foreground="{DynamicResource TextPrimary}"
+                          FontSize="12"
+                          MouseDoubleClick="ResultList_DoubleClick">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Taille" Width="90">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding SizeLabel}"
+                                                   Foreground="{Binding SizeColor}"
+                                                   FontWeight="SemiBold"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Barre" Width="160">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <ProgressBar Value="{Binding BarPercent}"
+                                                     Foreground="{Binding SizeColor}"
+                                                     Background="#333"
+                                                     BorderThickness="0"
+                                                     Height="8" Width="150"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Type" Width="60">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding TypeIcon}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="Chemin" Width="600">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Path}"
+                                                   Foreground="{DynamicResource TextSecond}"
+                                                   TextTrimming="CharacterEllipsis"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </Border>
+
+            <!-- STATUS BAR -->
+            <Border Grid.Row="4" Background="{DynamicResource BgCard}" CornerRadius="10"
+                    Padding="16,10" Margin="0,10,0,0">
+                <TextBlock x:Name="StatusText"
+                           Text="Sélectionnez un lecteur et cliquez Analyser."
+                           Foreground="{DynamicResource TextSecond}" FontSize="12"/>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

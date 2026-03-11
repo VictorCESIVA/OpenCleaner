@@ -5,9 +5,7 @@ public interface IBackupManager
     Task<BackupInfo> CreateBackupAsync(string originalPath, CancellationToken ct = default);
     Task<bool> RestoreAsync(string backupId, CancellationToken ct = default);
     Task CleanupOldBackupsAsync(TimeSpan maxAge, CancellationToken ct = default);
-    Task<IReadOnlyList<BackupInfo>> GetExistingBackupsAsync();
     Task<IReadOnlyList<BackupInfo>> GetAllBackupsAsync();
-    Task<bool> RestoreFileAsync(string backupId);
 }
 
 public record BackupInfo(

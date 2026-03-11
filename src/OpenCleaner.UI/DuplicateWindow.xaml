@@ -171,10 +171,21 @@
                         <Border x:Name="PreviewBorder"
                                 Background="#111" CornerRadius="6"
                                 Height="160" Width="196">
-                            <Image x:Name="PreviewImage"
-                                   Stretch="Uniform"
-                                   HorizontalAlignment="Center"
-                                   VerticalAlignment="Center"/>
+                            <Grid>
+                                <TextBlock x:Name="PreviewPlaceholder"
+                                           Text="Sélectionnez un fichier pour voir l'aperçu"
+                                           TextWrapping="Wrap"
+                                           TextAlignment="Center"
+                                           FontSize="12"
+                                           Foreground="#555"
+                                           HorizontalAlignment="Center"
+                                           VerticalAlignment="Center"
+                                           Margin="10"/>
+                                <Image x:Name="PreviewImage"
+                                       Stretch="Uniform"
+                                       HorizontalAlignment="Center"
+                                       VerticalAlignment="Center"/>
+                            </Grid>
                         </Border>
                         <TextBlock x:Name="PreviewName"
                                    Text="—" FontSize="11"
@@ -196,10 +207,20 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <TextBlock Grid.Column="0" x:Name="StatusText"
-                               Text="Lance une analyse pour détecter les doublons."
-                               Foreground="{DynamicResource TextSecond}"
-                               VerticalAlignment="Center" FontSize="12"/>
+                    <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                        <TextBlock x:Name="StatusText"
+                                   Text="Lance une analyse pour détecter les doublons."
+                                   Foreground="{DynamicResource TextSecond}"
+                                   FontSize="12"/>
+                                   
+                        <TextBlock x:Name="CurrentFileText"
+                                   Text=""
+                                   Foreground="{DynamicResource TextSecond}"
+                                   FontSize="10"
+                                   TextTrimming="CharacterEllipsis"
+                                   Opacity="0.7"
+                                   Margin="0,2,20,0"/>
+                    </StackPanel>
                     <StackPanel Grid.Column="1" Orientation="Horizontal">
                         <Button x:Name="AutoSelectBtn"
                                 Content="✓  Sélection auto"

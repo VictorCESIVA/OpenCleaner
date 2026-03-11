@@ -17,18 +17,11 @@ public sealed class DuplicateGroup
     public string Hash      { get; }
     public long   Size      { get; }
     public int    Count     => Files.Count;
-    public string Label     => $"📁 {Count} fichiers identiques — {FormatSize(Size)}";
+    public string Label     => $"📁 {Count} fichiers identiques — {SizeFormatter.Format(Size)}";
     public ObservableCollection<DuplicateFile> Files { get; } = [];
 
     public DuplicateGroup(string hash, long size) { Hash = hash; Size = size; }
 
-    private static string FormatSize(long b) => b switch
-    {
-        >= 1_073_741_824 => $"{b / 1_073_741_824.0:0.#} Go",
-        >= 1_048_576     => $"{b / 1_048_576.0:0.#} Mo",
-        >= 1_024         => $"{b / 1_024.0:0.#} Ko",
-        _                => $"{b} o"
-    };
 }
 
 /// <summary>Feuille représentant un fichier dans un groupe.</summary>
@@ -69,10 +62,12 @@ public partial class DuplicateWindow : Window
         DupTree.Items.Clear();
         _groups.Clear();
         _allItems.Clear();
-        StatusText.Text = "Analyse en cours…";
+        StatusText.Text = "Collecte des fichiers...";
+        CurrentFileText.Text = "";
         DupGroups.Text = "—";
         DupFiles.Text  = "—";
         DupSize.Text   = "—";
+        ClearPreview();
 
         try
         {
@@ -83,7 +78,13 @@ public partial class DuplicateWindow : Window
             var progress = new Progress<double>(p =>
                 ScanProgress.Text = $"{p:P0}");
 
+            plugin.OnFileHashing += Plugin_OnFileHashing;
+
+            StatusText.Text = "Analyse des empreintes...";
+            
             _allItems = (await plugin.AnalyzeAsync(progress)).ToList();
+
+            plugin.OnFileHashing -= Plugin_OnFileHashing;
 
             // Regroupe par hash (contenu de la Description pour récupérer le hash est dans Item.Id)
             // On re-groupe en cherchant les doublons avec le même nom de fichier d'original
@@ -95,8 +96,9 @@ public partial class DuplicateWindow : Window
 
             DupGroups.Text = groups.ToString();
             DupFiles.Text  = files.ToString();
-            DupSize.Text   = FormatSize(totalSize);
+            DupSize.Text   = SizeFormatter.Format(totalSize);
             ScanProgress.Text = "";
+            CurrentFileText.Text = "";
 
             StatusText.Text = files == 0
                 ? "✅ Aucun doublon détecté dans vos dossiers."
@@ -114,6 +116,11 @@ public partial class DuplicateWindow : Window
         }
     }
 
+    private void Plugin_OnFileHashing(string path)
+    {
+        Dispatcher.InvokeAsync(() => CurrentFileText.Text = path);
+    }
+    
     private void BuildTree(List<CleanableItem> items)
     {
         // Les items sont déjà groupables car Description commence par "Doublon de « X »"
@@ -239,11 +246,20 @@ public partial class DuplicateWindow : Window
     private void LoadPreview(DuplicateFile file)
     {
         PreviewName.Text = System.IO.Path.GetFileName(file.Path);
-        PreviewSize.Text = FormatSize(file.Size);
+        PreviewSize.Text = SizeFormatter.Format(file.Size);
         PreviewImage.Source = null;
+        PreviewPlaceholder.Visibility = Visibility.Visible;
 
         var ext = System.IO.Path.GetExtension(file.Path).TrimStart('.');
-        if (!ImageExts.Contains(ext)) return;
+        if (!ImageExts.Contains(ext))
+        {
+            PreviewPlaceholder.Text = "📄\nAucun aperçu disponible pour ce type de fichier";
+            PreviewPlaceholder.FontSize = 12;
+            return;
+        }
+
+        PreviewPlaceholder.Text = "📷\nChargement...";
+        PreviewPlaceholder.FontSize = 12;
 
         try
         {
@@ -254,8 +270,23 @@ public partial class DuplicateWindow : Window
             bmp.DecodePixelWidth = 196;
             bmp.EndInit();
             PreviewImage.Source = bmp;
+            PreviewPlaceholder.Visibility = Visibility.Collapsed;
         }
-        catch { PreviewImage.Source = null; }
+        catch 
+        { 
+            PreviewImage.Source = null;
+            PreviewPlaceholder.Text = "⚠️\nImpossible de charger l'aperçu";
+            PreviewPlaceholder.Visibility = Visibility.Visible;
+        }
+    }
+
+    private void ClearPreview()
+    {
+        PreviewName.Text = "—";
+        PreviewSize.Text = "";
+        PreviewImage.Source = null;
+        PreviewPlaceholder.Text = "Sélectionnez un fichier pour voir l'aperçu";
+        PreviewPlaceholder.Visibility = Visibility.Visible;
     }
 
     // ─── UTILITAIRES ────────────────────────────────────────────────────
@@ -285,15 +316,7 @@ public partial class DuplicateWindow : Window
         var start = description.IndexOf('«');
         var end   = description.IndexOf('»');
         if (start >= 0 && end > start)
-            return description.Substring(start + 1, end - start - 2).Trim();
+            return description.Substring(start + 1, end - start - 1).Trim();
         return description;
     }
-
-    private static string FormatSize(long b) => b switch
-    {
-        >= 1_073_741_824 => $"{b / 1_073_741_824.0:0.#} Go",
-        >= 1_048_576     => $"{b / 1_048_576.0:0.#} Mo",
-        >= 1_024         => $"{b / 1_024.0:0.#} Ko",
-        _                => $"{b} o"
-    };
 }

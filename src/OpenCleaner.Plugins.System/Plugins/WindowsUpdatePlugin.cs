@@ -110,7 +110,7 @@ public class WindowsUpdatePlugin : ICleanerPlugin
             }
             catch { }
 
-            progress?.Report((double)success / itemsList.Count * 100);
+            progress?.Report((double)success / itemsList.Count);
         }
 
         var gb = totalSize / 1024.0 / 1024.0 / 1024.0;

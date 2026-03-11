@@ -148,7 +148,7 @@ public sealed class FileGuardian : IFileGuardian
 
         // Récupération des infos avant suppression
         FileInfo fileInfo = new(path);
-        string contentHash = await ComputeHashAsync(path, ct);
+        string contentHash = await HashHelper.ComputeHashAsync(path, ct);
         FileEntry originalFile = new(
             Path: path,
             Size: fileInfo.Length,
@@ -289,11 +289,5 @@ public sealed class FileGuardian : IFileGuardian
             TransactionId: transactionId);
     }
 
-    private static async Task<string> ComputeHashAsync(string filePath, CancellationToken ct)
-    {
-        using SHA256 sha256 = SHA256.Create();
-        await using FileStream stream = File.OpenRead(filePath);
-        byte[] hash = await sha256.ComputeHashAsync(stream, ct);
-        return Convert.ToHexString(hash);
-    }
+
 }

@@ -10,11 +10,11 @@ none
 false
 TRACE;DEBUG;NET;NET8_0;NETCOREAPP;WINDOWS;WINDOWS7_0;NET5_0_OR_GREATER;NET6_0_OR_GREATER;NET7_0_OR_GREATER;NET8_0_OR_GREATER;NETCOREAPP3_0_OR_GREATER;NETCOREAPP3_1_OR_GREATER;WINDOWS7_0_OR_GREATER
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\App.xaml
-41809670371
+7-1042729175
 
-7-380061880
+10-561804326
 213653737222
-DuplicateWindow.xaml;MainWindow.xaml;RestoreWindow.xaml;SettingsWindow.xaml;
+DevCleanerWindow.xaml;DiskSpaceWindow.xaml;DuplicateWindow.xaml;MainWindow.xaml;PrivacyWindow.xaml;RestoreWindow.xaml;SettingsWindow.xaml;
 
 False
 

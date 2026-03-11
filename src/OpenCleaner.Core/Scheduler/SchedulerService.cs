@@ -68,7 +68,7 @@ public sealed class SchedulerService
             using var ts = new TaskService();
 
             // Créer le dossier \OpenCleaner\ s'il n'existe pas
-            TaskFolder? folder = null;
+            Microsoft.Win32.TaskScheduler.TaskFolder folder;
             try   { folder = ts.GetFolder(TaskFolder); }
             catch { folder = ts.RootFolder.CreateFolder(TaskFolder); }
 

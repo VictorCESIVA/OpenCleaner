@@ -139,11 +139,11 @@
                                Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                     <WrapPanel>
                         <CheckBox x:Name="PlugSystem"  Content="🧹 Fichiers temporaires" Tag="system.temp"       Margin="0,4,20,4"/>
-                        <CheckBox x:Name="PlugWinUpd"  Content="🪟 Windows Update"       Tag="system.winupdate"  Margin="0,4,20,4"/>
+                        <CheckBox x:Name="PlugWinUpd"  Content="🪟 Windows Update"       Tag="system.windowsupdate"  Margin="0,4,20,4"/>
                         <CheckBox x:Name="PlugBrowser" Content="🌐 Navigateurs"          Tag="browser.chrome"    Margin="0,4,20,4"/>
-                        <CheckBox x:Name="PlugThumb"   Content="🖼️ Miniatures"           Tag="system.thumbnails" Margin="0,4,20,4"/>
-                        <CheckBox x:Name="PlugOffice"  Content="📄 Office"               Tag="system.office"     Margin="0,4,20,4"/>
-                        <CheckBox x:Name="PlugSteam"   Content="🎮 Steam"                Tag="system.steam"      Margin="0,4,20,4"/>
+                        <CheckBox x:Name="PlugThumb"   Content="🖼️ Miniatures"           Tag="system.thumbnailcache" Margin="0,4,20,4"/>
+                        <CheckBox x:Name="PlugOffice"  Content="📄 Office"               Tag="applications.office"     Margin="0,4,20,4"/>
+                        <CheckBox x:Name="PlugSteam"   Content="🎮 Steam"                Tag="games.steam"      Margin="0,4,20,4"/>
                     </WrapPanel>
                 </StackPanel>
             </Border>
