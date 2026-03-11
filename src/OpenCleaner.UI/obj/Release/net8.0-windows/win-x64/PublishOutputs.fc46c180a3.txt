@@ -1,0 +1,5 @@
+C:\Users\noela\Documents\OpenCleaner\PublishOutput\OpenCleaner.UI.pdb
+C:\Users\noela\Documents\OpenCleaner\PublishOutput\OpenCleaner.Contracts.pdb
+C:\Users\noela\Documents\OpenCleaner\PublishOutput\OpenCleaner.Core.pdb
+C:\Users\noela\Documents\OpenCleaner\PublishOutput\OpenCleaner.Plugins.System.pdb
+C:\Users\noela\Documents\OpenCleaner\PublishOutput\OpenCleaner.UI.exe
