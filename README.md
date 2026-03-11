@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/logo.png" width="120" alt="OpenCleaner Logo" />
+  <img src="logo.png" width="120" alt="OpenCleaner Logo" />
   <h1>OpenCleaner 🧹</h1>
   <p><b>L'alternative Open-Source, moderne et respectueuse de la vie privée pour nettoyer et optimiser Windows.</b></p>
   
