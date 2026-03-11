@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="fr" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenCleaner | L'optimiseur Windows Open-Source</title>
+    <meta name="description" content="Une alternative Open-Source, moderne et respectueuse de la vie privée pour nettoyer et optimiser Windows sans publicités.">
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="icon" type="image/png" href="assets/logo.png">
+</head>
+<body>
+    <!-- Particules d'arrière plan -->
+    <div id="particles-container"></div>
+
+    <nav class="navbar glass">
+        <div class="nav-content">
+            <div class="logo">
+                <img src="assets/logo.png" alt="OpenCleaner Logo">
+                <span class="gradient-text">OpenCleaner</span>
+            </div>
+            <div class="nav-links">
+                <a href="#features">Fonctionnalités</a>
+                <a href="#transparency">Transparence</a>
+                <a href="https://github.com/VictorCESIVA/OpenCleaner" target="_blank" class="github-link">
+                    <i data-lucide="github"></i> <span>GitHub</span>
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <header class="hero">
+        <div class="hero-bg">
+            <img src="assets/hero.png" alt="Hero Background" class="parallax-bg">
+            <div class="overlay gradient-overlay"></div>
+        </div>
+        <div class="hero-content">
+            <div class="badge reveal fade-down">🚀 Version 1.0 est disponible</div>
+            <h1 class="reveal fade-up">Ramenez votre PC <br/><span class="gradient-text">à la vie.</span></h1>
+            <p class="reveal fade-up delay-1">
+                L'alternative Open-Source incisive pour nettoyer, analyser et optimiser Windows en profondeur. Sans publicités, sans télémétrie, juste de la performance pure.
+            </p>
+            <div class="actions reveal fade-up delay-2">
+                <a href="#" id="download-btn" class="btn primary glow-effect">
+                    <span class="btn-content">
+                        <i data-lucide="download"></i> 
+                        <span id="dl-text">Téléchargement ZIP</span>
+                    </span>
+                </a>
+                <a href="#features" class="btn secondary glass">Découvrir</a>
+            </div>
+            <p class="dl-info reveal fade-up delay-3">
+                <i data-lucide="shield-check" class="small-icon"></i> Pour Windows 10 & 11 • <span id="version-text">Vérification de la version...</span>
+            </p>
+        </div>
+        <div class="scroll-indicator">
+            <i data-lucide="chevron-down"></i>
+        </div>
+    </header>
+
+    <section id="features" class="features">
+        <div class="section-header reveal fade-up">
+            <h2 class="section-title">Un outil pour <span class="gradient-text">tout nettoyer</span></h2>
+            <p>Une collection d'outils puissants, architecturés pour respecter votre système.</p>
+        </div>
+        
+        <div class="bento-grid">
+            <div class="bento-card glass reveal scale-up card-hover">
+                <div class="icon-wrapper blue-glow"><i data-lucide="sparkles"></i></div>
+                <h3>Smart Clean</h3>
+                <p>Analyse et supprime les fichiers temporaires, caches de navigateurs (Edge, Chrome, Firefox) et logs système inutiles en un simple clic.</p>
+            </div>
+            
+            <div class="bento-card glass reveal scale-up delay-1 card-hover">
+                <div class="icon-wrapper purple-glow"><i data-lucide="pie-chart"></i></div>
+                <h3>Analyseur d'Espace</h3>
+                <p>Scannez vos disques durs instantanément pour générer une carte visuelle des dossiers les plus lourds de votre ordinateur.</p>
+            </div>
+            
+            <div class="bento-card glass reveal scale-up delay-2 card-hover">
+                <div class="icon-wrapper green-glow"><i data-lucide="eye-off"></i></div>
+                <h3>Protection Vie Privée</h3>
+                <p>Éliminez les traceurs web, les cookies de tracking et votre historique pour naviguer sans laisser aucune empreinte locale.</p>
+            </div>
+            
+            <div class="bento-card glass reveal scale-up col-span-2 card-hover feature-showcase">
+                <div class="feature-content">
+                    <div class="icon-wrapper orange-glow"><i data-lucide="files"></i></div>
+                    <h3>Détecteur de Doublons Extrême</h3>
+                    <p>Identifiez des giga-octets de fichiers copiés en double avec une vitesse fulgurante grâce à notre algorithme maison optimisé "Two-Pass" qui filtre intelligemment par taille avant tout hachage SHA-256.</p>
+                </div>
+            </div>
+            
+            <div class="bento-card glass reveal scale-up delay-1 card-hover">
+                <div class="icon-wrapper red-glow"><i data-lucide="terminal"></i></div>
+                <h3>Dev Cleaner</h3>
+                <p>Pensé pour les développeurs. Purgez vos projets locaux (bin, obj, node_modules) en rafale et libérez un espace précieux.</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="transparency" class="banner reveal fade-up">
+        <div class="glass banner-content">
+            <div class="banner-text">
+                <h2>Transparence totale.<br/>Zéro concession.</h2>
+                <p>Le code source d'OpenCleaner est public et conçu en WPF moderne. Il n'y a aucune télémétrie incognito, aucune barre d'outils douteuse ou pop-up intrusive. C'est simplement le nettoyeur dont Windows a toujours eu besoin.</p>
+            </div>
+            <a href="https://github.com/VictorCESIVA/OpenCleaner" target="_blank" class="btn outline-glow">Jeter un œil au code <i data-lucide="arrow-right"></i></a>
+        </div>
+    </section>
+
+    <footer class="glass">
+        <div class="footer-content">
+            <div class="footer-brand">
+                <img src="assets/logo.png" alt="Logo" class="footer-logo">
+                <span class="gradient-text">OpenCleaner</span>
+            </div>
+            <p class="copyright">© 2026 OpenCleaner. Projet gratuit et Open-Source sous licence MIT.</p>
+            <p class="credits">Forgé avec ❤️ en .NET 8</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
