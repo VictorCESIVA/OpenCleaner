@@ -125,8 +125,8 @@ window.addEventListener('scroll', () => {
     updateNavbar();
 });
 
-// Smooth scroll fluide pourceux qui cliquent sur des ancres
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+// Smooth scroll fluide pour les ancres de navigation
+document.querySelectorAll('a[href^="#"]:not([href="#"])').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
         e.preventDefault();
         document.querySelector(this.getAttribute('href')).scrollIntoView({
