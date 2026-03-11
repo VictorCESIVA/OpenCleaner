@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("System plugins for OpenCleaner")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+3ec3a1da14d1c56f36b106b89b79673d3775b388")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+04bd0cd240e04d3d336adaf84951a5a20dc55c75")]
 [assembly: System.Reflection.AssemblyProductAttribute("OpenCleaner.Plugins.System")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OpenCleaner.Plugins.System")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

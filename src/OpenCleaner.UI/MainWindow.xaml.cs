@@ -402,6 +402,12 @@ public partial class MainWindow : Window
     private void OpenRestore_Click(object sender, RoutedEventArgs e)
         => new RestoreWindow().ShowDialog();
 
+    private void OpenDuplicates_Click(object sender, RoutedEventArgs e)
+        => new DuplicateWindow { Owner = this }.Show();
+
+    private void OpenSettings_Click(object sender, RoutedEventArgs e)
+        => new SettingsWindow { Owner = this }.ShowDialog();
+
     private static Microsoft.Extensions.Logging.ILogger<T> GetLogger<T>()
         => App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<T>>();
 }

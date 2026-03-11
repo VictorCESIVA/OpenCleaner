@@ -336,8 +336,16 @@
                     <StackPanel DockPanel.Dock="Bottom" Margin="8,0,8,16">
                         <Border Height="1" Background="{DynamicResource Border}" Margin="4,0,4,10"/>
                         <Button Style="{StaticResource SidebarBtnStyle}"
+                                Click="OpenDuplicates_Click">
+                            <TextBlock Text="🔁  Doublons"/>
+                        </Button>
+                        <Button Style="{StaticResource SidebarBtnStyle}"
                                 Click="OpenRestore_Click">
                             <TextBlock Text="🛡️  Restauration"/>
+                        </Button>
+                        <Button Style="{StaticResource SidebarBtnStyle}"
+                                Click="OpenSettings_Click">
+                            <TextBlock Text="⚙️  Paramètres"/>
                         </Button>
                         <Button x:Name="ThemeToggleBtn"
                                 Style="{StaticResource SidebarBtnStyle}"

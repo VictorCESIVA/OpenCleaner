@@ -1,0 +1,225 @@
+<Window x:Class="OpenCleaner.UI.DuplicateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Détecteur de doublons" Height="680" Width="1100"
+        WindowStartupLocation="CenterOwner">
+
+    <Window.Resources>
+        <SolidColorBrush x:Key="BgMain"      Color="#1C1C1C"/>
+        <SolidColorBrush x:Key="BgCard"      Color="#252525"/>
+        <SolidColorBrush x:Key="BgHover"     Color="#2D2D2D"/>
+        <SolidColorBrush x:Key="BgSelected"  Color="#0078D4"/>
+        <SolidColorBrush x:Key="Accent"      Color="#0078D4"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#FFFFFF"/>
+        <SolidColorBrush x:Key="TextSecond"  Color="#ABABAB"/>
+        <SolidColorBrush x:Key="Border"      Color="#333333"/>
+        <SolidColorBrush x:Key="RiskSafe"    Color="#107C10"/>
+
+        <!-- Bouton Accent -->
+        <Style x:Key="AccentBtn" TargetType="Button">
+            <Setter Property="Background" Value="{DynamicResource Accent}"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="18,9"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg" Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background" Value="#1084D9"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- Bouton Secondaire -->
+        <Style x:Key="SecondBtn" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="Padding" Value="16,9"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bg"
+                                Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                              Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bg" Property="Background"
+                                        Value="{DynamicResource BgHover}"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bg" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- TreeViewItem style minimaliste -->
+        <Style TargetType="TreeViewItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="4,3"/>
+        </Style>
+
+    </Window.Resources>
+
+    <Border Background="{DynamicResource BgMain}">
+        <Grid Margin="24,20">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <!-- EN-TÊTE -->
+            <StackPanel Grid.Row="0" Margin="0,0,0,16">
+                <TextBlock Text="🔁  Détecteur de doublons"
+                           FontSize="22" FontWeight="Bold"
+                           Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Text="Trouve les fichiers en double dans vos dossiers personnels (Documents, Bureau, Téléchargements, Images…)"
+                           FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <!-- STATS + BARRE PROGRESSION -->
+            <Border Grid.Row="1" Background="{DynamicResource BgCard}" CornerRadius="10"
+                    Padding="20,12" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock x:Name="DupGroups" Text="—"
+                                   FontSize="22" FontWeight="Bold"
+                                   Foreground="{DynamicResource Accent}"/>
+                        <TextBlock Text="Groupes de doublons"
+                                   FontSize="11" Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock x:Name="DupFiles" Text="—"
+                                   FontSize="22" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock Text="Copies trouvées"
+                                   FontSize="11" Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2">
+                        <TextBlock x:Name="DupSize" Text="—"
+                                   FontSize="22" FontWeight="Bold"
+                                   Foreground="{DynamicResource RiskSafe}"/>
+                        <TextBlock Text="Espace libérable"
+                                   FontSize="11" Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                    <TextBlock Grid.Column="3" x:Name="ScanProgress"
+                               Text="" Foreground="{DynamicResource TextSecond}"
+                               FontSize="12" VerticalAlignment="Center"/>
+                </Grid>
+            </Border>
+
+            <!-- CONTENU : TreeView + Preview -->
+            <Grid Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="220"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- TREEVIEW doublons -->
+                <Border Grid.Column="0" Background="{DynamicResource BgCard}"
+                        CornerRadius="10" Padding="4" Margin="0,0,8,0">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <TreeView x:Name="DupTree"
+                                  Background="Transparent"
+                                  BorderThickness="0"
+                                  SelectedItemChanged="DupTree_SelectedItemChanged"/>
+                    </ScrollViewer>
+                </Border>
+
+                <!-- PREVIEW IMAGE -->
+                <Border Grid.Column="1" Background="{DynamicResource BgCard}"
+                        CornerRadius="10" Padding="12">
+                    <StackPanel>
+                        <TextBlock Text="Aperçu"
+                                   FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextSecond}"
+                                   Margin="0,0,0,10"/>
+                        <Border x:Name="PreviewBorder"
+                                Background="#111" CornerRadius="6"
+                                Height="160" Width="196">
+                            <Image x:Name="PreviewImage"
+                                   Stretch="Uniform"
+                                   HorizontalAlignment="Center"
+                                   VerticalAlignment="Center"/>
+                        </Border>
+                        <TextBlock x:Name="PreviewName"
+                                   Text="—" FontSize="11"
+                                   Foreground="{DynamicResource TextSecond}"
+                                   Margin="0,10,0,0" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="PreviewSize"
+                                   Text="" FontSize="10"
+                                   Foreground="{DynamicResource TextSecond}"
+                                   Margin="0,4,0,0"/>
+                    </StackPanel>
+                </Border>
+            </Grid>
+
+            <!-- BARRE D'ACTIONS -->
+            <Border Grid.Row="3" Background="{DynamicResource BgCard}"
+                    CornerRadius="10" Padding="16,12" Margin="0,12,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Grid.Column="0" x:Name="StatusText"
+                               Text="Lance une analyse pour détecter les doublons."
+                               Foreground="{DynamicResource TextSecond}"
+                               VerticalAlignment="Center" FontSize="12"/>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal">
+                        <Button x:Name="AutoSelectBtn"
+                                Content="✓  Sélection auto"
+                                Style="{StaticResource SecondBtn}"
+                                Click="AutoSelect_Click"
+                                IsEnabled="False"
+                                Margin="0,0,10,0"/>
+                        <Button x:Name="ScanBtn"
+                                Content="🔍  Analyser"
+                                Style="{StaticResource SecondBtn}"
+                                Click="Scan_Click"
+                                Margin="0,0,10,0"/>
+                        <Button x:Name="DeleteBtn"
+                                Content="🗑  Supprimer sélectionnés"
+                                Style="{StaticResource AccentBtn}"
+                                Click="Delete_Click"
+                                IsEnabled="False"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>
