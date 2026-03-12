@@ -40,4 +40,4 @@ jobs:
           vpk pack -u OpenCleaner -v ${{ steps.version.outputs.version }} -p publish --mainExe OpenCleaner.UI.exe --channel win-x64
           
           # Uploader sur GitHub Releases
-          vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --releaseName "OpenCleaner ${{ steps.version.outputs.version }}" --tag ${{ github.ref_name }}
+          vpk upload github --repoUrl https://github.com/${{ github.repository }} --channel win-x64 --publish --releaseName "OpenCleaner ${{ steps.version.outputs.version }}" --tag ${{ github.ref_name }}
