@@ -5,4 +5,5 @@ obj/
 *.suo
 logs/
 OpenCleaner_*_Portable.zip
+OpenCleaner_*_Portable/
 PublishOutput/
