@@ -17,7 +17,7 @@ async function fetchLatestRelease() {
         const data = await response.json();
         
         // Trouver l'asset correct (l'archive zip)
-        const zipAsset = data.assets.find(a => a.name.endsWith('.zip') || a.name.endsWith('.exe'));
+        const zipAsset = data.assets.find(a => a.name.endsWith('-Setup.exe'));
         
         if (zipAsset) {
             downloadBtn.href = zipAsset.browser_download_url;
