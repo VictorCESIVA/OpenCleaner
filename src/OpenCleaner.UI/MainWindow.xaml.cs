@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32;
 using OpenCleaner.Contracts;
+using OpenCleaner.Core;
 using OpenCleaner.Core.Security;
 using OpenCleaner.Plugins.System.Plugins;
 using System.Collections.ObjectModel;
@@ -81,6 +82,31 @@ public partial class MainWindow : Window
         PluginTitle.Text       = meta.Title;
         PluginDescription.Text = meta.Desc;
         StatusText.Text        = "Prêt";
+
+        BrowserOptionsPanel.Visibility = tag == "browser" ? Visibility.Visible : Visibility.Collapsed;
+        if (tag == "browser") LoadBrowserOptions();
+    }
+
+    private void LoadBrowserOptions()
+    {
+        OptCache.IsChecked          = BrowserCleanOptions.IncludeCache;
+        OptCodeCache.IsChecked      = BrowserCleanOptions.IncludeCodeCache;
+        OptGpuCache.IsChecked       = BrowserCleanOptions.IncludeGpuCache;
+        OptServiceWorkers.IsChecked = BrowserCleanOptions.IncludeServiceWorkers;
+        OptCookies.IsChecked        = BrowserCleanOptions.IncludeCookies;
+        OptHistory.IsChecked        = BrowserCleanOptions.IncludeHistory;
+        OptFavicons.IsChecked       = BrowserCleanOptions.IncludeFavicons;
+    }
+
+    private void BrowserOpt_Changed(object sender, RoutedEventArgs e)
+    {
+        BrowserCleanOptions.IncludeCache          = OptCache.IsChecked == true;
+        BrowserCleanOptions.IncludeCodeCache      = OptCodeCache.IsChecked == true;
+        BrowserCleanOptions.IncludeGpuCache       = OptGpuCache.IsChecked == true;
+        BrowserCleanOptions.IncludeServiceWorkers = OptServiceWorkers.IsChecked == true;
+        BrowserCleanOptions.IncludeCookies        = OptCookies.IsChecked == true;
+        BrowserCleanOptions.IncludeHistory        = OptHistory.IsChecked == true;
+        BrowserCleanOptions.IncludeFavicons       = OptFavicons.IsChecked == true;
     }
 
     // ──────────────────────────────────────────────────────────────────────────
@@ -149,16 +175,40 @@ public partial class MainWindow : Window
 
             if (running.Count > 0)
             {
-                HideLoading();
-                AnalyzeBtn.IsEnabled = true;
                 var names = string.Join(", ", running);
                 var body  = names + (running.Count > 1 ? " sont ouverts." : " est ouvert.")
-                          + "\n\nL'analyse des caches nécessite que ces navigateurs soient fermés "
-                          + "pour éviter des erreurs d'accès aux fichiers verrouillés.\n\n"
-                          + "Fermez " + names + " puis relancez l'analyse.";
-                MessageBox.Show(body, "Navigateurs ouverts", MessageBoxButton.OK, MessageBoxImage.Warning);
-                StatusText.Text = "Fermez " + names + " avant d'analyser.";
-                return;
+                          + "\n\nL'analyse nécessite de fermer ces navigateurs pour accéder aux fichiers.\n\n"
+                          + "Voulez-vous les fermer maintenant pour continuer l'analyse ?";
+                var choice = MessageBox.Show(body, "Navigateurs ouverts",
+                    MessageBoxButton.YesNo, MessageBoxImage.Question);
+                if (choice != MessageBoxResult.Yes)
+                {
+                    HideLoading();
+                    AnalyzeBtn.IsEnabled = true;
+                    StatusText.Text = "Fermez " + names + " avant d'analyser.";
+                    return;
+                }
+                // Fermer les navigateurs
+                foreach (var (proc, _) in new[] {
+                    (Proc: "chrome", Label: "Chrome"),
+                    (Proc: "msedge", Label: "Edge"),
+                    (Proc: "brave", Label: "Brave"),
+                }.Where(b => Process.GetProcessesByName(b.Proc).Any()))
+                {
+                    try
+                    {
+                        foreach (var p in Process.GetProcessesByName(proc))
+                        {
+                            p.Kill();
+                            p.WaitForExit(3000);
+                        }
+                    }
+                    catch (Exception)
+                    {
+                        StatusText.Text = "Impossible de fermer " + proc + " (droits insuffisants ?)";
+                    }
+                }
+                await Task.Delay(500);
             }
         }
 

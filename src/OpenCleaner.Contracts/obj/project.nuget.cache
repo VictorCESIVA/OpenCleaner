@@ -1,13 +1,8 @@
 {
   "version": 2,
-  "dgSpecHash": "rMjvsi0+7DM=",
+  "dgSpecHash": "y9Rwm6WYCXY=",
   "success": true,
   "projectFilePath": "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Contracts\\OpenCleaner.Contracts.csproj",
-  "expectedPackageFiles": [
-    "C:\\Users\\noela\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.24\\microsoft.net.illink.tasks.8.0.24.nupkg.sha512",
-    "C:\\Users\\noela\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.24\\microsoft.netcore.app.runtime.win-x64.8.0.24.nupkg.sha512",
-    "C:\\Users\\noela\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.24\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.24.nupkg.sha512",
-    "C:\\Users\\noela\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.24\\microsoft.aspnetcore.app.runtime.win-x64.8.0.24.nupkg.sha512"
-  ],
+  "expectedPackageFiles": [],
   "logs": []
 }

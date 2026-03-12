@@ -1,4 +1,5 @@
 using OpenCleaner.Contracts;
+using OpenCleaner.Core;
 using OpenCleaner.Core.Security;
 using Microsoft.Extensions.Logging;
 using System.Diagnostics;
@@ -63,16 +64,16 @@ public class ChromeCleanerPlugin : ICleanerPlugin
                 _logger.LogWarning("{Browser} est en cours d'exécution. Certaines données peuvent être verrouillées.", browser.Name);
             }
 
-            // Cibles de nettoyage (du plus safe au plus risqué)
-            var targets = new[]
+            // Cibles par dossier (filtrées selon les options utilisateur)
+            var dirTargets = new[]
             {
-                (Path: Path.Combine(browser.Path, "Cache"), Pattern: "*.*", MinAge: TimeSpan.FromHours(1), Risk: RiskLevel.Safe, Desc: "Cache"),
-                (Path: Path.Combine(browser.Path, @"Code Cache"), Pattern: "*.*", MinAge: TimeSpan.FromHours(1), Risk: RiskLevel.Safe, Desc: "Code Cache JS"),
-                (Path: Path.Combine(browser.Path, "GPUCache"), Pattern: "*.*", MinAge: TimeSpan.FromHours(1), Risk: RiskLevel.Safe, Desc: "Cache GPU"),
-                (Path: Path.Combine(browser.Path, "Service Worker"), Pattern: "*.*", MinAge: TimeSpan.FromDays(7), Risk: RiskLevel.Recommended, Desc: "Service Workers")
+                (Path: Path.Combine(browser.Path, "Cache"), Pattern: "*.*", MinAge: TimeSpan.FromHours(1), Risk: RiskLevel.Safe, Desc: "Cache", Opt: BrowserCleanOptions.IncludeCache),
+                (Path: Path.Combine(browser.Path, @"Code Cache"), Pattern: "*.*", MinAge: TimeSpan.FromHours(1), Risk: RiskLevel.Safe, Desc: "Code Cache JS", Opt: BrowserCleanOptions.IncludeCodeCache),
+                (Path: Path.Combine(browser.Path, "GPUCache"), Pattern: "*.*", MinAge: TimeSpan.FromHours(1), Risk: RiskLevel.Safe, Desc: "Cache GPU", Opt: BrowserCleanOptions.IncludeGpuCache),
+                (Path: Path.Combine(browser.Path, "Service Worker"), Pattern: "*.*", MinAge: TimeSpan.FromDays(7), Risk: RiskLevel.Recommended, Desc: "Service Workers", Opt: BrowserCleanOptions.IncludeServiceWorkers)
             };
 
-            foreach (var target in targets)
+            foreach (var target in dirTargets.Where(t => t.Opt))
             {
                 if (!Directory.Exists(target.Path)) continue;
 
@@ -109,6 +110,42 @@ public class ChromeCleanerPlugin : ICleanerPlugin
                         }
                         catch { /* ignore fichier individuel */ }
                     }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Erreur analyse {Target}", target.Path);
+                }
+            }
+
+            // Cibles fichiers (Cookies, Historique, Favicons) — seulement si navigateur fermé
+            var fileTargets = new[]
+            {
+                (Path: Path.Combine(browser.Path, "Network", "Cookies"), Desc: "Cookies", Opt: BrowserCleanOptions.IncludeCookies, Risk: RiskLevel.Recommended),
+                (Path: Path.Combine(browser.Path, "Cookies"), Desc: "Cookies (legacy)", Opt: BrowserCleanOptions.IncludeCookies, Risk: RiskLevel.Recommended),
+                (Path: Path.Combine(browser.Path, "History"), Desc: "Historique", Opt: BrowserCleanOptions.IncludeHistory, Risk: RiskLevel.Recommended),
+                (Path: Path.Combine(browser.Path, "Favicons"), Desc: "Favicons", Opt: BrowserCleanOptions.IncludeFavicons, Risk: RiskLevel.Safe),
+            };
+
+            foreach (var target in fileTargets.Where(t => t.Opt))
+            {
+                ct.ThrowIfCancellationRequested();
+                if (!File.Exists(target.Path)) continue;
+                if (isRunning && _fileGuardian.IsFileLocked(target.Path)) continue;
+                if (_fileGuardian.IsSystemCriticalPath(target.Path)) continue;
+
+                try
+                {
+                    var info = new FileInfo(target.Path);
+                    items.Add(new CleanableItem(
+                        Id: Guid.NewGuid().ToString(),
+                        Path: target.Path,
+                        Size: info.Length,
+                        Description: $"{browser.Name} {target.Desc}",
+                        RiskLevel: target.Risk,
+                        Type: ItemType.File,
+                        LastAccessTime: info.LastAccessTime,
+                        ParentPluginId: Id
+                    ));
                 }
                 catch (Exception ex)
                 {

@@ -14,7 +14,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyDescriptionAttribute("Interfaces and contracts for OpenCleaner")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+1d05e1332e98626dfe754e3c4833103994b1828e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+8e4445b1a3b38cd6a1f8ffbe6aea5a354b9daeb8")]
 [assembly: System.Reflection.AssemblyProductAttribute("OpenCleaner.Contracts")]
 [assembly: System.Reflection.AssemblyTitleAttribute("OpenCleaner.Contracts")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

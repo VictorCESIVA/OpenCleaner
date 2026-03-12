@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "dgSpecHash": "qjt3w3Lu5Sc=",
+  "dgSpecHash": "mpGQ7Z1ydyE=",
   "success": true,
   "projectFilePath": "C:\\Users\\noela\\Documents\\OpenCleaner\\src\\OpenCleaner.Core\\OpenCleaner.Core.csproj",
   "expectedPackageFiles": [
@@ -12,7 +12,6 @@
     "C:\\Users\\noela\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.0\\microsoft.extensions.logging.abstractions.8.0.0.nupkg.sha512",
     "C:\\Users\\noela\\.nuget\\packages\\microsoft.extensions.options\\8.0.0\\microsoft.extensions.options.8.0.0.nupkg.sha512",
     "C:\\Users\\noela\\.nuget\\packages\\microsoft.extensions.primitives\\8.0.0\\microsoft.extensions.primitives.8.0.0.nupkg.sha512",
-    "C:\\Users\\noela\\.nuget\\packages\\microsoft.net.illink.tasks\\8.0.24\\microsoft.net.illink.tasks.8.0.24.nupkg.sha512",
     "C:\\Users\\noela\\.nuget\\packages\\microsoft.win32.registry\\5.0.0\\microsoft.win32.registry.5.0.0.nupkg.sha512",
     "C:\\Users\\noela\\.nuget\\packages\\sqlitepclraw.bundle_e_sqlite3\\2.1.6\\sqlitepclraw.bundle_e_sqlite3.2.1.6.nupkg.sha512",
     "C:\\Users\\noela\\.nuget\\packages\\sqlitepclraw.core\\2.1.6\\sqlitepclraw.core.2.1.6.nupkg.sha512",
@@ -22,10 +21,7 @@
     "C:\\Users\\noela\\.nuget\\packages\\system.memory\\4.5.3\\system.memory.4.5.3.nupkg.sha512",
     "C:\\Users\\noela\\.nuget\\packages\\system.security.accesscontrol\\6.0.1\\system.security.accesscontrol.6.0.1.nupkg.sha512",
     "C:\\Users\\noela\\.nuget\\packages\\system.security.principal.windows\\5.0.0\\system.security.principal.windows.5.0.0.nupkg.sha512",
-    "C:\\Users\\noela\\.nuget\\packages\\taskscheduler\\2.12.2\\taskscheduler.2.12.2.nupkg.sha512",
-    "C:\\Users\\noela\\.nuget\\packages\\microsoft.netcore.app.runtime.win-x64\\8.0.24\\microsoft.netcore.app.runtime.win-x64.8.0.24.nupkg.sha512",
-    "C:\\Users\\noela\\.nuget\\packages\\microsoft.windowsdesktop.app.runtime.win-x64\\8.0.24\\microsoft.windowsdesktop.app.runtime.win-x64.8.0.24.nupkg.sha512",
-    "C:\\Users\\noela\\.nuget\\packages\\microsoft.aspnetcore.app.runtime.win-x64\\8.0.24\\microsoft.aspnetcore.app.runtime.win-x64.8.0.24.nupkg.sha512"
+    "C:\\Users\\noela\\.nuget\\packages\\taskscheduler\\2.12.2\\taskscheduler.2.12.2.nupkg.sha512"
   ],
   "logs": []
 }

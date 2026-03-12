@@ -378,6 +378,8 @@
                     <RowDefinition Height="Auto"/>
                     <!-- Header plugin sélectionné -->
                     <RowDefinition Height="Auto"/>
+                    <!-- Options navigateur (visible si plugin browser) -->
+                    <RowDefinition Height="Auto"/>
                     <!-- Barre de stats (card) -->
                     <RowDefinition Height="Auto"/>
                     <!-- Progress bar fine -->
@@ -480,8 +482,38 @@
                                VerticalAlignment="Bottom"/>
                 </Grid>
 
+                <!-- OPTIONS NAVIGATEUR (Chrome/Edge/Brave) -->
+                <Border x:Name="BrowserOptionsPanel" Grid.Row="2"
+                        Background="{DynamicResource BgCard}"
+                        CornerRadius="10" Padding="16,12"
+                        Margin="0,0,0,14"
+                        Visibility="Collapsed">
+                    <StackPanel>
+                        <TextBlock Text="Choisir ce qu'il faut analyser / nettoyer :"
+                                   FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimary}"
+                                   Margin="0,0,0,8"/>
+                        <WrapPanel>
+                            <CheckBox x:Name="OptCache" Content="Cache"
+                                      Margin="0,4,20,4" Checked="BrowserOpt_Changed" Unchecked="BrowserOpt_Changed"/>
+                            <CheckBox x:Name="OptCodeCache" Content="Code Cache"
+                                      Margin="0,4,20,4" Checked="BrowserOpt_Changed" Unchecked="BrowserOpt_Changed"/>
+                            <CheckBox x:Name="OptGpuCache" Content="Cache GPU"
+                                      Margin="0,4,20,4" Checked="BrowserOpt_Changed" Unchecked="BrowserOpt_Changed"/>
+                            <CheckBox x:Name="OptServiceWorkers" Content="Service Workers"
+                                      Margin="0,4,20,4" Checked="BrowserOpt_Changed" Unchecked="BrowserOpt_Changed"/>
+                            <CheckBox x:Name="OptCookies" Content="Cookies"
+                                      Margin="0,4,20,4" Checked="BrowserOpt_Changed" Unchecked="BrowserOpt_Changed"/>
+                            <CheckBox x:Name="OptHistory" Content="Historique"
+                                      Margin="0,4,20,4" Checked="BrowserOpt_Changed" Unchecked="BrowserOpt_Changed"/>
+                            <CheckBox x:Name="OptFavicons" Content="Favicons"
+                                      Margin="0,4,20,4" Checked="BrowserOpt_Changed" Unchecked="BrowserOpt_Changed"/>
+                        </WrapPanel>
+                    </StackPanel>
+                </Border>
+
                 <!-- STATS CARD -->
-                <Border Grid.Row="2"
+                <Border Grid.Row="3"
                         Background="{DynamicResource BgCard}"
                         CornerRadius="10"
                         Padding="20,14"
@@ -517,7 +549,7 @@
                 </Border>
 
                 <!-- PROGRESSBAR FINE -->
-                <ProgressBar Grid.Row="3"
+                <ProgressBar Grid.Row="4"
                              x:Name="ProgressBar"
                              Style="{StaticResource ModernProgressBar}"
                              Margin="0,0,0,12"
@@ -525,7 +557,7 @@
                              Visibility="Collapsed"/>
 
                 <!-- LISTE DES RÉSULTATS -->
-                <Border Grid.Row="4"
+                <Border Grid.Row="5"
                         Background="{DynamicResource BgCard}"
                         CornerRadius="10"
                         Padding="4">
@@ -611,7 +643,7 @@
                 </Border>
 
                 <!-- OVERLAY CHARGEMENT (par-dessus la liste) -->
-                <Border Grid.Row="4"
+                <Border Grid.Row="5"
                         x:Name="LoadingOverlay"
                         Background="{DynamicResource BgCard}"
                         CornerRadius="10"
@@ -655,7 +687,7 @@
                 </Border>
 
                 <!-- BARRE D'ACTIONS -->
-                <Border Grid.Row="5"
+                <Border Grid.Row="6"
                         Background="{DynamicResource BgCard}"
                         CornerRadius="10"
                         Padding="16,12"
