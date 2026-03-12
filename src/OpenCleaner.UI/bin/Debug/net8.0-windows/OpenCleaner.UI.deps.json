@@ -12,7 +12,8 @@
           "Microsoft.Extensions.Logging.Debug": "8.0.0",
           "OpenCleaner.Contracts": "1.0.0",
           "OpenCleaner.Core": "1.0.0",
-          "OpenCleaner.Plugins.System": "1.0.0"
+          "OpenCleaner.Plugins.System": "1.0.0",
+          "Velopack": "0.0.1298"
         },
         "runtime": {
           "OpenCleaner.UI.dll": {}
@@ -108,6 +109,14 @@
           "lib/net8.0/Microsoft.Extensions.Primitives.dll": {
             "assemblyVersion": "8.0.0.0",
             "fileVersion": "8.0.23.53103"
+          }
+        }
+      },
+      "NuGet.Versioning/6.14.0": {
+        "runtime": {
+          "lib/netstandard2.0/NuGet.Versioning.dll": {
+            "assemblyVersion": "6.14.0.116",
+            "fileVersion": "6.14.0.116"
           }
         }
       },
@@ -308,6 +317,17 @@
           }
         }
       },
+      "Velopack/0.0.1298": {
+        "dependencies": {
+          "NuGet.Versioning": "6.14.0"
+        },
+        "runtime": {
+          "lib/net8.0/Velopack.dll": {
+            "assemblyVersion": "0.0.0.0",
+            "fileVersion": "0.0.1298.60806"
+          }
+        }
+      },
       "OpenCleaner.Contracts/1.0.0": {
         "runtime": {
           "OpenCleaner.Contracts.dll": {
@@ -414,6 +434,13 @@
       "path": "microsoft.extensions.primitives/8.0.0",
       "hashPath": "microsoft.extensions.primitives.8.0.0.nupkg.sha512"
     },
+    "NuGet.Versioning/6.14.0": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-4v4blkhCv8mpKtfx+z0G/X0daVCzdIaHSC51GkUspugi5JIMn2Bo8xm5PdZYF0U68gOBfz/+aPWMnpRd85Jbow==",
+      "path": "nuget.versioning/6.14.0",
+      "hashPath": "nuget.versioning.6.14.0.nupkg.sha512"
+    },
     "SQLitePCLRaw.bundle_e_sqlite3/2.1.6": {
       "type": "package",
       "serviceable": true,
@@ -455,6 +482,13 @@
       "sha512": "sha512-glpAb3VrwfdAofp6PIyAzL0ZeTV7XUJ8muu0oZoTeyU5jtk2sMJ6QAMRRuFbovcaj+SBJiEUGklxIWOqQoxshA==",
       "path": "taskscheduler/2.12.2",
       "hashPath": "taskscheduler.2.12.2.nupkg.sha512"
+    },
+    "Velopack/0.0.1298": {
+      "type": "package",
+      "serviceable": true,
+      "sha512": "sha512-PJ6Nm28qJ4ChsHYzgHUJ8g+DGyyHes2+bwxY709+znMhgi8fMp8M1FTF8x6pZMjnsPCWVwoMlxVEyq0NLeRZtA==",
+      "path": "velopack/0.0.1298",
+      "hashPath": "velopack.0.0.1298.nupkg.sha512"
     },
     "OpenCleaner.Contracts/1.0.0": {
       "type": "project",

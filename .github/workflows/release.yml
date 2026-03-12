@@ -1,0 +1,36 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get Version from Tag
+        id: version
+        shell: bash
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Publish Application
+        run: dotnet publish src/OpenCleaner.UI/OpenCleaner.UI.csproj -c Release -o publish -r win-x64 --self-contained true
+
+      - name: Create Velopack Release
+        run: |
+          dotnet tool install -g vpk --version 0.0.1298
+          vpk download github --repoUrl https://github.com/${{ github.repository }} || true
+          vpk pack -u OpenCleaner -v ${{ steps.version.outputs.version }} -p publish --mainExe OpenCleaner.UI.exe
+          vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --releaseName "OpenCleaner ${{ steps.version.outputs.version }}" --tag v${{ steps.version.outputs.version }}

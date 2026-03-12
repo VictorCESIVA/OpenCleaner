@@ -39,6 +39,9 @@ public partial class App : System.Windows.Application
 
         // ── Mode normal UI ────────────────────────────────────────────────
         new MainWindow().Show();
+
+        // Vérification des mises à jour en arrière-plan (non bloquant)
+        _ = UpdateService.CheckForUpdatesOnStartupAsync();
     }
 
     // ─────────────────────────────────────────────────────────────────────

@@ -84,3 +84,5 @@ C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Debug\net8.0-windows
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Debug\net8.0-windows\DevCleanerWindow.g.cs
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Debug\net8.0-windows\DiskSpaceWindow.g.cs
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Debug\net8.0-windows\PrivacyWindow.g.cs
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\bin\Debug\net8.0-windows\NuGet.Versioning.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\bin\Debug\net8.0-windows\Velopack.dll

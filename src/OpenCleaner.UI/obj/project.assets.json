@@ -186,6 +186,19 @@
           }
         }
       },
+      "NuGet.Versioning/6.14.0": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/NuGet.Versioning.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/NuGet.Versioning.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "SQLitePCLRaw.bundle_e_sqlite3/2.1.6": {
         "type": "package",
         "dependencies": {
@@ -447,6 +460,22 @@
           },
           "lib/net8.0-windows7.0/zh-Hant/Microsoft.Win32.TaskScheduler.resources.dll": {
             "locale": "zh-Hant"
+          }
+        }
+      },
+      "Velopack/0.0.1298": {
+        "type": "package",
+        "dependencies": {
+          "NuGet.Versioning": "6.14.0"
+        },
+        "compile": {
+          "lib/net8.0/Velopack.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/net8.0/Velopack.dll": {
+            "related": ".xml"
           }
         }
       },
@@ -846,6 +875,23 @@
         "version.txt"
       ]
     },
+    "NuGet.Versioning/6.14.0": {
+      "sha512": "4v4blkhCv8mpKtfx+z0G/X0daVCzdIaHSC51GkUspugi5JIMn2Bo8xm5PdZYF0U68gOBfz/+aPWMnpRd85Jbow==",
+      "type": "package",
+      "path": "nuget.versioning/6.14.0",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README.md",
+        "icon.png",
+        "lib/net472/NuGet.Versioning.dll",
+        "lib/net472/NuGet.Versioning.xml",
+        "lib/netstandard2.0/NuGet.Versioning.dll",
+        "lib/netstandard2.0/NuGet.Versioning.xml",
+        "nuget.versioning.6.14.0.nupkg.sha512",
+        "nuget.versioning.nuspec"
+      ]
+    },
     "SQLitePCLRaw.bundle_e_sqlite3/2.1.6": {
       "sha512": "BmAf6XWt4TqtowmiWe4/5rRot6GerAeklmOPfviOvwLoF5WwgxcJHAxZtySuyW9r9w+HLILnm8VfJFLCUJYW8A==",
       "type": "package",
@@ -1209,6 +1255,29 @@
         "tsnew48.png"
       ]
     },
+    "Velopack/0.0.1298": {
+      "sha512": "PJ6Nm28qJ4ChsHYzgHUJ8g+DGyyHes2+bwxY709+znMhgi8fMp8M1FTF8x6pZMjnsPCWVwoMlxVEyq0NLeRZtA==",
+      "type": "package",
+      "path": "velopack/0.0.1298",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "README_NUGET.md",
+        "Velopack_200.png",
+        "lib/net462/Velopack.dll",
+        "lib/net462/Velopack.xml",
+        "lib/net6.0/Velopack.dll",
+        "lib/net6.0/Velopack.xml",
+        "lib/net8.0/Velopack.dll",
+        "lib/net8.0/Velopack.xml",
+        "lib/net9.0/Velopack.dll",
+        "lib/net9.0/Velopack.xml",
+        "lib/netstandard2.0/Velopack.dll",
+        "lib/netstandard2.0/Velopack.xml",
+        "velopack.0.0.1298.nupkg.sha512",
+        "velopack.nuspec"
+      ]
+    },
     "OpenCleaner.Contracts/1.0.0": {
       "type": "project",
       "path": "../OpenCleaner.Contracts/OpenCleaner.Contracts.csproj",
@@ -1231,7 +1300,8 @@
       "Microsoft.Extensions.Logging.Debug >= 8.0.0",
       "OpenCleaner.Contracts >= 1.0.0",
       "OpenCleaner.Core >= 1.0.0",
-      "OpenCleaner.Plugins.System >= 1.0.0"
+      "OpenCleaner.Plugins.System >= 1.0.0",
+      "Velopack >= 0.0.1298"
     ]
   },
   "packageFolders": {
@@ -1301,6 +1371,10 @@
           "Microsoft.Extensions.Logging.Debug": {
             "target": "Package",
             "version": "[8.0.0, )"
+          },
+          "Velopack": {
+            "target": "Package",
+            "version": "[0.0.1298, )"
           }
         },
         "imports": [

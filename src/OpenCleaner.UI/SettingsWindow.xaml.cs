@@ -108,6 +108,26 @@ public partial class SettingsWindow : Window
         }
     }
 
+    // ─── MISES À JOUR ────────────────────────────────────────────────────
+
+    private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    {
+        CheckUpdateBtn.IsEnabled = false;
+        UpdateStatus.Text = "…";
+        try
+        {
+            var applied = await UpdateService.CheckForUpdatesManualAsync(
+                status => Dispatcher.Invoke(() => UpdateStatus.Text = status),
+                msg => MessageBoxResult.Yes == MessageBox.Show(msg, "Mise à jour", MessageBoxButton.YesNo, MessageBoxImage.Question));
+            if (applied)
+                Application.Current.Shutdown();
+        }
+        finally
+        {
+            CheckUpdateBtn.IsEnabled = true;
+        }
+    }
+
     // ─── ENABLE TOGGLE ──────────────────────────────────────────────────
 
     private void EnabledCheck_Changed(object sender, RoutedEventArgs e)

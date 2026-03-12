@@ -300,6 +300,10 @@
             "Microsoft.Extensions.Logging.Debug": {
               "target": "Package",
               "version": "[8.0.0, )"
+            },
+            "Velopack": {
+              "target": "Package",
+              "version": "[0.0.1298, )"
             }
           },
           "imports": [
