@@ -26,11 +26,18 @@ jobs:
           dotnet-version: '8.0.x'
 
       - name: Publish Application
-        run: dotnet publish src/OpenCleaner.UI/OpenCleaner.UI.csproj -c Release -o publish -r win-x64 --self-contained true
+        run: dotnet publish src/OpenCleaner.UI/OpenCleaner.UI.csproj -c Release -o publish -r win-x64 --self-contained true /p:PublishSingleFile=true
+
+      - name: Install Velopack
+        run: dotnet tool install -g vpk --version 0.0.1298
 
       - name: Create Velopack Release
         run: |
-          dotnet tool install -g vpk --version 0.0.1298
+          # Télécharger les assets existants (pour delta updates)
           vpk download github --repoUrl https://github.com/${{ github.repository }} || true
-          vpk pack -u OpenCleaner -v ${{ steps.version.outputs.version }} -p publish --mainExe OpenCleaner.UI.exe
-          vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --releaseName "OpenCleaner ${{ steps.version.outputs.version }}" --tag v${{ steps.version.outputs.version }}
+          
+          # Créer le package (note: --mainExe doit correspondre au nom de sortie)
+          vpk pack -u OpenCleaner -v ${{ steps.version.outputs.version }} -p publish --mainExe OpenCleaner.UI.exe --channel win-x64
+          
+          # Uploader sur GitHub Releases
+          vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --releaseName "OpenCleaner ${{ steps.version.outputs.version }}" --tag ${{ github.ref_name }}
