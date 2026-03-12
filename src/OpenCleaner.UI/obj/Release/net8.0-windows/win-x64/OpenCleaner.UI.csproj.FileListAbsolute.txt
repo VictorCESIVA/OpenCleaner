@@ -522,3 +522,5 @@ C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Release\net8.0-windo
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Release\net8.0-windows\win-x64\OpenCleaner.UI.pdb
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Release\net8.0-windows\win-x64\OpenCleaner.UI.genruntimeconfig.cache
 C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Release\net8.0-windows\win-x64\ref\OpenCleaner.UI.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\bin\Release\net8.0-windows\win-x64\NuGet.Versioning.dll
+C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\bin\Release\net8.0-windows\win-x64\Velopack.dll

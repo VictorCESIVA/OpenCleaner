@@ -139,18 +139,14 @@ public sealed class SchedulerService
     //  UTILITAIRES
     // ─────────────────────────────────────────────
 
-    private static string GetExePath()
-    {
-        // En production l'exe est à côté de l'assembly
-        var asm = System.Reflection.Assembly.GetEntryAssembly();
-        if (asm != null)
-        {
-            var loc = asm.Location;
-            // Remplace le .dll par .exe pour WinExe
-            return Path.ChangeExtension(loc, ".exe");
-        }
-        return Path.Combine(AppContext.BaseDirectory, "OpenCleaner.UI.exe");
-    }
+private static string GetExePath()
+{
+    var baseDir = AppContext.BaseDirectory;
+    
+    // Détecte automatiquement l'exe principal dans le dossier
+    var exeName = Path.GetFileName(Environment.ProcessPath) ?? "OpenCleaner.UI.exe";
+    return Path.Combine(baseDir, exeName);
+}
 }
 
 /// <summary>Helper pour convertir DayOfWeek en DaysOfTheWeek (bitmask Task Scheduler).</summary>
