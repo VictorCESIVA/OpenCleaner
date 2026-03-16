@@ -118,7 +118,7 @@ public partial class App : System.Windows.Application
             {
                 var items  = await plugin.AnalyzeAsync();
                 var result = await plugin.CleanAsync(items, backupManager);
-                long deletedBytes = items.Where(i => !File.Exists(i.Path)).Sum(i => i.Size);
+                long deletedBytes = items.Where(i => !System.IO.File.Exists(i.Path)).Sum(i => i.Size);
                 if (deletedBytes > 0 || result.Success)
                 {
                     cleaned++;
