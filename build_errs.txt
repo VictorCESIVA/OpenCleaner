@@ -1,8 +1,0 @@
-﻿C:\Program Files\dotnet\sdk\10.0.103\Microsoft.Common.CurrentVersion.targets(5381,5): error MSB3027: Could not copy "C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Debug\net8.0-windows\apphost.exe" to "bin\Debug\net8.0-windows\OpenCleaner.UI.exe". Exceeded retry count of 10. Failed. The file is locked by: "OpenCleaner.UI (19780)" [C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\OpenCleaner.UI.csproj]
-C:\Program Files\dotnet\sdk\10.0.103\Microsoft.Common.CurrentVersion.targets(5381,5): error MSB3021: Unable to copy file "C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\obj\Debug\net8.0-windows\apphost.exe" to "bin\Debug\net8.0-windows\OpenCleaner.UI.exe". The process cannot access the file 'C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\bin\Debug\net8.0-windows\OpenCleaner.UI.exe' because it is being used by another process. [C:\Users\noela\Documents\OpenCleaner\src\OpenCleaner.UI\OpenCleaner.UI.csproj]
-
-Build FAILED.
-    10 Warning(s)
-    2 Error(s)
-
-Time Elapsed 00:00:12.05

@@ -39,7 +39,8 @@ Pour lancer :
 - **Méthode 1** : Clic droit sur l'exe → Propriétés → ✅ Débloquer
 - **Méthode 2** : Cliquer "Informations complémentaires" → "Exécuter quand même"
 
-VirusTotal : [Lien vers l'analyse si tu l'as uploadé]
+VirusTotal : 
+[lien](https://www.virustotal.com/gui/file/5b0a8095e0467ddffb45ae5d1b267120fba8496a4eba32c817da525ff086a390/detection)
 ---
 ## 🛠️ Installation et Utilisation
 
