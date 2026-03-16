@@ -354,7 +354,7 @@ public sealed class RegistryGuardian : IRegistryGuardian
 
         if (normalizedPath.StartsWith("HKEY_LOCAL_MACHINE\\"))
         {
-            return (Registry.LocalMachine, normalizedPath[20..]);
+            return (Registry.LocalMachine, normalizedPath[19..]);
         }
         if (normalizedPath.StartsWith("HKEY_CURRENT_USER\\"))
         {
@@ -362,7 +362,7 @@ public sealed class RegistryGuardian : IRegistryGuardian
         }
         if (normalizedPath.StartsWith("HKEY_CLASSES_ROOT\\"))
         {
-            return (Registry.ClassesRoot, normalizedPath[19..]);
+            return (Registry.ClassesRoot, normalizedPath[18..]);
         }
         if (normalizedPath.StartsWith("HKEY_USERS\\"))
         {
@@ -370,7 +370,7 @@ public sealed class RegistryGuardian : IRegistryGuardian
         }
         if (normalizedPath.StartsWith("HKEY_CURRENT_CONFIG\\"))
         {
-            return (Registry.CurrentConfig, normalizedPath[21..]);
+            return (Registry.CurrentConfig, normalizedPath[20..]);
         }
 
         return (null, string.Empty);

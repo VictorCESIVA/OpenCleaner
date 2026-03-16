@@ -110,6 +110,12 @@ public sealed class BackupManager : IBackupManager, IDisposable
         }
 
         string dataDirectory = Path.Combine(backupDirectory, "data");
+        if (!Directory.Exists(dataDirectory))
+        {
+            _logger.LogError("Backup data directory not found for: {BackupId}", backupId);
+            return false;
+        }
+
         string? backupFile = Directory.GetFiles(dataDirectory).FirstOrDefault();
 
         if (backupFile == null || !File.Exists(backupFile))

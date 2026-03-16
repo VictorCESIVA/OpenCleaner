@@ -146,7 +146,8 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
             if (!allSuccess)
             {
                 _logger.LogWarning("Transaction {TransactionId} has failed operations, rolling back", transactionId);
-                await RollbackAsync(transactionId, ct);
+                // Appel interne pour éviter un deadlock (le verrou est déjà acquis)
+                await DoRollbackAsync(transactionId, transaction, ct);
                 throw new InvalidOperationException("Transaction failed, rolled back");
             }
 
@@ -185,64 +186,70 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
                 throw new InvalidOperationException($"Transaction {transactionId} not found");
             }
 
-            _logger.LogInformation("Rolling back transaction {TransactionId}", transactionId);
-
-            // Restaure les backups
-            foreach (OperationResult operation in transaction.Operations.Where(o => !string.IsNullOrEmpty(o.BackupPath)))
-            {
-                if (ct.IsCancellationRequested)
-                {
-                    break;
-                }
-
-                try
-                {
-                    if (!string.IsNullOrEmpty(operation.BackupPath))
-                    {
-                        // Extrait le backupId du chemin
-                        string? backupId = ExtractBackupIdFromPath(operation.BackupPath);
-                        if (!string.IsNullOrEmpty(backupId))
-                        {
-                            bool restored = await _backupManager.RestoreAsync(backupId, ct);
-                            if (restored)
-                            {
-                                _logger.LogInformation("Restored backup {BackupId} for transaction {TransactionId}", backupId, transactionId);
-                            }
-                            else
-                            {
-                                _logger.LogError("Failed to restore backup {BackupId} for transaction {TransactionId}", backupId, transactionId);
-                            }
-                        }
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error restoring backup for operation in transaction {TransactionId}", transactionId);
-                    // Continue malgré l'erreur (meilleur effort)
-                }
-            }
-
-            await Task.Run(() =>
-            {
-                using var connection = new SqliteConnection(_connectionString);
-                connection.Open();
-
-                const string updateSql = @"
-                    UPDATE Transactions SET State = @State WHERE Id = @Id;";
-
-                using var cmd = new SqliteCommand(updateSql, connection);
-                cmd.Parameters.AddWithValue("@State", (int)TransactionState.RolledBack);
-                cmd.Parameters.AddWithValue("@Id", transactionId.ToString());
-                cmd.ExecuteNonQuery();
-            }, ct);
-
-            transaction.MarkRolledBack();
-            _logger.LogInformation("Transaction rolled back: {TransactionId}", transactionId);
+            await DoRollbackAsync(transactionId, transaction, ct);
         }
         finally
         {
             semaphore.Release();
         }
+    }
+
+    // Logique de rollback sans acquisition du verrou — appelable depuis CommitAsync ou RollbackAsync.
+    private async Task DoRollbackAsync(Guid transactionId, Transaction transaction, CancellationToken ct)
+    {
+        _logger.LogInformation("Rolling back transaction {TransactionId}", transactionId);
+
+        // Restaure les backups
+        foreach (OperationResult operation in transaction.Operations.Where(o => !string.IsNullOrEmpty(o.BackupPath)))
+        {
+            if (ct.IsCancellationRequested)
+            {
+                break;
+            }
+
+            try
+            {
+                if (!string.IsNullOrEmpty(operation.BackupPath))
+                {
+                    // Extrait le backupId du chemin
+                    string? backupId = ExtractBackupIdFromPath(operation.BackupPath);
+                    if (!string.IsNullOrEmpty(backupId))
+                    {
+                        bool restored = await _backupManager.RestoreAsync(backupId, ct);
+                        if (restored)
+                        {
+                            _logger.LogInformation("Restored backup {BackupId} for transaction {TransactionId}", backupId, transactionId);
+                        }
+                        else
+                        {
+                            _logger.LogError("Failed to restore backup {BackupId} for transaction {TransactionId}", backupId, transactionId);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error restoring backup for operation in transaction {TransactionId}", transactionId);
+                // Continue malgré l'erreur (meilleur effort)
+            }
+        }
+
+        await Task.Run(() =>
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            const string updateSql = @"
+                UPDATE Transactions SET State = @State WHERE Id = @Id;";
+
+            using var cmd = new SqliteCommand(updateSql, connection);
+            cmd.Parameters.AddWithValue("@State", (int)TransactionState.RolledBack);
+            cmd.Parameters.AddWithValue("@Id", transactionId.ToString());
+            cmd.ExecuteNonQuery();
+        }, ct);
+
+        transaction.MarkRolledBack();
+        _logger.LogInformation("Transaction rolled back: {TransactionId}", transactionId);
     }
 
     public async Task<TransactionState> GetTransactionStateAsync(Guid transactionId)

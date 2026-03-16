@@ -56,6 +56,8 @@ public class WindowsUpdatePlugin : ICleanerPlugin
 
                     try
                     {
+                        if (_fileGuardian.IsSystemCriticalPath(file)) continue;
+
                         var info = new FileInfo(file);
                         if (!info.Exists) continue;
 
@@ -93,11 +95,13 @@ public class WindowsUpdatePlugin : ICleanerPlugin
     {
         var itemsList = items.ToList();
         int success = 0;
+        int current = 0;
         long totalSize = 0;
 
         foreach (var item in itemsList)
         {
             ct.ThrowIfCancellationRequested();
+            current++;
 
             try
             {
@@ -110,7 +114,7 @@ public class WindowsUpdatePlugin : ICleanerPlugin
             }
             catch { }
 
-            progress?.Report((double)success / itemsList.Count);
+            progress?.Report((double)current / itemsList.Count);
         }
 
         var gb = totalSize / 1024.0 / 1024.0 / 1024.0;

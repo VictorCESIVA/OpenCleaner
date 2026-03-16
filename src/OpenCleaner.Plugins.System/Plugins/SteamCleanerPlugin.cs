@@ -147,11 +147,13 @@ public class SteamCleanerPlugin : ICleanerPlugin
     {
         var itemsList = items.ToList();
         int success = 0;
+        int current = 0;
         long totalSize = 0;
 
         foreach (var item in itemsList)
         {
             ct.ThrowIfCancellationRequested();
+            current++;
 
             try
             {
@@ -166,7 +168,7 @@ public class SteamCleanerPlugin : ICleanerPlugin
             }
             catch { }
 
-            progress?.Report((double)success / itemsList.Count);
+            progress?.Report((double)current / itemsList.Count);
         }
 
         return new OperationResult(
