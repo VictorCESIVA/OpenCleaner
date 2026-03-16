@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Paramètres — Planificateur automatique"
         Height="680" Width="560"
-        ResizeMode="NoResize"
+        MinHeight="480" MinWidth="480"
+        ResizeMode="CanResizeWithGrip"
         WindowStartupLocation="CenterOwner">
 
     <Window.Resources>
@@ -53,16 +54,12 @@
         <Grid Margin="28,24">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
-                <RowDefinition Height="Auto"/>
                 <RowDefinition Height="*"/>
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
             <!-- EN-TÊTE -->
-            <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <StackPanel Grid.Row="0" Margin="0,0,0,16">
                 <TextBlock Text="⚙️  Paramètres"
                            FontSize="22" FontWeight="Bold"
                            Foreground="{DynamicResource TextPrimary}"/>
@@ -70,111 +67,115 @@
                            FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,4,0,0"/>
             </StackPanel>
 
-            <!-- SECTION : Activer / Désactiver -->
-            <Border Grid.Row="1" Background="{DynamicResource BgCard}" CornerRadius="10"
-                    Padding="20,14" Margin="0,0,0,12">
-                <StackPanel>
-                    <TextBlock Text="Nettoyage automatique"
-                               FontSize="14" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
-                    <CheckBox x:Name="EnabledCheck"
-                              Content="Activer le nettoyage automatique"
-                              Checked="EnabledCheck_Changed"
-                              Unchecked="EnabledCheck_Changed"/>
-                    <TextBlock Text="Crée une tâche dans le Planificateur de tâches Windows."
-                               FontSize="11" Foreground="{DynamicResource TextSecond}"
-                               Margin="20,4,0,0"/>
-                </StackPanel>
-            </Border>
+            <!-- CONTENU SCROLLABLE -->
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="0,0,-4,12">
+                <StackPanel Margin="0,0,8,0">
 
-            <!-- SECTION : Heure -->
-            <Border Grid.Row="2" Background="{DynamicResource BgCard}" CornerRadius="10"
-                    Padding="20,14" Margin="0,0,0,12">
-                <StackPanel>
-                    <TextBlock Text="Heure de lancement"
-                               FontSize="14" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
-                    <StackPanel Orientation="Horizontal">
-                        <TextBox x:Name="TimeBox"
-                                 Text="03:00"
-                                 Width="80" Height="34"
-                                 Background="#1A1A1A"
-                                 Foreground="White"
-                                 BorderBrush="{DynamicResource Border}"
-                                 Padding="8,6"
-                                 FontSize="14"
-                                 CaretBrush="White"/>
-                        <TextBlock Text="(format HH:mm)"
-                                   FontSize="11" Foreground="{DynamicResource TextSecond}"
-                                   VerticalAlignment="Center" Margin="12,0,0,0"/>
-                    </StackPanel>
-                </StackPanel>
-            </Border>
+                    <!-- SECTION : Activer / Désactiver -->
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="10"
+                            Padding="20,14" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Nettoyage automatique"
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
+                            <CheckBox x:Name="EnabledCheck"
+                                      Content="Activer le nettoyage automatique"
+                                      Checked="EnabledCheck_Changed"
+                                      Unchecked="EnabledCheck_Changed"/>
+                            <TextBlock Text="Crée une tâche dans le Planificateur de tâches Windows."
+                                       FontSize="11" Foreground="{DynamicResource TextSecond}"
+                                       Margin="20,4,0,0"/>
+                        </StackPanel>
+                    </Border>
 
-            <!-- SECTION : Jours -->
-            <Border Grid.Row="3" Background="{DynamicResource BgCard}" CornerRadius="10"
-                    Padding="20,14" Margin="0,0,0,12">
-                <StackPanel>
-                    <TextBlock Text="Jours de la semaine"
-                               FontSize="14" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
-                    <WrapPanel>
-                        <CheckBox x:Name="DayMon" Content="Lun" Tag="Monday"    Margin="0,4,16,4"/>
-                        <CheckBox x:Name="DayTue" Content="Mar" Tag="Tuesday"   Margin="0,4,16,4"/>
-                        <CheckBox x:Name="DayWed" Content="Mer" Tag="Wednesday" Margin="0,4,16,4"/>
-                        <CheckBox x:Name="DayThu" Content="Jeu" Tag="Thursday"  Margin="0,4,16,4"/>
-                        <CheckBox x:Name="DayFri" Content="Ven" Tag="Friday"    Margin="0,4,16,4"/>
-                        <CheckBox x:Name="DaySat" Content="Sam" Tag="Saturday"  Margin="0,4,16,4"/>
-                        <CheckBox x:Name="DaySun" Content="Dim" Tag="Sunday"    Margin="0,4,16,4"/>
-                    </WrapPanel>
-                </StackPanel>
-            </Border>
+                    <!-- SECTION : Heure -->
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="10"
+                            Padding="20,14" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Heure de lancement"
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
+                            <StackPanel Orientation="Horizontal">
+                                <TextBox x:Name="TimeBox"
+                                         Text="03:00"
+                                         Width="80" Height="34"
+                                         Background="#1A1A1A"
+                                         Foreground="White"
+                                         BorderBrush="{DynamicResource Border}"
+                                         Padding="8,6"
+                                         FontSize="14"
+                                         CaretBrush="White"/>
+                                <TextBlock Text="(format HH:mm)"
+                                           FontSize="11" Foreground="{DynamicResource TextSecond}"
+                                           VerticalAlignment="Center" Margin="12,0,0,0"/>
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
 
-            <!-- SECTION : Plugins -->
-            <Border Grid.Row="4" Background="{DynamicResource BgCard}" CornerRadius="10"
-                    Padding="20,14" Margin="0,0,0,12">
-                <StackPanel>
-                    <TextBlock Text="Plugins à exécuter automatiquement"
-                               FontSize="14" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
-                    <WrapPanel>
-                        <CheckBox x:Name="PlugSystem"  Content="🧹 Fichiers temporaires" Tag="system.temp"       Margin="0,4,20,4"/>
-                        <CheckBox x:Name="PlugWinUpd"  Content="🪟 Windows Update"       Tag="system.windowsupdate"  Margin="0,4,20,4"/>
-                        <CheckBox x:Name="PlugBrowser" Content="🌐 Navigateurs"          Tag="browser.chrome"    Margin="0,4,20,4"/>
-                        <CheckBox x:Name="PlugThumb"   Content="🖼️ Miniatures"           Tag="system.thumbnailcache" Margin="0,4,20,4"/>
-                        <CheckBox x:Name="PlugOffice"  Content="📄 Office"               Tag="applications.office"     Margin="0,4,20,4"/>
-                        <CheckBox x:Name="PlugSteam"   Content="🎮 Steam"                Tag="games.steam"      Margin="0,4,20,4"/>
-                    </WrapPanel>
-                </StackPanel>
-            </Border>
+                    <!-- SECTION : Jours -->
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="10"
+                            Padding="20,14" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Jours de la semaine"
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
+                            <WrapPanel>
+                                <CheckBox x:Name="DayMon" Content="Lun" Tag="Monday"    Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DayTue" Content="Mar" Tag="Tuesday"   Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DayWed" Content="Mer" Tag="Wednesday" Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DayThu" Content="Jeu" Tag="Thursday"  Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DayFri" Content="Ven" Tag="Friday"    Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DaySat" Content="Sam" Tag="Saturday"  Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DaySun" Content="Dim" Tag="Sunday"    Margin="0,4,16,4"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
 
-            <!-- SECTION : Mises à jour -->
-            <Border Grid.Row="5" Background="{DynamicResource BgCard}" CornerRadius="10"
-                    Padding="20,14" Margin="0,0,0,12">
-                <StackPanel>
-                    <TextBlock Text="Mises à jour automatiques"
-                               FontSize="14" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
-                    <StackPanel Orientation="Horizontal">
-                        <Button x:Name="CheckUpdateBtn" Content="🔄  Vérifier les mises à jour"
-                                Style="{StaticResource AccentBtn}"
-                                Click="CheckUpdate_Click"
-                                IsEnabled="True"/>
-                        <TextBlock x:Name="UpdateStatus" Text=""
-                                   FontSize="12" Foreground="{DynamicResource TextSecond}"
-                                   VerticalAlignment="Center" Margin="16,0,0,0"/>
-                    </StackPanel>
-                    <TextBlock Text="Installez via Setup.exe pour activer les mises à jour automatiques au démarrage."
-                               FontSize="11" Foreground="{DynamicResource TextSecond}"
-                               Margin="0,6,0,0"/>
-                </StackPanel>
-            </Border>
+                    <!-- SECTION : Plugins -->
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="10"
+                            Padding="20,14" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Plugins à exécuter automatiquement"
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
+                            <WrapPanel>
+                                <CheckBox x:Name="PlugSystem"  Content="🧹 Fichiers temporaires" Tag="system.temp"            Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugWinUpd"  Content="🪟 Windows Update"       Tag="system.windowsupdate"   Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugBrowser" Content="🌐 Navigateurs"          Tag="browser.chrome"         Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugThumb"   Content="🖼️ Miniatures"           Tag="system.thumbnailcache"  Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugOffice"  Content="📄 Office"               Tag="applications.office"    Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugSteam"   Content="🎮 Steam"                Tag="games.steam"            Margin="0,4,20,4"/>
+                            </WrapPanel>
+                        </StackPanel>
+                    </Border>
 
-            <!-- SPACER -->
-            <Grid Grid.Row="6"/>
+                    <!-- SECTION : Mises à jour -->
+                    <Border Background="{DynamicResource BgCard}" CornerRadius="10"
+                            Padding="20,14" Margin="0,0,0,4">
+                        <StackPanel>
+                            <TextBlock Text="Mises à jour automatiques"
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
+                            <StackPanel Orientation="Horizontal">
+                                <Button x:Name="CheckUpdateBtn" Content="🔄  Vérifier les mises à jour"
+                                        Style="{StaticResource AccentBtn}"
+                                        Click="CheckUpdate_Click"
+                                        IsEnabled="True"/>
+                                <TextBlock x:Name="UpdateStatus" Text=""
+                                           FontSize="12" Foreground="{DynamicResource TextSecond}"
+                                           VerticalAlignment="Center" Margin="16,0,0,0"/>
+                            </StackPanel>
+                            <TextBlock Text="Installez via Setup.exe pour activer les mises à jour automatiques au démarrage."
+                                       FontSize="11" Foreground="{DynamicResource TextSecond}"
+                                       Margin="0,6,0,0"/>
+                        </StackPanel>
+                    </Border>
+
+                </StackPanel>
+            </ScrollViewer>
 
             <!-- BARRE ACTIONS -->
-            <Border Grid.Row="7" Background="{DynamicResource BgCard}" CornerRadius="10"
+            <Border Grid.Row="2" Background="{DynamicResource BgCard}" CornerRadius="10"
                     Padding="16,12">
                 <Grid>
                     <Grid.ColumnDefinitions>
