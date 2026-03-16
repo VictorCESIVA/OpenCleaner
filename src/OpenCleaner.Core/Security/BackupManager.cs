@@ -10,13 +10,28 @@ public sealed class BackupManager : IBackupManager, IDisposable
 {
     private readonly ILogger<BackupManager> _logger;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _operationLocks = new();
+    private readonly string _backupsRoot;
     private readonly string _baseBackupDirectory;
 
     public BackupManager(ILogger<BackupManager> logger)
+        : this(logger, null)
+    {
+    }
+
+    public BackupManager(ILogger<BackupManager> logger, string? backupsRootOverride)
     {
         _logger = logger;
-        string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
-        _baseBackupDirectory = Path.Combine(localAppData, "OpenCleaner", "Backups", DateTime.Now.ToString("yyyy-MM-dd"));
+        if (!string.IsNullOrWhiteSpace(backupsRootOverride))
+        {
+            _backupsRoot = backupsRootOverride;
+        }
+        else
+        {
+            string localAppData = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
+            _backupsRoot = Path.Combine(localAppData, "OpenCleaner", "Backups");
+        }
+
+        _baseBackupDirectory = Path.Combine(_backupsRoot, DateTime.Now.ToString("yyyy-MM-dd"));
     }
 
     public async Task<BackupInfo> CreateBackupAsync(string originalPath, CancellationToken ct = default)
@@ -76,14 +91,14 @@ public sealed class BackupManager : IBackupManager, IDisposable
 
     public async Task<bool> RestoreAsync(string backupId, CancellationToken ct = default)
     {
-        string backupDirectory = Path.Combine(_baseBackupDirectory, backupId);
-        string metadataPath = Path.Combine(backupDirectory, "metadata.json");
-
-        if (!File.Exists(metadataPath))
+        string? backupDirectory = ResolveBackupDirectory(backupId);
+        if (backupDirectory == null)
         {
             _logger.LogWarning("Backup not found: {BackupId}", backupId);
             return false;
         }
+
+        string metadataPath = Path.Combine(backupDirectory, "metadata.json");
 
         string metadataJson = await File.ReadAllTextAsync(metadataPath, ct);
         BackupMetadata? metadata = JsonSerializer.Deserialize<BackupMetadata>(metadataJson);
@@ -128,16 +143,14 @@ public sealed class BackupManager : IBackupManager, IDisposable
 
     public Task CleanupOldBackupsAsync(TimeSpan maxAge, CancellationToken ct = default)
     {
-        string backupsRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenCleaner", "Backups");
-
-        if (!Directory.Exists(backupsRoot))
+        if (!Directory.Exists(_backupsRoot))
         {
             return Task.CompletedTask;
         }
 
         DateTime cutoffDate = DateTime.Now - maxAge;
 
-        foreach (string dateDirectory in Directory.GetDirectories(backupsRoot))
+        foreach (string dateDirectory in Directory.GetDirectories(_backupsRoot))
         {
             if (ct.IsCancellationRequested)
             {
@@ -165,14 +178,12 @@ public sealed class BackupManager : IBackupManager, IDisposable
     public Task<IReadOnlyList<BackupInfo>> GetAllBackupsAsync()
     {
         var backups = new List<BackupInfo>();
-        string backupsRoot = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenCleaner", "Backups");
-
-        if (!Directory.Exists(backupsRoot))
+        if (!Directory.Exists(_backupsRoot))
         {
             return Task.FromResult<IReadOnlyList<BackupInfo>>(backups);
         }
 
-        foreach (string dateDirectory in Directory.GetDirectories(backupsRoot))
+        foreach (string dateDirectory in Directory.GetDirectories(_backupsRoot))
         {
             foreach (string backupDirectory in Directory.GetDirectories(dateDirectory))
             {
@@ -214,6 +225,31 @@ public sealed class BackupManager : IBackupManager, IDisposable
         }
 
         return Task.FromResult<IReadOnlyList<BackupInfo>>(backups);
+    }
+
+    private string? ResolveBackupDirectory(string backupId)
+    {
+        string todayPath = Path.Combine(_baseBackupDirectory, backupId);
+        if (File.Exists(Path.Combine(todayPath, "metadata.json")))
+        {
+            return todayPath;
+        }
+
+        if (!Directory.Exists(_backupsRoot))
+        {
+            return null;
+        }
+
+        foreach (string dateDirectory in Directory.GetDirectories(_backupsRoot))
+        {
+            string candidate = Path.Combine(dateDirectory, backupId);
+            if (File.Exists(Path.Combine(candidate, "metadata.json")))
+            {
+                return candidate;
+            }
+        }
+
+        return null;
     }
 
 

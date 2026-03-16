@@ -45,7 +45,7 @@ public sealed class FileGuardian : IFileGuardian
 
         foreach (string systemPath in SystemPaths)
         {
-            if (normalizedPath.StartsWith(systemPath.ToLowerInvariant(), StringComparison.Ordinal))
+            if (IsPathWithinDirectory(normalizedPath, systemPath))
             {
                 return true;
             }
@@ -75,6 +75,18 @@ public sealed class FileGuardian : IFileGuardian
         }
 
         return false;
+    }
+
+    private static bool IsPathWithinDirectory(string normalizedPath, string directoryPath)
+    {
+        string normalizedDirectory = Path.GetFullPath(directoryPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).ToLowerInvariant();
+        if (normalizedPath.Equals(normalizedDirectory, StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        return normalizedPath.StartsWith(normalizedDirectory + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
+               normalizedPath.StartsWith(normalizedDirectory + Path.AltDirectorySeparatorChar, StringComparison.Ordinal);
     }
 
     public bool IsFileLocked(string path)

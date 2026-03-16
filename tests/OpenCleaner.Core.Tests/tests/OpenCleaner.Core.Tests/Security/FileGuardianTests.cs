@@ -34,6 +34,14 @@ public class FileGuardianTests
     }
 
     [Fact]
+    public void IsSystemCriticalPath_System32PrefixOnly_ReturnsFalse()
+    {
+        var fakeSibling = @"C:\Windows\System32_backup\kernel32.dll";
+        var result = _guardian.IsSystemCriticalPath(fakeSibling);
+        Assert.False(result, "Un simple prefixe du dossier critique ne doit pas etre bloque");
+    }
+
+    [Fact]
     public async Task SafeDeleteAsync_System32File_ReturnsFailureWithoutDeleting()
     {
         var result = await _guardian.SafeDeleteAsync(@"C:\Windows\System32\kernel32.dll");

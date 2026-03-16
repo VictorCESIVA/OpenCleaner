@@ -88,6 +88,7 @@ public partial class App : System.Windows.Application
         var fileGuardian  = Services.GetRequiredService<IFileGuardian>();
         var backupManager = Services.GetRequiredService<IBackupManager>();
         var logFactory    = Services.GetRequiredService<ILoggerFactory>();
+        var logger        = logFactory.CreateLogger("BackgroundMode");
 
         int cleaned = 0;
         long freed  = 0;
@@ -117,17 +118,25 @@ public partial class App : System.Windows.Application
             {
                 var items  = await plugin.AnalyzeAsync();
                 var result = await plugin.CleanAsync(items, backupManager);
-                if (result.Success) { cleaned++; freed += items.Sum(i => i.Size); }
+                long deletedBytes = items.Where(i => !File.Exists(i.Path)).Sum(i => i.Size);
+                if (deletedBytes > 0 || result.Success)
+                {
+                    cleaned++;
+                    freed += deletedBytes;
+                }
             }
-            catch { /* silencieux en mode background */ }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Erreur plugin background {PluginId}", pluginId);
+            }
         }
 
         // Log le résultat dans un fichier pour traçabilité
-        LogBackgroundResult(cleaned, freed);
+        LogBackgroundResult(cleaned, freed, logger);
         Current.Shutdown();
     }
 
-    private static void LogBackgroundResult(int plugins, long bytes)
+    private static void LogBackgroundResult(int plugins, long bytes, ILogger logger)
     {
         try
         {
@@ -138,7 +147,10 @@ public partial class App : System.Windows.Application
             var line    = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {plugins} plugin(s) — {mb:0.#} Mo lib\u00e9r\u00e9s.";
             System.IO.File.AppendAllText(logPath, line + Environment.NewLine);
         }
-        catch { /* silencieux */ }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Impossible d'écrire le log du mode background");
+        }
     }
 
     private static string? GetArg(string[] args, string key)
