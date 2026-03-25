@@ -21,7 +21,9 @@ public partial class RestoreWindow : Window
 
     private void BackupsListView_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
-        RestoreBtn.IsEnabled = BackupsListView.SelectedItem != null;
+        bool hasSelection = BackupsListView.SelectedItems.Count > 0;
+        RestoreBtn.IsEnabled = BackupsListView.SelectedItems.Count == 1;
+        DeleteSelectedBtn.IsEnabled = hasSelection;
     }
 
     private async void Restore_Click(object sender, RoutedEventArgs e)
@@ -58,6 +60,64 @@ public partial class RestoreWindow : Window
     }
 
     private void Refresh_Click(object sender, RoutedEventArgs e) => LoadBackups();
+
+    private async void DeleteSelected_Click(object sender, RoutedEventArgs e)
+    {
+        var selectedBackups = BackupsListView.SelectedItems.Cast<BackupInfo>().ToList();
+        if (selectedBackups.Count == 0) return;
+
+        var message = selectedBackups.Count == 1
+            ? $"Supprimer définitivement ce point de restauration ?\n\n{selectedBackups[0].OriginalPath}\n({selectedBackups[0].CreatedAt:dd/MM/yyyy HH:mm})"
+            : $"Supprimer définitivement {selectedBackups.Count} point(s) de restauration sélectionné(s) ?";
+
+        var result = MessageBox.Show(
+            message,
+            "Suppression du point de restauration",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning);
+
+        if (result != MessageBoxResult.Yes) return;
+
+        try
+        {
+            var backupManager = App.Services.GetRequiredService<IBackupManager>();
+            int deletedCount = 0;
+
+            foreach (BackupInfo backup in selectedBackups)
+            {
+                bool success = await backupManager.DeleteBackupAsync(backup.BackupId);
+                if (success)
+                {
+                    deletedCount++;
+                }
+            }
+
+            if (deletedCount > 0)
+            {
+                MessageBox.Show(
+                    deletedCount == selectedBackups.Count
+                        ? $"{deletedCount} point(s) de restauration supprimé(s)."
+                        : $"{deletedCount}/{selectedBackups.Count} point(s) de restauration supprimé(s).",
+                    "Succès",
+                    MessageBoxButton.OK,
+                    MessageBoxImage.Information);
+                LoadBackups();
+            }
+            else
+            {
+                MessageBox.Show("Impossible de supprimer ce point de restauration.", "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"Erreur : {ex.Message}", "Erreur", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void SelectAll_Click(object sender, RoutedEventArgs e)
+    {
+        BackupsListView.SelectAll();
+    }
 
     private async void DeleteOld_Click(object sender, RoutedEventArgs e)
     {

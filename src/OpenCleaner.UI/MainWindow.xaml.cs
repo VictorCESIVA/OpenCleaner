@@ -7,6 +7,7 @@ using OpenCleaner.Core.Security;
 using OpenCleaner.Plugins.System.Plugins;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
+using System.IO;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -241,11 +242,16 @@ public partial class MainWindow : Window
 
             var progress = new Progress<double>(p =>
             {
+                if (_analyzeProgressThrottle.IsRunning && _analyzeProgressThrottle.ElapsedMilliseconds < 50)
+                {
+                    return;
+                }
+                _analyzeProgressThrottle.Restart();
                 ProgressBar.IsIndeterminate = false;
                 ProgressBar.Value = p * 100;
             });
 
-            var items = await _currentPlugin.AnalyzeAsync(progress);
+            var items = await Task.Run(() => _currentPlugin.AnalyzeAsync(progress));
 
             // Fade-in résultats
             foreach (var item in items) _foundItems.Add(item);
@@ -319,23 +325,45 @@ public partial class MainWindow : Window
             var backupManager = App.Services.GetRequiredService<IBackupManager>();
             var progress = new Progress<double>(p =>
             {
+                if (_cleanProgressThrottle.IsRunning && _cleanProgressThrottle.ElapsedMilliseconds < 50)
+                {
+                    return;
+                }
+                _cleanProgressThrottle.Restart();
                 ProgressBar.IsIndeterminate = false;
                 ProgressBar.Value = p * 100;
             });
 
-            var result = await _currentPlugin.CleanAsync(_foundItems, backupManager, progress);
+            var itemsToClean = _foundItems.ToList();
+            var result = await Task.Run(() => _currentPlugin.CleanAsync(itemsToClean, backupManager, progress));
 
             ActionStatus.Text = result.Success
                 ? $"✅ {result.Message}"
                 : $"⚠️ {result.Message}";
 
-            StatusText.Text = result.Success ? "Nettoyage terminé" : "Partiel";
+            bool hasLockedFileHint = result.Message.Contains("verrou", StringComparison.OrdinalIgnoreCase) ||
+                                     result.Message.Contains("lock", StringComparison.OrdinalIgnoreCase);
+            StatusText.Text = result.Success
+                ? "Nettoyage terminé"
+                : hasLockedFileHint
+                    ? "Nettoyage partiel (fichiers verrouillés)"
+                    : "Nettoyage partiel";
 
-            if (result.Success)
+            var removedItems = _foundItems.Where(i => !File.Exists(i.Path)).ToList();
+            foreach (var removed in removedItems)
             {
-                _foundItems.Clear();
+                _foundItems.Remove(removed);
+            }
+
+            if (_foundItems.Count == 0)
+            {
                 EmptyState.Visibility = Visibility.Visible;
                 ResetStats();
+            }
+            else
+            {
+                EmptyState.Visibility = Visibility.Collapsed;
+                UpdateStats(_foundItems.ToList());
             }
         }
         catch (Exception ex)
@@ -471,6 +499,8 @@ public partial class MainWindow : Window
     // ── SMART CLEAN ──────────────────────────────────────────────────────────
 
     private OpenCleaner.Core.SmartScanResult[]? _smartScanResults;
+    private readonly Stopwatch _analyzeProgressThrottle = new();
+    private readonly Stopwatch _cleanProgressThrottle = new();
 
     private async void SmartScan_Click(object sender, RoutedEventArgs e)
     {

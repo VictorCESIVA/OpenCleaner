@@ -163,6 +163,7 @@
                           BorderThickness="0"
                           ItemContainerStyle="{StaticResource RestoreItemStyle}"
                           SelectionChanged="BackupsListView_SelectionChanged"
+                          SelectionMode="Extended"
                           ScrollViewer.HorizontalScrollBarVisibility="Disabled">
                     <ListView.View>
                         <GridView>
@@ -228,11 +229,22 @@
                     Padding="16,12"
                     Margin="0,12,0,0">
                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+                    <Button x:Name="SelectAllBtn"
+                        Content="☑️  Tout sélectionner"
+                        Style="{StaticResource SecondBtnStyle}"
+                        Click="SelectAll_Click"
+                        Margin="0,0,10,0"/>
                     <Button x:Name="RefreshBtn"
                             Content="🔄  Rafraîchir"
                             Style="{StaticResource SecondBtnStyle}"
                             Click="Refresh_Click"
                             Margin="0,0,10,0"/>
+                    <Button x:Name="DeleteSelectedBtn"
+                        Content="🗑️  Supprimer sélection"
+                        Style="{StaticResource DangerBtnStyle}"
+                        Click="DeleteSelected_Click"
+                        Margin="0,0,10,0"
+                        IsEnabled="False"/>
                     <Button x:Name="DeleteOldBtn"
                             Content="🗑️  Supprimer anciens (&gt; 30 j)"
                             Style="{StaticResource DangerBtnStyle}"

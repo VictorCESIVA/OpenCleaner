@@ -202,6 +202,20 @@ public sealed class FileGuardian : IFileGuardian
         // Étape 5 : Suppression du fichier (UNIQUEMENT ici)
         try
         {
+            try
+            {
+                FileAttributes attrs = File.GetAttributes(path);
+                if ((attrs & FileAttributes.ReadOnly) == FileAttributes.ReadOnly ||
+                    (attrs & FileAttributes.Hidden) == FileAttributes.Hidden)
+                {
+                    File.SetAttributes(path, FileAttributes.Normal);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Could not normalize attributes before delete: {Path}", path);
+            }
+
             File.Delete(path);
             _logger.LogInformation("File deleted successfully: {Path}", path);
         }

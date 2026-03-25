@@ -31,9 +31,9 @@ public class SystemTempPlugin : ICleanerPlugin
         var items = new List<CleanableItem>();
         var locations = new[]
         {
-            (Path: Path.GetTempPath(), MinAge: TimeSpan.FromHours(24), Risk: RiskLevel.Safe),
-            (Path: @"C:\Windows\Temp", MinAge: TimeSpan.FromDays(7), Risk: RiskLevel.Recommended),
-            (Path: @"C:\Windows\Prefetch", MinAge: TimeSpan.FromDays(30), Risk: RiskLevel.ExpertOnly)
+            (Path: Path.GetTempPath(), MinAge: TimeSpan.FromHours(24), Risk: RiskLevel.Safe, Recursive: true),
+            (Path: @"C:\Windows\Temp", MinAge: TimeSpan.FromDays(7), Risk: RiskLevel.Recommended, Recursive: true),
+            (Path: @"C:\Windows\Prefetch", MinAge: TimeSpan.FromDays(30), Risk: RiskLevel.ExpertOnly, Recursive: false)
         };
 
         int totalLocations = locations.Length;
@@ -45,7 +45,7 @@ public class SystemTempPlugin : ICleanerPlugin
 
             try
             {
-                var files = Directory.EnumerateFiles(loc.Path, "*.*", SearchOption.TopDirectoryOnly);
+                var files = EnumerateFilesSafe(loc.Path, loc.Recursive);
                 int fileCount = 0;
 
                 foreach (var file in files)
@@ -122,6 +122,12 @@ public class SystemTempPlugin : ICleanerPlugin
 
                 var result = await _fileGuardian.SafeDeleteAsync(item.Path, createBackup: true, ct);
 
+                if (!result.Success &&
+                    result.Message.Contains("Backup failed", StringComparison.OrdinalIgnoreCase))
+                {
+                    result = await _fileGuardian.SafeDeleteAsync(item.Path, createBackup: false, ct);
+                }
+
                 if (result.Success)
                 {
                     successCount++;
@@ -141,9 +147,18 @@ public class SystemTempPlugin : ICleanerPlugin
             progress?.Report((double)current / total);
         }
 
-        var message = $"Supprimé {successCount}/{total} fichiers ({SizeFormatter.Format(totalSize)} libérés)";
+        int failedCount = total - successCount;
+        var message = failedCount == 0
+            ? $"Supprimé {successCount}/{total} fichiers ({SizeFormatter.Format(totalSize)} libérés)"
+            : $"Supprimé {successCount}/{total} fichiers ({SizeFormatter.Format(totalSize)} libérés) — {failedCount} non supprimé(s) (fichiers verrouillés/droits)";
+
+        if (successCount > 0)
+        {
+            CleanupEmptyDirectoriesForProcessedItems(itemsList);
+        }
+
         return new OperationResult(
-            Success: successCount > 0,
+            Success: failedCount == 0 && total > 0,
             Message: message,
             TransactionId: Guid.NewGuid()
         );
@@ -152,5 +167,127 @@ public class SystemTempPlugin : ICleanerPlugin
     public Task<long> EstimateSizeAsync(CancellationToken ct = default)
     {
         return Task.FromResult(0L);
+    }
+
+    private IEnumerable<string> EnumerateFilesSafe(string rootPath, bool recursive)
+    {
+        if (!recursive)
+        {
+            IEnumerable<string> topFiles = [];
+            try
+            {
+                topFiles = Directory.EnumerateFiles(rootPath, "*", SearchOption.TopDirectoryOnly);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Impossible d'énumérer {Path}", rootPath);
+            }
+
+            foreach (string file in topFiles)
+            {
+                yield return file;
+            }
+
+            yield break;
+        }
+
+        var directories = new Stack<string>();
+        directories.Push(rootPath);
+
+        while (directories.Count > 0)
+        {
+            string current = directories.Pop();
+
+            IEnumerable<string> files = [];
+            try
+            {
+                files = Directory.EnumerateFiles(current, "*", SearchOption.TopDirectoryOnly);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Impossible d'énumérer les fichiers de {Path}", current);
+            }
+
+            foreach (string file in files)
+            {
+                yield return file;
+            }
+
+            IEnumerable<string> subDirectories = [];
+            try
+            {
+                subDirectories = Directory.EnumerateDirectories(current, "*", SearchOption.TopDirectoryOnly);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogDebug(ex, "Impossible d'énumérer les dossiers de {Path}", current);
+            }
+
+            foreach (string subDirectory in subDirectories)
+            {
+                try
+                {
+                    var attrs = File.GetAttributes(subDirectory);
+                    if ((attrs & FileAttributes.ReparsePoint) == FileAttributes.ReparsePoint)
+                    {
+                        continue;
+                    }
+
+                    directories.Push(subDirectory);
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug(ex, "Impossible d'inspecter les attributs de {Path}", subDirectory);
+                }
+            }
+        }
+    }
+
+    private void CleanupEmptyDirectoriesForProcessedItems(IEnumerable<CleanableItem> items)
+    {
+        string[] cleanupRoots =
+        [
+            Path.GetFullPath(Path.GetTempPath()),
+            Path.GetFullPath(@"C:\Windows\Temp"),
+            Path.GetFullPath(@"C:\Windows\Prefetch")
+        ];
+
+        foreach (string parentDirectory in items
+            .Select(i => Path.GetDirectoryName(i.Path))
+            .Where(d => !string.IsNullOrWhiteSpace(d))
+            .Select(d => Path.GetFullPath(d!))
+            .Distinct(StringComparer.OrdinalIgnoreCase))
+        {
+            string? current = parentDirectory;
+
+            while (!string.IsNullOrWhiteSpace(current))
+            {
+                string? root = cleanupRoots.FirstOrDefault(r => current.StartsWith(r, StringComparison.OrdinalIgnoreCase));
+                if (root == null)
+                {
+                    break;
+                }
+
+                if (string.Equals(current, root, StringComparison.OrdinalIgnoreCase))
+                {
+                    break;
+                }
+
+                try
+                {
+                    if (!Directory.Exists(current) || Directory.EnumerateFileSystemEntries(current).Any())
+                    {
+                        break;
+                    }
+
+                    Directory.Delete(current, recursive: false);
+                    current = Path.GetDirectoryName(current);
+                }
+                catch
+                {
+                    break;
+                }
+            }
+        }
     }
 }

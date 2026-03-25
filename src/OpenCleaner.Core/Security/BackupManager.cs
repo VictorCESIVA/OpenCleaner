@@ -147,6 +147,42 @@ public sealed class BackupManager : IBackupManager, IDisposable
         }
     }
 
+    public Task<bool> DeleteBackupAsync(string backupId, CancellationToken ct = default)
+    {
+        string? backupDirectory = ResolveBackupDirectory(backupId);
+        if (backupDirectory == null)
+        {
+            _logger.LogWarning("Backup not found for delete: {BackupId}", backupId);
+            return Task.FromResult(false);
+        }
+
+        if (ct.IsCancellationRequested)
+        {
+            return Task.FromResult(false);
+        }
+
+        try
+        {
+            Directory.Delete(backupDirectory, recursive: true);
+
+            string? dateDirectory = Path.GetDirectoryName(backupDirectory);
+            if (!string.IsNullOrWhiteSpace(dateDirectory) &&
+                Directory.Exists(dateDirectory) &&
+                !Directory.EnumerateFileSystemEntries(dateDirectory).Any())
+            {
+                Directory.Delete(dateDirectory, recursive: false);
+            }
+
+            _logger.LogInformation("Backup deleted: {BackupId}", backupId);
+            return Task.FromResult(true);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to delete backup: {BackupId}", backupId);
+            return Task.FromResult(false);
+        }
+    }
+
     public Task CleanupOldBackupsAsync(TimeSpan maxAge, CancellationToken ct = default)
     {
         if (!Directory.Exists(_backupsRoot))
