@@ -40,7 +40,9 @@ jobs:
           RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
-          vpk pack -u OpenCleaner -v $env:APP_VERSION -p publish --mainExe OpenCleaner.UI.exe --runtime win-x64 --channel win-x64
+          $notesPath = "docs/releases/$env:APP_VERSION.md"
+          if (-not (Test-Path -LiteralPath $notesPath)) { throw "Release notes missing: $notesPath" }
+          vpk pack -u OpenCleaner -v $env:APP_VERSION -p publish --mainExe OpenCleaner.UI.exe --runtime win-x64 --channel win-x64 --releaseNotes $notesPath
           if ($LASTEXITCODE -ne 0) { throw "Packaging failed." }
           vpk upload github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --channel win-x64 --publish --releaseName "OpenCleaner $env:APP_VERSION" --tag $env:GITHUB_REF_NAME --token $env:RELEASE_TOKEN
           if ($LASTEXITCODE -ne 0) { throw "Release upload failed." }

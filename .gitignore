@@ -9,7 +9,7 @@ OpenCleaner_*_Portable/
 PublishOutput/
 .tools/
 artifacts/
-Releases/
+/Releases/
 publish/
 TestResults/
 *.log
