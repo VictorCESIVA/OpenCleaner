@@ -9,6 +9,57 @@ internal static class PathSafety
         "ntuser.dat.log2", "bootmgr", "bootnxt", "ntldr", "ntdetect.com"
     };
 
+    private static readonly HashSet<string> RootCriticalFolderNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Boot", "Recovery", "$Recycle.Bin", "System Volume Information"
+    };
+
+    private static readonly string WindowsDirectory = Environment.GetFolderPath(Environment.SpecialFolder.Windows)
+        .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
+    private static readonly string[] BaseCriticalDirectories = BuildBaseCriticalDirectories();
+
+    private static string[] BuildBaseCriticalDirectories()
+    {
+        var dirs = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+        {
+            @"C:\Windows\System32", @"C:\Windows\SysWOW64", @"C:\Program Files", @"C:\Program Files (x86)",
+            @"C:\ProgramData\Microsoft", @"C:\Boot", @"C:\Recovery", @"C:\$Recycle.Bin", @"C:\System Volume Information"
+        };
+
+        if (!string.IsNullOrEmpty(WindowsDirectory))
+        {
+            foreach (string sub in new[] { "System32", "SysWOW64", "WinSxS", "servicing" })
+                dirs.Add(Path.Combine(WindowsDirectory, sub));
+        }
+
+        foreach (var specialFolder in new[]
+                 {
+                     Environment.SpecialFolder.ProgramFiles,
+                     Environment.SpecialFolder.ProgramFilesX86,
+                     Environment.SpecialFolder.System,
+                     Environment.SpecialFolder.SystemX86
+                 })
+        {
+            string directory = Environment.GetFolderPath(specialFolder);
+            if (!string.IsNullOrEmpty(directory))
+                dirs.Add(directory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
+        }
+
+        string commonData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
+        if (!string.IsNullOrEmpty(commonData))
+            dirs.Add(Path.Combine(commonData, "Microsoft"));
+
+        foreach (var applicationData in new[] { Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolder.ApplicationData })
+        {
+            string directory = Environment.GetFolderPath(applicationData);
+            if (!string.IsNullOrEmpty(directory))
+                dirs.Add(Path.Combine(directory, "OpenCleaner"));
+        }
+
+        return [.. dirs];
+    }
+
     public static string Normalize(string path)
     {
         if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path))
@@ -22,10 +73,16 @@ internal static class PathSafety
         return Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
     }
 
-    public static bool IsWithin(string path, string directory) =>
-        string.Equals(path, directory, StringComparison.OrdinalIgnoreCase) ||
-        path.StartsWith(directory.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar) +
-            Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase);
+    public static bool IsWithin(string path, string directory)
+    {
+        ReadOnlySpan<char> dirSpan = directory.AsSpan().TrimEnd("\\/");
+        if (dirSpan.IsEmpty) return false;
+        ReadOnlySpan<char> pathSpan = path.AsSpan();
+        if (pathSpan.Equals(dirSpan, StringComparison.OrdinalIgnoreCase)) return true;
+        return pathSpan.Length > dirSpan.Length &&
+               pathSpan.StartsWith(dirSpan, StringComparison.OrdinalIgnoreCase) &&
+               (pathSpan[dirSpan.Length] == Path.DirectorySeparatorChar || pathSpan[dirSpan.Length] == Path.AltDirectorySeparatorChar);
+    }
 
     public static bool HasReparsePoint(string path)
     {
@@ -54,41 +111,34 @@ internal static class PathSafety
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
         { return true; }
 
-        string root = Path.GetPathRoot(Path.GetFullPath(path))!;
-        if (normalized.Length == 0 || string.Equals(normalized, root.TrimEnd('\\', '/'), StringComparison.OrdinalIgnoreCase))
+        string root = Path.GetPathRoot(normalized)!;
+        ReadOnlySpan<char> rootTrimmed = root.AsSpan().TrimEnd("\\/");
+        if (normalized.Length == 0 || normalized.AsSpan().Equals(rootTrimmed, StringComparison.OrdinalIgnoreCase))
             return true;
         if (CriticalFileNames.Contains(Path.GetFileName(normalized)) || HasReparsePoint(normalized))
             return true;
 
-        string windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-        var criticalDirectories = new List<string>
+        if (!string.IsNullOrEmpty(WindowsDirectory) &&
+            string.Equals(normalized, WindowsDirectory, StringComparison.OrdinalIgnoreCase))
+            return true;
+
+        if (normalized.Length > root.Length)
         {
-            @"C:\Windows\System32", @"C:\Windows\SysWOW64", @"C:\Program Files", @"C:\Program Files (x86)",
-            @"C:\ProgramData\Microsoft", @"C:\Boot", @"C:\Recovery", @"C:\$Recycle.Bin", @"C:\System Volume Information"
-        };
-        if (!string.IsNullOrEmpty(windows))
-        {
-            if (string.Equals(normalized, windows, StringComparison.OrdinalIgnoreCase)) return true;
-            criticalDirectories.AddRange(new[] { "System32", "SysWOW64", "WinSxS", "servicing" }
-                .Select(name => Path.Combine(windows, name)));
+            ReadOnlySpan<char> relative = normalized.AsSpan(root.Length);
+            int sepIndex = relative.IndexOfAny(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+            ReadOnlySpan<char> firstSegment = sepIndex >= 0 ? relative[..sepIndex] : relative;
+            foreach (string protectedRoot in RootCriticalFolderNames)
+            {
+                if (firstSegment.Equals(protectedRoot.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                    return true;
+            }
         }
-        foreach (var specialFolder in new[] { Environment.SpecialFolder.ProgramFiles,
-                     Environment.SpecialFolder.ProgramFilesX86, Environment.SpecialFolder.System,
-                     Environment.SpecialFolder.SystemX86 })
+
+        foreach (string directory in BaseCriticalDirectories)
         {
-            string directory = Environment.GetFolderPath(specialFolder);
-            if (!string.IsNullOrEmpty(directory)) criticalDirectories.Add(directory);
+            if (IsWithin(normalized, directory))
+                return true;
         }
-        string commonData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
-        if (!string.IsNullOrEmpty(commonData)) criticalDirectories.Add(Path.Combine(commonData, "Microsoft"));
-        foreach (var applicationData in new[] { Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolder.ApplicationData })
-        {
-            string directory = Environment.GetFolderPath(applicationData);
-            if (!string.IsNullOrEmpty(directory)) criticalDirectories.Add(Path.Combine(directory, "OpenCleaner"));
-        }
-        criticalDirectories.AddRange(new[] { "Boot", "Recovery", "$Recycle.Bin", "System Volume Information" }
-            .Select(name => Path.Combine(root, name)));
-        if (criticalDirectories.Any(directory => IsWithin(normalized, directory))) return true;
 
         try
         {

@@ -1,4 +1,6 @@
+using System.Buffers;
 using System.Globalization;
+using System.Security.Cryptography;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using OpenCleaner.Contracts;
@@ -7,6 +9,7 @@ namespace OpenCleaner.Core.Security;
 
 public sealed class BackupManager : IBackupManager, IDisposable
 {
+    private const int CopyBufferSize = 64 * 1024;
     private readonly ILogger<BackupManager> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly string _backupsRoot;
@@ -39,28 +42,47 @@ public sealed class BackupManager : IBackupManager, IDisposable
         string backupId = Guid.NewGuid().ToString("N");
         string backupDirectory = Path.Combine(_backupsRoot, DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), backupId);
         string dataDirectory = Path.Combine(backupDirectory, "data");
-        string backupFilePath = Path.Combine(dataDirectory, Path.GetFileName(originalPath));
+        string fileName = Path.GetFileName(originalPath);
+        string backupFilePath = Path.Combine(dataDirectory, fileName);
         Directory.CreateDirectory(dataDirectory);
         try
         {
             // A single stable source handle prevents writes/deletion during the copy. Hash the
-            // saved bytes, rather than re-reading a source that may have changed after copying.
-            await using (var source = new FileStream(originalPath, FileMode.Open, FileAccess.Read,
-                             FileShare.Read, 65536, FileOptions.Asynchronous | FileOptions.SequentialScan))
-            await using (var destination = new FileStream(backupFilePath, FileMode.CreateNew, FileAccess.Write,
-                             FileShare.None, 65536, FileOptions.Asynchronous))
+            // saved bytes in-stream while copying, avoiding a second read pass over the backup file.
+            long fileSize = 0;
+            string contentHash;
+            using (var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256))
             {
-                await source.CopyToAsync(destination, ct);
-                await destination.FlushAsync(ct);
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(CopyBufferSize);
+                try
+                {
+                    await using var source = new FileStream(originalPath, FileMode.Open, FileAccess.Read,
+                        FileShare.Read, CopyBufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    await using var destination = new FileStream(backupFilePath, FileMode.CreateNew, FileAccess.Write,
+                        FileShare.None, CopyBufferSize, FileOptions.Asynchronous);
+                    int read;
+                    while ((read = await source.ReadAsync(buffer.AsMemory(0, CopyBufferSize), ct)) > 0)
+                    {
+                        await destination.WriteAsync(buffer.AsMemory(0, read), ct);
+                        hasher.AppendData(buffer, 0, read);
+                        fileSize += read;
+                    }
+                    await destination.FlushAsync(ct);
+                }
+                finally
+                {
+                    ArrayPool<byte>.Shared.Return(buffer);
+                }
+                contentHash = Convert.ToHexString(hasher.GetHashAndReset());
             }
-            string contentHash = await HashHelper.ComputeHashAsync(backupFilePath, ct);
+
             var metadata = new BackupMetadata
             {
                 OriginalPath = originalPath,
                 OriginalHash = contentHash,
                 CreationDate = DateTime.UtcNow,
-                FileSize = new FileInfo(backupFilePath).Length,
-                FileName = Path.GetFileName(originalPath)
+                FileSize = fileSize,
+                FileName = fileName
             };
             await File.WriteAllTextAsync(Path.Combine(backupDirectory, "metadata.json"),
                 JsonSerializer.Serialize(metadata, JsonOptions), ct);
@@ -182,18 +204,22 @@ public sealed class BackupManager : IBackupManager, IDisposable
         await _gate.WaitAsync();
         try
         {
-            var backups = new List<BackupInfo>();
-            foreach (string directory in EnumerateBackupDirectories())
+            return await Task.Run(() =>
             {
-                try
+                var backups = new List<BackupInfo>();
+                foreach (string directory in EnumerateBackupDirectories())
                 {
-                    BackupMetadata metadata = ReadMetadata(directory);
-                    backups.Add(ToInfo(Path.GetFileName(directory), metadata, GetBackupFile(directory, metadata)));
+                    try
+                    {
+                        BackupMetadata metadata = ReadMetadata(directory);
+                        backups.Add(ToInfo(Path.GetFileName(directory), metadata, GetBackupFile(directory, metadata)));
+                    }
+                    catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException)
+                    { _logger.LogWarning(ex, "Could not read backup {Directory}", directory); }
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or ArgumentException)
-                { _logger.LogWarning(ex, "Could not read backup {Directory}", directory); }
-            }
-            return backups.OrderByDescending(b => b.CreatedAt).ToArray();
+                backups.Sort((a, b) => b.CreatedAt.CompareTo(a.CreatedAt));
+                return (IReadOnlyList<BackupInfo>)backups;
+            });
         }
         finally { _gate.Release(); }
     }

@@ -221,6 +221,19 @@ public sealed class PluginSafetyTests : IDisposable
         Assert.Empty(await plugin.AnalyzeAsync());
     }
 
+    [Fact]
+    public async Task DuplicateFinderSkipsFullHashWhenPartialHashesDiffer()
+    {
+        Write("diff1.bin", new string('x', 1024 * 1024));
+        Write("diff2.bin", new string('y', 1024 * 1024));
+        var hashedFiles = new List<string>();
+        var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
+        scanner.OnFileHashing += path => hashedFiles.Add(path);
+        var items = await scanner.AnalyzeAsync();
+        Assert.Empty(items);
+        Assert.Empty(hashedFiles);
+    }
+
     public void Dispose()
     {
         foreach (var junction in _junctions.Where(Directory.Exists)) Directory.Delete(junction, recursive: false);

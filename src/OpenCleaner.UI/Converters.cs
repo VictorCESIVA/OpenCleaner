@@ -77,15 +77,15 @@ public class RiskLabelConverter : IValueConverter
 public class BytesConverter : IValueConverter
 {
     public static readonly BytesConverter Instance = new();
+    private static readonly string[] Units = ["o", "Ko", "Mo", "Go", "To"];
 
     public object Convert(object value, Type t, object p, CultureInfo c)
     {
         if (value is not long bytes) return "—";
-        string[] s = ["o", "Ko", "Mo", "Go", "To"];
         int i = 0;
         double d = bytes;
-        while (d >= 1024 && i < s.Length - 1) { d /= 1024; i++; }
-        return $"{d:0.#} {s[i]}";
+        while (d >= 1024 && i < Units.Length - 1) { d /= 1024; i++; }
+        return $"{d:0.#} {Units[i]}";
     }
 
     public object ConvertBack(object v, Type t, object p, CultureInfo c) => throw new NotSupportedException();

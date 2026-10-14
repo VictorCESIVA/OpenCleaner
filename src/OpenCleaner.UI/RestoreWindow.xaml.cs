@@ -19,7 +19,7 @@ public partial class RestoreWindow : Window
         try
         {
             var backups = await App.Services.GetRequiredService<IBackupManager>().GetAllBackupsAsync();
-            BackupsListView.ItemsSource = backups.OrderByDescending(b => b.CreatedAt).ToList();
+            BackupsListView.ItemsSource = backups;
         }
         catch (Exception ex)
         {

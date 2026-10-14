@@ -42,6 +42,8 @@
                           ItemContainerStyle="{StaticResource RestoreItemStyle}"
                           SelectionChanged="BackupsListView_SelectionChanged"
                           SelectionMode="Extended"
+                          VirtualizingPanel.IsVirtualizing="True"
+                          VirtualizingPanel.VirtualizationMode="Recycling"
                           ScrollViewer.HorizontalScrollBarVisibility="Auto">
                     <ListView.View>
                         <GridView>

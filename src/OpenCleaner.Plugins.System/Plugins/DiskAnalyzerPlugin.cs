@@ -31,34 +31,47 @@ public sealed class DiskAnalyzerPlugin : ICleanerPlugin
             ct.ThrowIfCancellationRequested();
             var results = new List<CleanableItem>();
             if (!PluginFileSafety.IsRegularPath(root)) { progress?.Report(1); return results; }
-            foreach (var file in PluginFileSafety.EnumerateFiles(root, "*", recursive: false, ct))
+            foreach (var info in PluginFileSafety.EnumerateFileInfos(root, "*", recursive: false, ct))
             {
                 ct.ThrowIfCancellationRequested();
                 try
                 {
-                    var info = new FileInfo(file);
                     if (info.Exists && info.Length > 0)
-                        results.Add(MakeItem(file, info.Length, ItemType.File, info.LastWriteTime));
+                        results.Add(MakeItem(info.FullName, info.Length, ItemType.File, info.LastWriteTime));
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
             }
 
             var directories = PluginFileSafety.GetEntries(root, "*", directories: true);
-            for (int index = 0; index < directories.Length; index++)
+            if (directories.Length > 0)
             {
-                ct.ThrowIfCancellationRequested();
-                var directory = directories[index];
-                if (PluginFileSafety.IsRegularPath(directory) && !_fileGuardian.IsSystemCriticalPath(directory))
+                int completed = 0;
+                var sync = new object();
+                var parallelOptions = new ParallelOptions
                 {
-                    long size = 0;
-                    foreach (var file in PluginFileSafety.EnumerateFiles(directory, "*", recursive: true, ct))
+                    CancellationToken = ct,
+                    MaxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount, 1, 8)
+                };
+                Parallel.ForEach(directories, parallelOptions, directory =>
+                {
+                    parallelOptions.CancellationToken.ThrowIfCancellationRequested();
+                    if (PluginFileSafety.IsRegularPath(directory) && !_fileGuardian.IsSystemCriticalPath(directory))
                     {
-                        try { size += new FileInfo(file).Length; }
-                        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+                        long size = 0;
+                        foreach (var info in PluginFileSafety.EnumerateFileInfos(directory, "*", recursive: true, parallelOptions.CancellationToken))
+                        {
+                            try { size += info.Length; }
+                            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+                        }
+                        if (size > 0)
+                        {
+                            var item = MakeItem(directory, size, ItemType.Directory, Directory.GetLastWriteTime(directory));
+                            lock (sync) results.Add(item);
+                        }
                     }
-                    if (size > 0) results.Add(MakeItem(directory, size, ItemType.Directory, Directory.GetLastWriteTime(directory)));
-                }
-                progress?.Report((index + 1d) / directories.Length);
+                    int done = Interlocked.Increment(ref completed);
+                    progress?.Report((double)done / directories.Length);
+                });
             }
             results.Sort((a, b) => b.Size.CompareTo(a.Size));
             progress?.Report(1);

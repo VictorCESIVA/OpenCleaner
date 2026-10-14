@@ -284,6 +284,7 @@ public partial class DuplicateWindow : Window
             bmp.CacheOption    = BitmapCacheOption.OnLoad;
             bmp.DecodePixelWidth = 196;
             bmp.EndInit();
+            bmp.Freeze();
             PreviewImage.Source = bmp;
             PreviewPlaceholder.Visibility = Visibility.Collapsed;
         }

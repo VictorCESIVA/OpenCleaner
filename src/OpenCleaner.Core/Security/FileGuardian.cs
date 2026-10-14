@@ -60,11 +60,14 @@ public sealed class FileGuardian : IFileGuardian
                     return Failure("Backup failed, aborting delete");
                 }
                 backupPath = backup.BackupPath;
+                var backupInfo = new FileInfo(backup.BackupPath);
                 if (backup.Size != originalFile.Size ||
                     !string.Equals(backup.ContentHash, originalFile.ContentHash, StringComparison.OrdinalIgnoreCase) ||
-                    !File.Exists(backup.BackupPath) ||
-                    !string.Equals(await HashHelper.ComputeHashAsync(backup.BackupPath, ct), originalFile.ContentHash,
-                        StringComparison.OrdinalIgnoreCase))
+                    !backupInfo.Exists ||
+                    backupInfo.Length != originalFile.Size ||
+                    (_backupManager is not BackupManager &&
+                     !string.Equals(await HashHelper.ComputeHashAsync(backup.BackupPath, ct), originalFile.ContentHash,
+                         StringComparison.OrdinalIgnoreCase)))
                     return Failure("Backup verification failed, aborting delete");
             }
 

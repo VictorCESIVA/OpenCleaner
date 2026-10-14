@@ -186,7 +186,21 @@ public sealed class RegistryGuardian : IRegistryGuardian
     private static string FormatString(string value) => value.Any(char.IsControl)
         ? "hex(1):" + Hex(Encoding.Unicode.GetBytes(value + "\0")) : $"\"{Escape(value)}\"";
     private static string Escape(string value) => value.Replace("\\", "\\\\").Replace("\"", "\\\"");
-    private static string Hex(byte[] bytes) => string.Join(',', bytes.Select(b => b.ToString("x2", CultureInfo.InvariantCulture)));
+    private static string Hex(byte[] bytes)
+    {
+        if (bytes.Length == 0) return string.Empty;
+        return string.Create(bytes.Length * 3 - 1, bytes, static (span, data) =>
+        {
+            const string hex = "0123456789abcdef";
+            for (int i = 0; i < data.Length; i++)
+            {
+                if (i > 0) span[i * 3 - 1] = ',';
+                byte b = data[i];
+                span[i * 3] = hex[b >> 4];
+                span[i * 3 + 1] = hex[b & 0xF];
+            }
+        });
+    }
     private static byte[] QwordBytes(long value)
     {
         var bytes = new byte[8];

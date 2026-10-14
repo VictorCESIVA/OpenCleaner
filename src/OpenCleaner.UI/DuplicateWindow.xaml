@@ -73,6 +73,8 @@
                         <TreeView x:Name="DupTree"
                                   Background="Transparent"
                                   BorderThickness="0"
+                                  VirtualizingPanel.IsVirtualizing="True"
+                                  VirtualizingPanel.VirtualizationMode="Recycling"
                                   SelectedItemChanged="DupTree_SelectedItemChanged"/>
                         <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24" IsHitTestVisible="False">
                             <StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=DupTree}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style>

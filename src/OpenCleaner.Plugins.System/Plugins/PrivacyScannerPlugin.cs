@@ -1,7 +1,8 @@
+using System.Buffers;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Logging;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
-using System.Text.RegularExpressions;
 
 namespace OpenCleaner.Plugins.System.Plugins;
 
@@ -45,32 +46,59 @@ public sealed class PrivacyScannerPlugin : ICleanerPlugin
     {
         _selection.Reset();
         var items = new List<CleanableItem>();
+        var published = new List<(CleanableItem Item, DateTime LastWriteUtc)>();
         var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         for (int index = 0; index < _roots.Length; index++)
         {
-            foreach (var file in PluginFileSafety.EnumerateFiles(_roots[index], "*", recursive: true, ct, maxDepth: 3))
+            foreach (var info in PluginFileSafety.EnumerateFileInfos(_roots[index], "*", recursive: true, ct, maxDepth: 3))
             {
                 ct.ThrowIfCancellationRequested();
-                if (!visited.Add(file) || _fileGuardian.IsSystemCriticalPath(file)) continue;
+                string file = info.FullName;
+                if (!visited.Add(file) || !info.Exists) continue;
                 try
                 {
-                    var info = new FileInfo(file);
-                    if (!info.Exists) continue;
-                    var name = info.Name.ToLowerInvariant();
-                    var suspect = SuspectNames.FirstOrDefault(p => name.Contains(p, StringComparison.Ordinal));
-                    string? description = suspect != null ? $"Nom à vérifier — « {suspect} »" : null;
-                    if (description == null && (TextExtensions.Contains(info.Extension) || name.StartsWith(".env", StringComparison.Ordinal)) &&
-                        info.Length is > 0 and < 512_000)
+                    var name = info.Name;
+                    string? suspect = null;
+                    for (int s = 0; s < SuspectNames.Length; s++)
                     {
-                        using var reader = new StreamReader(file);
-                        var buffer = new char[(int)Math.Min(info.Length, 102_400)];
-                        var count = await reader.ReadAsync(buffer.AsMemory(), ct);
-                        if (SensitiveContent.IsMatch(new string(buffer, 0, count)))
-                            description = "Motif d'identifiant sensible détecté — vérifier avant toute suppression";
+                        if (name.Contains(SuspectNames[s], StringComparison.OrdinalIgnoreCase))
+                        {
+                            suspect = SuspectNames[s];
+                            break;
+                        }
+                    }
+
+                    bool canInspectContent = suspect == null &&
+                        info.Length is > 0 and < 512_000 &&
+                        (TextExtensions.Contains(info.Extension) || name.StartsWith(".env", StringComparison.OrdinalIgnoreCase));
+
+                    if (suspect == null && !canInspectContent) continue;
+                    if (_fileGuardian.IsSystemCriticalPath(file)) continue;
+
+                    string? description = suspect != null ? $"Nom à vérifier — « {suspect} »" : null;
+                    if (description == null && canInspectContent)
+                    {
+                        int maxChars = (int)Math.Min(info.Length, 102_400);
+                        char[] buffer = ArrayPool<char>.Shared.Rent(maxChars);
+                        try
+                        {
+                            using var reader = new StreamReader(file);
+                            var count = await reader.ReadAsync(buffer.AsMemory(0, maxChars), ct);
+                            if (SensitiveContent.IsMatch(buffer.AsSpan(0, count)))
+                                description = "Motif d'identifiant sensible détecté — vérifier avant toute suppression";
+                        }
+                        finally
+                        {
+                            ArrayPool<char>.Shared.Return(buffer);
+                        }
                     }
                     if (description != null)
-                        items.Add(new CleanableItem(Guid.NewGuid().ToString(), file, info.Length, description,
-                            RiskLevel.ExpertOnly, ItemType.File, info.LastAccessTime, Id));
+                    {
+                        var item = new CleanableItem(Guid.NewGuid().ToString(), file, info.Length, description,
+                            RiskLevel.ExpertOnly, ItemType.File, info.LastAccessTime, Id);
+                        items.Add(item);
+                        published.Add((item, info.LastWriteTimeUtc));
+                    }
                 }
                 catch (OperationCanceledException) { throw; }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or RegexMatchTimeoutException)
@@ -81,7 +109,7 @@ public sealed class PrivacyScannerPlugin : ICleanerPlugin
             progress?.Report((index + 1d) / _roots.Length);
         }
         ct.ThrowIfCancellationRequested();
-        _selection.Publish(items);
+        _selection.PublishKnown(published);
         progress?.Report(1);
         return items;
     }

@@ -7,16 +7,25 @@ namespace OpenCleaner.Plugins.System;
 /// <summary>Shared scan boundaries. Inaccessible entries and NTFS junctions are never followed.</summary>
 internal static class PluginFileSafety
 {
+    private static readonly EnumerationOptions NonRecursiveSafeOptions = new()
+    {
+        RecurseSubdirectories = false,
+        AttributesToSkip = FileAttributes.ReparsePoint,
+        IgnoreInaccessible = true,
+        ReturnSpecialDirectories = false
+    };
+
     internal static bool IsRegularPath(string path)
     {
         try
         {
             if (!Path.IsPathFullyQualified(path)) return false;
             var fullPath = Path.GetFullPath(path);
+            var root = Path.GetPathRoot(fullPath);
             for (string? current = fullPath; current != null; current = Path.GetDirectoryName(current))
             {
                 if ((File.GetAttributes(current) & FileAttributes.ReparsePoint) != 0) return false;
-                if (string.Equals(current, Path.GetPathRoot(current), StringComparison.OrdinalIgnoreCase)) break;
+                if (string.Equals(current, root, StringComparison.OrdinalIgnoreCase)) break;
             }
             return true;
         }
@@ -29,24 +38,53 @@ internal static class PluginFileSafety
     internal static IEnumerable<string> EnumerateFiles(string root, string pattern, bool recursive,
         CancellationToken ct, int maxDepth = int.MaxValue)
     {
+        foreach (var info in EnumerateFileInfos(root, pattern, recursive, ct, maxDepth))
+            yield return info.FullName;
+    }
+
+    internal static IEnumerable<FileInfo> EnumerateFileInfos(string root, string pattern, bool recursive,
+        CancellationToken ct, int maxDepth = int.MaxValue)
+    {
         ct.ThrowIfCancellationRequested();
         if (!Directory.Exists(root) || !IsRegularPath(root)) yield break;
-        var pending = new Stack<(string Path, int Depth)>();
-        pending.Push((root, 0));
+        var pending = new Stack<(DirectoryInfo Dir, int Depth)>();
+        pending.Push((new DirectoryInfo(Path.GetFullPath(root)), 0));
         while (pending.TryPop(out var entry))
         {
             ct.ThrowIfCancellationRequested();
-            if (!IsRegularPath(entry.Path)) continue;
-            foreach (var file in GetEntries(entry.Path, pattern, directories: false))
+            IEnumerable<FileInfo> files;
+            try
             {
-                ct.ThrowIfCancellationRequested();
-                if (IsRegularPath(file)) yield return file;
+                if ((entry.Dir.Attributes & FileAttributes.ReparsePoint) != 0) continue;
+                files = entry.Dir.EnumerateFiles(pattern, NonRecursiveSafeOptions);
             }
-            if (!recursive || entry.Depth >= maxDepth) continue;
-            foreach (var directory in GetEntries(entry.Path, "*", directories: true))
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                continue;
+            }
+
+            foreach (var file in files)
             {
                 ct.ThrowIfCancellationRequested();
-                if (IsRegularPath(directory)) pending.Push((directory, entry.Depth + 1));
+                yield return file;
+            }
+
+            if (!recursive || entry.Depth >= maxDepth) continue;
+
+            IEnumerable<DirectoryInfo> directories;
+            try
+            {
+                directories = entry.Dir.EnumerateDirectories("*", NonRecursiveSafeOptions);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+            {
+                continue;
+            }
+
+            foreach (var directory in directories)
+            {
+                ct.ThrowIfCancellationRequested();
+                pending.Push((directory, entry.Depth + 1));
             }
         }
     }
@@ -55,8 +93,10 @@ internal static class PluginFileSafety
     {
         try
         {
-            if (!IsRegularPath(root)) return [];
-            return directories ? Directory.GetDirectories(root, pattern) : Directory.GetFiles(root, pattern);
+            if (!Directory.Exists(root) || !IsRegularPath(root)) return [];
+            return directories
+                ? Directory.EnumerateDirectories(root, pattern, NonRecursiveSafeOptions).ToArray()
+                : Directory.EnumerateFiles(root, pattern, NonRecursiveSafeOptions).ToArray();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
@@ -89,6 +129,18 @@ internal sealed class ScannedFileSelection
                     entries[item.Id] = new Entry(item, info.LastWriteTimeUtc);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException) { }
+        }
+        lock (_sync) _entries = entries;
+    }
+
+    internal void PublishKnown(IReadOnlyList<(CleanableItem Item, DateTime LastWriteUtc)> knownEntries)
+    {
+        var entries = new Dictionary<string, Entry>(knownEntries.Count, StringComparer.Ordinal);
+        for (int i = 0; i < knownEntries.Count; i++)
+        {
+            var (item, lastWriteUtc) = knownEntries[i];
+            if (item.Type == ItemType.File)
+                entries[item.Id] = new Entry(item, lastWriteUtc);
         }
         lock (_sync) _entries = entries;
     }
@@ -182,32 +234,37 @@ public abstract class SafeFileCleanerPlugin : ICleanerPlugin
             ct.ThrowIfCancellationRequested();
             var targets = GetTargets().ToList();
             var items = new List<CleanableItem>();
+            var published = new List<(CleanableItem Item, DateTime LastWriteUtc)>();
             var visited = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            var nowUtc = DateTime.UtcNow;
             for (int index = 0; index < targets.Count; index++)
             {
                 var target = targets[index];
-                foreach (var file in PluginFileSafety.EnumerateFiles(target.Path, target.Pattern, target.Recursive, ct))
+                foreach (var info in PluginFileSafety.EnumerateFileInfos(target.Path, target.Pattern, target.Recursive, ct))
                 {
                     ct.ThrowIfCancellationRequested();
                     try
                     {
-                        if (!visited.Add(file) || FileGuardian.IsSystemCriticalPath(file) || FileGuardian.IsFileLocked(file)) continue;
-                        var info = new FileInfo(file);
+                        string file = info.FullName;
+                        if (!visited.Add(file) || !info.Exists) continue;
                         // Last-access updates can be disabled on NTFS; require both write/access to be old.
                         var lastUse = info.LastWriteTimeUtc > info.LastAccessTimeUtc ? info.LastWriteTimeUtc : info.LastAccessTimeUtc;
-                        if (!info.Exists || (target.MinAge != null && DateTime.UtcNow - lastUse < target.MinAge)) continue;
-                        items.Add(new CleanableItem(Guid.NewGuid().ToString(), file, info.Length,
-                            $"{target.Description} — {info.Name}", target.Risk, ItemType.File, info.LastAccessTime, Id));
+                        if (target.MinAge != null && nowUtc - lastUse < target.MinAge) continue;
+                        if (FileGuardian.IsSystemCriticalPath(file) || FileGuardian.IsFileLocked(file)) continue;
+                        var item = new CleanableItem(Guid.NewGuid().ToString(), file, info.Length,
+                            $"{target.Description} — {info.Name}", target.Risk, ItemType.File, info.LastAccessTime, Id);
+                        items.Add(item);
+                        published.Add((item, info.LastWriteTimeUtc));
                     }
                     catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                     {
-                        Logger.LogDebug(ex, "Fichier inaccessible : {Path}", file);
+                        Logger.LogDebug(ex, "Fichier inaccessible : {Path}", info.FullName);
                     }
                 }
                 progress?.Report((index + 1d) / targets.Count);
             }
             ct.ThrowIfCancellationRequested();
-            _selection.Publish(items);
+            _selection.PublishKnown(published);
             progress?.Report(1);
             return items;
         }, ct);

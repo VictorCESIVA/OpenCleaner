@@ -109,7 +109,9 @@ public sealed class RegistryCleanerPlugin : ICleanerPlugin
     {
         using var stream = new MemoryStream();
         using (var writer = new BinaryWriter(stream, Encoding.UTF8, leaveOpen: true)) Write(key, writer, ct, 0);
-        return Convert.ToHexString(SHA256.HashData(stream.ToArray()));
+        return stream.TryGetBuffer(out ArraySegment<byte> buffer)
+            ? Convert.ToHexString(SHA256.HashData(buffer.AsSpan()))
+            : Convert.ToHexString(SHA256.HashData(stream.ToArray()));
     }
 
     private static void Write(RegistryKey key, BinaryWriter writer, CancellationToken ct, int depth)

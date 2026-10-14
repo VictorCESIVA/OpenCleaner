@@ -216,6 +216,28 @@ public sealed class SecurityRegressionTests : IDisposable
         Assert.Equal("\"Value\"=hex(7):ea,96,00,00,00,00", Format(new[] { "雪" }, RegistryValueKind.MultiString));
     }
 
+    [Fact]
+    public async Task PartialHashDistinguishesLargeFilesWithDifferentEdges()
+    {
+        string fileA = Path.Combine(_root, "largeA.bin");
+        string fileB = Path.Combine(_root, "largeB.bin");
+        string fileC = Path.Combine(_root, "largeC.bin");
+        var bytesA = new byte[32 * 1024];
+        Array.Fill(bytesA, (byte)'A');
+        var bytesB = (byte[])bytesA.Clone();
+        var bytesC = (byte[])bytesA.Clone();
+        bytesC[^1] = (byte)'Z';
+        await File.WriteAllBytesAsync(fileA, bytesA);
+        await File.WriteAllBytesAsync(fileB, bytesB);
+        await File.WriteAllBytesAsync(fileC, bytesC);
+
+        string hashA = await OpenCleaner.Core.HashHelper.ComputePartialHashAsync(fileA);
+        string hashB = await OpenCleaner.Core.HashHelper.ComputePartialHashAsync(fileB);
+        string hashC = await OpenCleaner.Core.HashHelper.ComputePartialHashAsync(fileC);
+        Assert.Equal(hashA, hashB);
+        Assert.NotEqual(hashA, hashC);
+    }
+
     private static void CreateJunction(string link, string target)
     {
         using var process = Process.Start(new ProcessStartInfo("cmd.exe")

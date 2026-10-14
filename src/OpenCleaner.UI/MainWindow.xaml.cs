@@ -279,8 +279,16 @@ public partial class MainWindow : Window
                 }
                 else
                 {
-                    foreach (var item in items.Where(i => !File.Exists(i.Path) && !Directory.Exists(i.Path)))
-                        _foundItems.Remove(item);
+                    var removedIds = await Task.Run(() => items
+                        .Where(i => !File.Exists(i.Path) && !Directory.Exists(i.Path))
+                        .Select(i => i.Id)
+                        .ToHashSet(StringComparer.Ordinal), operation.Token);
+                    if (removedIds.Count > 0)
+                    {
+                        var remaining = _foundItems.Where(i => !removedIds.Contains(i.Id)).ToList();
+                        _foundItems.Clear();
+                        foreach (var item in remaining) _foundItems.Add(item);
+                    }
                 }
                 UpdateStats(_foundItems);
                 EmptyState.Visibility = _foundItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;

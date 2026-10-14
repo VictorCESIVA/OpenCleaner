@@ -50,22 +50,49 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
         _evidence = new(StringComparer.Ordinal);
         var candidates = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
         foreach (var root in _roots)
-            foreach (var file in PluginFileSafety.EnumerateFiles(root, "*", recursive: true, ct))
+            foreach (var info in PluginFileSafety.EnumerateFileInfos(root, "*", recursive: true, ct))
             {
                 ct.ThrowIfCancellationRequested();
                 try
                 {
-                    var info = new FileInfo(file);
-                    if (info.Exists && info.Length >= MinSizeBytes && !_fileGuardian.IsSystemCriticalPath(file))
-                        candidates.TryAdd(file, info);
+                    if (info.Exists && info.Length >= MinSizeBytes && !_fileGuardian.IsSystemCriticalPath(info.FullName))
+                        candidates.TryAdd(info.FullName, info);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
             }
 
-        var suspects = candidates.Values.GroupBy(f => f.Length).Where(g => g.Count() > 1).SelectMany(g => g).ToList();
+        var sizeGroups = candidates.Values.GroupBy(f => f.Length).Where(g => g.Count() > 1).ToList();
+        var partialSuspects = new List<FileInfo>();
+        foreach (var sizeGroup in sizeGroups)
+        {
+            var byPartialHash = new Dictionary<string, List<FileInfo>>(StringComparer.Ordinal);
+            foreach (var info in sizeGroup)
+            {
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    var partialHash = await HashHelper.ComputePartialHashAsync(info.FullName, ct);
+                    if (!byPartialHash.TryGetValue(partialHash, out var bucket))
+                        byPartialHash[partialHash] = bucket = [];
+                    bucket.Add(info);
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    _logger.LogDebug(ex, "Pré-comparaison impossible : {Path}", info.FullName);
+                }
+            }
+
+            foreach (var bucket in byPartialHash.Values)
+            {
+                if (bucket.Count > 1)
+                    partialSuspects.AddRange(bucket);
+            }
+        }
+
         var hashes = new Dictionary<string, List<FileInfo>>(StringComparer.Ordinal);
         int done = 0;
-        foreach (var info in suspects)
+        foreach (var info in partialSuspects)
         {
             ct.ThrowIfCancellationRequested();
             try
@@ -84,10 +111,11 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
             {
                 _logger.LogDebug(ex, "Comparaison impossible : {Path}", info.FullName);
             }
-            finally { progress?.Report(++done / (double)suspects.Count); }
+            finally { progress?.Report(++done / (double)partialSuspects.Count); }
         }
 
         var items = new List<CleanableItem>();
+        var published = new List<(CleanableItem Item, DateTime LastWriteUtc)>();
         foreach (var group in hashes.Where(g => g.Value.Count > 1))
         {
             ct.ThrowIfCancellationRequested();
@@ -103,11 +131,12 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
                     $"Identique à « {Path.GetFileName(original)} » — copie conservée : {original}",
                     RiskLevel.ExpertOnly, ItemType.File, copy.LastAccessTime, Id, groupId, original);
                 items.Add(item);
+                published.Add((item, copy.LastWriteTimeUtc));
                 _evidence[item.Id] = new DuplicateEvidence(original, group.Key);
             }
         }
         ct.ThrowIfCancellationRequested();
-        _selection.Publish(items);
+        _selection.PublishKnown(published);
         progress?.Report(1);
         return items;
     }
@@ -115,28 +144,29 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
     public async Task<OperationResult> CleanAsync(IEnumerable<CleanableItem> items, IBackupManager backupManager,
         IProgress<double>? progress = null, CancellationToken ct = default)
     {
-        var keepers = new Dictionary<string, FileStream>(StringComparer.OrdinalIgnoreCase);
+        var keepers = new Dictionary<string, (FileStream Stream, string Hash)>(StringComparer.OrdinalIgnoreCase);
         try
         {
             return await _selection.CleanAsync(items, _fileGuardian, _logger, progress, ct, async (item, token) =>
             {
                 if (!_evidence.TryGetValue(item.Id, out var evidence) ||
                     !PluginFileSafety.IsRegularPath(evidence.OriginalPath)) return false;
-                if (!keepers.TryGetValue(evidence.OriginalPath, out var original))
+                if (!keepers.TryGetValue(evidence.OriginalPath, out var keeper))
                 {
-                    // Keep the surviving copy open without write/delete sharing throughout the cleanup.
-                    original = new FileStream(evidence.OriginalPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                    // Keep the surviving copy open without write/delete sharing throughout the cleanup,
+                    // and compute its SHA-256 once while locked.
+                    var stream = new FileStream(evidence.OriginalPath, FileMode.Open, FileAccess.Read, FileShare.Read,
                         81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
-                    keepers[evidence.OriginalPath] = original;
+                    var hash = Convert.ToHexString(await SHA256.HashDataAsync(stream, token));
+                    keeper = (stream, hash);
+                    keepers[evidence.OriginalPath] = keeper;
                 }
-                original.Position = 0;
-                var originalHash = Convert.ToHexString(await SHA256.HashDataAsync(original, token));
                 var copyHash = await HashHelper.ComputeHashAsync(item.Path, token);
-                return originalHash.Equals(evidence.Hash, StringComparison.OrdinalIgnoreCase) &&
+                return keeper.Hash.Equals(evidence.Hash, StringComparison.OrdinalIgnoreCase) &&
                     copyHash.Equals(evidence.Hash, StringComparison.OrdinalIgnoreCase);
             });
         }
-        finally { foreach (var stream in keepers.Values) await stream.DisposeAsync(); }
+        finally { foreach (var keeper in keepers.Values) await keeper.Stream.DisposeAsync(); }
     }
 
     public Task<long> EstimateSizeAsync(CancellationToken ct = default)
