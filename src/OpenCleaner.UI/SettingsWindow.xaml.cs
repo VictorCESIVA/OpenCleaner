@@ -38,7 +38,7 @@ public partial class SettingsWindow : Window
         // Plugins
         var plugBoxes = new[] { PlugSystem, PlugWinUpd, PlugBrowser, PlugThumb, PlugOffice, PlugSteam };
         foreach (var cb in plugBoxes)
-            cb.IsChecked = config.PluginIds.Contains((string)cb.Tag);
+            cb.IsChecked = cb != PlugWinUpd && config.PluginIds.Contains((string)cb.Tag);
     }
 
     // ─── SAVE ────────────────────────────────────────────────────────────
@@ -71,7 +71,7 @@ public partial class SettingsWindow : Window
         // Plugins cochés
         var plugBoxes = new[] { PlugSystem, PlugWinUpd, PlugBrowser, PlugThumb, PlugOffice, PlugSteam };
         var pluginIds = plugBoxes
-            .Where(cb => cb.IsChecked == true)
+            .Where(cb => cb != PlugWinUpd && cb.IsChecked == true)
             .Select(cb => (string)cb.Tag)
             .ToArray();
 
@@ -92,8 +92,8 @@ public partial class SettingsWindow : Window
 
         try
         {
-            SchedulerService.SaveConfig(config);
             _scheduler.CreateOrUpdateScheduledTask(config);
+            SchedulerService.SaveConfig(config);
 
             SaveStatus.Text = config.IsEnabled
                 ? $"✅ Tâche planifiée à {config.TimeOfDay:hh\\:mm} ({string.Join(", ", config.Days)})"
@@ -102,8 +102,7 @@ public partial class SettingsWindow : Window
         catch (Exception ex)
         {
             MessageBox.Show(
-                "Impossible de créer la tâche Windows :\n" + ex.Message +
-                "\n\nLancez OpenCleaner en tant qu'administrateur pour les permissions.",
+                "Impossible de mettre à jour la tâche Windows :\n" + ex.Message,
                 "Erreur planificateur", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
@@ -136,7 +135,8 @@ public partial class SettingsWindow : Window
         TimeBox.IsEnabled = on;
         DayMon.IsEnabled = DayTue.IsEnabled = DayWed.IsEnabled =
         DayThu.IsEnabled = DayFri.IsEnabled = DaySat.IsEnabled = DaySun.IsEnabled = on;
-        PlugSystem.IsEnabled = PlugWinUpd.IsEnabled = PlugBrowser.IsEnabled =
+        PlugWinUpd.IsEnabled = false;
+        PlugSystem.IsEnabled = PlugBrowser.IsEnabled =
         PlugThumb.IsEnabled  = PlugOffice.IsEnabled = PlugSteam.IsEnabled   = on;
     }
 }

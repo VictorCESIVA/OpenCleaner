@@ -17,7 +17,7 @@ public sealed class DuplicateGroup
     public string Hash      { get; }
     public long   Size      { get; }
     public int    Count     => Files.Count;
-    public string Label     => $"📁 {Count} fichiers identiques — {SizeFormatter.Format(Size)}";
+    public string Label     => $"{Count} copie(s) • {SizeFormatter.Format(Size)} par fichier • original conservé : {Files.FirstOrDefault()?.Item.OriginalPath}";
     public ObservableCollection<DuplicateFile> Files { get; } = [];
 
     public DuplicateGroup(string hash, long size) { Hash = hash; Size = size; }
@@ -43,6 +43,9 @@ public partial class DuplicateWindow : Window
 {
     private readonly ObservableCollection<DuplicateGroup> _groups = [];
     private List<CleanableItem> _allItems = [];
+    private DuplicateFinderPlugin? _plugin;
+    private IProgress<string>? _hashingProgress;
+    private readonly System.Diagnostics.Stopwatch _hashThrottle = new();
 
     private static readonly HashSet<string> ImageExts =
         new(["jpg", "jpeg", "png", "bmp", "gif", "webp"], StringComparer.OrdinalIgnoreCase);
@@ -56,6 +59,8 @@ public partial class DuplicateWindow : Window
 
     private async void Scan_Click(object sender, RoutedEventArgs e)
     {
+        if (!UiOperation.TryBegin(this, out var operation)) return;
+        using var scope = operation;
         ScanBtn.IsEnabled       = false;
         DeleteBtn.IsEnabled     = false;
         AutoSelectBtn.IsEnabled = false;
@@ -73,16 +78,18 @@ public partial class DuplicateWindow : Window
         {
             var fileGuardian = App.Services.GetRequiredService<IFileGuardian>();
             var logger       = App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<DuplicateFinderPlugin>>();
-            var plugin       = new DuplicateFinderPlugin(fileGuardian, logger);
+            var plugin       = _plugin = new DuplicateFinderPlugin(fileGuardian, logger);
 
-            var progress = new Progress<double>(p =>
+            var progress = operation.CreateProgress<double>(p =>
                 ScanProgress.Text = $"{p:P0}");
 
+            _hashingProgress = operation.CreateProgress<string>(path => CurrentFileText.Text = path);
+            _hashThrottle.Restart();
             plugin.OnFileHashing += Plugin_OnFileHashing;
 
             StatusText.Text = "Analyse des empreintes...";
-            
-            _allItems = (await plugin.AnalyzeAsync(progress)).ToList();
+
+            _allItems = (await Task.Run(() => plugin.AnalyzeAsync(progress, operation.Token), operation.Token)).ToList();
 
             plugin.OnFileHashing -= Plugin_OnFileHashing;
 
@@ -106,27 +113,32 @@ public partial class DuplicateWindow : Window
 
             AutoSelectBtn.IsEnabled = files > 0;
         }
+        catch (OperationCanceledException) { StatusText.Text = "Opération annulée — relancez lʼanalyse."; _plugin = null; }
         catch (Exception ex)
         {
             StatusText.Text = "❌ " + ex.Message;
         }
         finally
         {
+            if (_plugin != null) _plugin.OnFileHashing -= Plugin_OnFileHashing;
+            _hashingProgress = null;
             ScanBtn.IsEnabled = true;
         }
     }
 
     private void Plugin_OnFileHashing(string path)
     {
-        Dispatcher.InvokeAsync(() => CurrentFileText.Text = path);
+        if (_hashThrottle.ElapsedMilliseconds < 80) return;
+        _hashThrottle.Restart();
+        _hashingProgress?.Report(path);
     }
-    
+
     private void BuildTree(List<CleanableItem> items)
     {
         // Les items sont déjà groupables car Description commence par "Doublon de « X »"
         // On regroupe simplement par chemin du fichier original extrait de la description
         var byOriginal = items
-            .GroupBy(i => ExtractOriginalName(i.Description))
+            .GroupBy(i => i.DuplicateGroupId ?? i.OriginalPath ?? i.Id)
             .ToList();
 
         foreach (var grp in byOriginal)
@@ -142,7 +154,7 @@ public partial class DuplicateWindow : Window
             {
                 Header   = group.Label,
                 IsExpanded = true,
-                Foreground = System.Windows.Media.Brushes.White
+                Foreground = (System.Windows.Media.Brush)FindResource("TextPrimary")
             };
 
             foreach (var file in group.Files)
@@ -150,7 +162,7 @@ public partial class DuplicateWindow : Window
                 var cb = new CheckBox
                 {
                     Content      = file.Label + "   " + file.Path,
-                    Foreground   = System.Windows.Media.Brushes.Silver,
+                    Foreground   = (System.Windows.Media.Brush)FindResource("TextSecond"),
                     IsChecked    = false,
                     Tag          = file,
                     FontSize     = 12
@@ -202,6 +214,9 @@ public partial class DuplicateWindow : Window
 
         if (confirm != MessageBoxResult.Yes) return;
 
+        if (_plugin == null || !UiOperation.TryBegin(this, out var operation)) return;
+        using var scope = operation;
+        AutoSelectBtn.IsEnabled = false;
         DeleteBtn.IsEnabled = false;
         ScanBtn.IsEnabled   = false;
         StatusText.Text     = "Suppression en cours…";
@@ -211,16 +226,16 @@ public partial class DuplicateWindow : Window
             var fileGuardian  = App.Services.GetRequiredService<IFileGuardian>();
             var backupManager = App.Services.GetRequiredService<IBackupManager>();
             var logger        = App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<DuplicateFinderPlugin>>();
-            var plugin        = new DuplicateFinderPlugin(fileGuardian, logger);
+            var plugin        = _plugin;
 
-            var result = await plugin.CleanAsync(
-                toDelete, backupManager,
-                new Progress<double>(p => StatusText.Text = $"Suppression… {p:P0}"));
+            var progress = operation.CreateProgress<double>(p => StatusText.Text = $"Suppression… {p:P0}");
+            var result = await Task.Run(() => plugin.CleanAsync(toDelete, backupManager, progress, operation.Token), operation.Token);
 
             StatusText.Text = result.Success ? "✅ " + result.Message : "⚠️ " + result.Message;
             // Relancer l'analyse pour mettre à jour l'arbre
-            if (result.Success) Scan_Click(sender, e);
+            _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
+        catch (OperationCanceledException) { StatusText.Text = "Opération annulée — relancez lʼanalyse."; _plugin = null; }
         catch (Exception ex)
         {
             StatusText.Text = "❌ " + ex.Message;
@@ -272,8 +287,8 @@ public partial class DuplicateWindow : Window
             PreviewImage.Source = bmp;
             PreviewPlaceholder.Visibility = Visibility.Collapsed;
         }
-        catch 
-        { 
+        catch
+        {
             PreviewImage.Source = null;
             PreviewPlaceholder.Text = "⚠️\nImpossible de charger l'aperçu";
             PreviewPlaceholder.Visibility = Visibility.Visible;

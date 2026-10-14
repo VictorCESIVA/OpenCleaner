@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32.TaskScheduler;
 using System.Text.Json;
+using System.Runtime.InteropServices;
 
 namespace OpenCleaner.Core.Scheduler;
 
@@ -36,15 +37,25 @@ public sealed class SchedulerService
         try
         {
             var json = File.ReadAllText(ScheduleConfig.ConfigPath);
-            return JsonSerializer.Deserialize<ScheduleConfig>(json) ?? new ScheduleConfig();
+            var config = JsonSerializer.Deserialize<ScheduleConfig>(json) ?? new ScheduleConfig();
+            config.Validate();
+            return config;
         }
         catch { return new ScheduleConfig(); }
     }
 
     public static void SaveConfig(ScheduleConfig config)
     {
+        ArgumentNullException.ThrowIfNull(config);
+        config.Validate();
         Directory.CreateDirectory(Path.GetDirectoryName(ScheduleConfig.ConfigPath)!);
-        File.WriteAllText(ScheduleConfig.ConfigPath, JsonSerializer.Serialize(config, _jsonOpts));
+        string temporaryPath = ScheduleConfig.ConfigPath + $".{Guid.NewGuid():N}.tmp";
+        try
+        {
+            File.WriteAllText(temporaryPath, JsonSerializer.Serialize(config, _jsonOpts));
+            File.Move(temporaryPath, ScheduleConfig.ConfigPath, overwrite: true);
+        }
+        finally { if (File.Exists(temporaryPath)) File.Delete(temporaryPath); }
     }
 
     // ─────────────────────────────────────────────
@@ -54,6 +65,8 @@ public sealed class SchedulerService
     /// <summary>Crée ou remplace la tâche planifiée selon la config fournie.</summary>
     public void CreateOrUpdateScheduledTask(ScheduleConfig config)
     {
+        ArgumentNullException.ThrowIfNull(config);
+        config.Validate();
         if (!config.IsEnabled)
         {
             DeleteScheduledTask();
@@ -63,7 +76,7 @@ public sealed class SchedulerService
         try
         {
             var exePath   = GetExePath();
-            var pluginArg = string.Join(",", config.PluginIds);
+            var pluginArg = string.Join(",", config.PluginIds.Distinct(StringComparer.Ordinal));
 
             using var ts = new TaskService();
 
@@ -80,9 +93,10 @@ public sealed class SchedulerService
             td.Settings.DisallowStartIfOnBatteries = false;
             td.Settings.StopIfGoingOnBatteries     = false;
             td.Settings.RunOnlyIfNetworkAvailable   = false;
+            td.Settings.MultipleInstances = TaskInstancesPolicy.IgnoreNew;
 
             // Triggers : un par jour sélectionné
-            foreach (var day in config.Days)
+            foreach (var day in config.Days.Distinct())
             {
                 var trigger = new WeeklyTrigger(TriggerHelper.ToDaysOfWeek(day))
                 {
@@ -118,7 +132,8 @@ public sealed class SchedulerService
             folder?.DeleteTask(TaskName, false);
             _logger.LogInformation("Tâche planifiée supprimée");
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is FileNotFoundException or DirectoryNotFoundException ||
+            ex is COMException { HResult: unchecked((int)0x80070002) or unchecked((int)0x80070003) })
         {
             _logger.LogDebug(ex, "Suppression tâche — ignorée si inexistante");
         }
@@ -139,14 +154,15 @@ public sealed class SchedulerService
     //  UTILITAIRES
     // ─────────────────────────────────────────────
 
-private static string GetExePath()
-{
-    var baseDir = AppContext.BaseDirectory;
-    
-    // Détecte automatiquement l'exe principal dans le dossier
-    var exeName = Path.GetFileName(Environment.ProcessPath) ?? "OpenCleaner.UI.exe";
-    return Path.Combine(baseDir, exeName);
-}
+    private static string GetExePath()
+    {
+        string application = Path.Combine(AppContext.BaseDirectory, "OpenCleaner.UI.exe");
+        if (File.Exists(application)) return application;
+        string? process = Environment.ProcessPath;
+        if (process != null && Path.GetFileName(process).Equals("OpenCleaner.UI.exe", StringComparison.OrdinalIgnoreCase) && File.Exists(process))
+            return process;
+        throw new FileNotFoundException("The OpenCleaner executable must be available before creating a scheduled task", application);
+    }
 }
 
 /// <summary>Helper pour convertir DayOfWeek en DaysOfTheWeek (bitmask Task Scheduler).</summary>
@@ -161,6 +177,6 @@ internal static class TriggerHelper
         DayOfWeek.Friday    => DaysOfTheWeek.Friday,
         DayOfWeek.Saturday  => DaysOfTheWeek.Saturday,
         DayOfWeek.Sunday    => DaysOfTheWeek.Sunday,
-        _                   => DaysOfTheWeek.Monday
+        _                   => throw new ArgumentOutOfRangeException(nameof(d))
     };
 }

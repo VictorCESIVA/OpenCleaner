@@ -25,9 +25,12 @@ public static class UpdateService
             if (newVersion == null)
                 return;
 
-            // Mise à jour disponible : télécharger en arrière-plan
-            await mgr.DownloadUpdatesAsync(newVersion);
-            mgr.ApplyUpdatesAndRestart(newVersion);
+            // Never restart while a cleanup or a restoration is running.
+            System.Windows.Application.Current.Dispatcher.Invoke(() =>
+            {
+                if (System.Windows.Application.Current.MainWindow is MainWindow window)
+                    window.NotifyUpdateAvailable();
+            });
         }
         catch
         {
@@ -45,6 +48,11 @@ public static class UpdateService
     {
         try
         {
+            if (UiOperation.IsBusy)
+            {
+                onStatus("Terminez l'opération en cours avant de mettre à jour OpenCleaner.");
+                return false;
+            }
             var mgr = new UpdateManager(new GithubSource(RepoUrl, null!, false));
             if (!mgr.IsInstalled)
             {
@@ -63,9 +71,19 @@ public static class UpdateService
             onStatus($"Téléchargement de la v{newVersion.TargetFullRelease?.Version}…");
             await mgr.DownloadUpdatesAsync(newVersion);
 
+            if (UiOperation.IsBusy)
+            {
+                onStatus("Mise à jour téléchargée. Terminez l'opération en cours avant de redémarrer.");
+                return false;
+            }
             if (!confirmRestart($"Une mise à jour (v{newVersion.TargetFullRelease?.Version}) est prête. Redémarrer maintenant ?"))
                 return false;
 
+            if (UiOperation.IsBusy)
+            {
+                onStatus("Une opération a démarré. La mise à jour reste téléchargée ; vous pourrez redémarrer ensuite.");
+                return false;
+            }
             mgr.ApplyUpdatesAndRestart(newVersion);
             return true;
         }

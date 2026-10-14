@@ -1,0 +1,35 @@
+name: Validate
+on:
+  push:
+    branches: ['**']
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Restore and audit dependencies
+        run: dotnet restore OpenCleaner.sln -p:NuGetAudit=true -p:NuGetAuditMode=all
+      - name: Build
+        run: dotnet build OpenCleaner.sln -c Release --no-restore --warnaserror
+      - name: Test
+        run: dotnet test OpenCleaner.sln -c Release --no-build --logger trx
+      - name: Validate WPF windows and render previews
+        run: dotnet run --project tools/OpenCleaner.Preview -c Release -- artifacts/ui-preview
+      - name: Save test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: tests/**/TestResults/*.trx
+      - name: Save interface previews
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: interface-previews
+          path: artifacts/ui-preview/*.png

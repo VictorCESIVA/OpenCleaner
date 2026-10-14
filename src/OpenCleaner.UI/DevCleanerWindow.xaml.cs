@@ -42,17 +42,39 @@ public partial class DevCleanerWindow : System.Windows.Window
 {
     private readonly ObservableCollection<DevItem> _items = [];
     private List<CleanableItem> _allItems = [];
+    private DevCleanerPlugin? _plugin;
 
     public DevCleanerWindow()
     {
         InitializeComponent();
         ResultList.ItemsSource = _items;
+        foreach (var option in Options)
+        {
+            option.Checked += OptionsChanged;
+            option.Unchecked += OptionsChanged;
+        }
+    }
+
+    private System.Windows.Controls.CheckBox[] Options => [CbNpm, CbYarn, CbVsCode, CbDiscord, CbSpotify, CbJetBrains];
+
+    private void OptionsChanged(object sender, RoutedEventArgs e)
+    {
+        _plugin = null;
+        _items.Clear();
+        _allItems.Clear();
+        CleanBtn.IsEnabled = SelectAllBtn.IsEnabled = false;
+        EstimateText.Text = "—";
+        EstimateDetail.Text = "";
+        StatusText.Text = "Options modifiées — relancez l'analyse";
     }
 
     // ─── SCAN ───────────────────────────────────────────────────────────
 
     private async void Scan_Click(object sender, RoutedEventArgs e)
     {
+        if (!UiOperation.TryBegin(this, out var operation)) return;
+        using var scope = operation;
+        foreach (var option in Options) option.IsEnabled = false;
         ScanBtn.IsEnabled    = false;
         CleanBtn.IsEnabled   = false;
         SelectAllBtn.IsEnabled = false;
@@ -66,7 +88,7 @@ public partial class DevCleanerWindow : System.Windows.Window
         {
             var fileGuardian = App.Services.GetRequiredService<IFileGuardian>();
             var logger       = App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<DevCleanerPlugin>>();
-            var plugin       = new DevCleanerPlugin(fileGuardian, logger)
+            var plugin       = _plugin = new DevCleanerPlugin(fileGuardian, logger)
             {
                 ScanNodeModules = CbNode.IsChecked    == true,
                 ScanNpmCache    = CbNpm.IsChecked     == true,
@@ -78,8 +100,8 @@ public partial class DevCleanerWindow : System.Windows.Window
                 ScanDocker      = CbDocker.IsChecked  == true,
             };
 
-            _allItems = (await plugin.AnalyzeAsync(
-                new Progress<double>(p => StatusText.Text = $"Scan… {p:P0}"))).ToList();
+            var progress = operation.CreateProgress<double>(p => StatusText.Text = $"Scan… {p:P0}");
+            _allItems = (await Task.Run(() => plugin.AnalyzeAsync(progress, operation.Token), operation.Token)).ToList();
 
             foreach (var item in _allItems)
                 _items.Add(DevItem.From(item));
@@ -95,13 +117,14 @@ public partial class DevCleanerWindow : System.Windows.Window
 
             StatusText.Text = _allItems.Count == 0
                 ? "✅ Aucun artefact dev détecté."
-                : $"{_allItems.Count} fichiers / dossiers — {SizeFormatter.Format(total)} libérables.";
+                : $"{_allItems.Count} fichiers / dossiers — {SizeFormatter.Format(total)} détectés.";
 
             CleanBtn.IsEnabled    = _allItems.Count > 0;
             SelectAllBtn.IsEnabled = _allItems.Count > 0;
         }
+        catch (OperationCanceledException) { StatusText.Text = "Opération annulée — relancez lʼanalyse."; _plugin = null; }
         catch (Exception ex) { StatusText.Text = "❌ " + ex.Message; }
-        finally { ScanBtn.IsEnabled = true; }
+        finally { ScanBtn.IsEnabled = true; foreach (var option in Options) option.IsEnabled = true; }
     }
 
     // ─── SÉLECTION ──────────────────────────────────────────────────────
@@ -120,12 +143,16 @@ public partial class DevCleanerWindow : System.Windows.Window
 
         var confirm = MessageBox.Show(
             $"Supprimer/nettoyer {toClean.Count} élément(s) ?\n" +
-            "Les fichiers individuels auront un backup. Les dossiers (node_modules) seront supprimés directement.",
+            "Chaque fichier sera sauvegardé avant sa suppression. Les sauvegardes occupent de lʼespace jusquʼà leur suppression.",
             "Confirmer le nettoyage Dev",
             MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
         if (confirm != MessageBoxResult.Yes) return;
 
+        if (_plugin == null || !UiOperation.TryBegin(this, out var operation)) return;
+        using var scope = operation;
+        foreach (var option in Options) option.IsEnabled = false;
+        SelectAllBtn.IsEnabled = false;
         CleanBtn.IsEnabled = ScanBtn.IsEnabled = false;
         StatusText.Text    = "Nettoyage en cours…";
 
@@ -134,15 +161,16 @@ public partial class DevCleanerWindow : System.Windows.Window
             var fileGuardian  = App.Services.GetRequiredService<IFileGuardian>();
             var backupManager = App.Services.GetRequiredService<IBackupManager>();
             var logger        = App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<DevCleanerPlugin>>();
-            var plugin        = new DevCleanerPlugin(fileGuardian, logger);
+            var plugin        = _plugin;
 
-            var result = await plugin.CleanAsync(toClean, backupManager,
-                new Progress<double>(p => StatusText.Text = $"Nettoyage… {p:P0}"));
+            var progress = operation.CreateProgress<double>(p => StatusText.Text = $"Nettoyage… {p:P0}");
+            var result = await Task.Run(() => plugin.CleanAsync(toClean, backupManager, progress, operation.Token), operation.Token);
 
             StatusText.Text = (result.Success ? "✅ " : "⚠️ ") + result.Message;
-            if (result.Success) Scan_Click(sender, e);
+            _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
+        catch (OperationCanceledException) { StatusText.Text = "Opération annulée — relancez lʼanalyse."; _plugin = null; }
         catch (Exception ex) { StatusText.Text = "❌ " + ex.Message; }
-        finally { ScanBtn.IsEnabled = true; }
+        finally { ScanBtn.IsEnabled = true; foreach (var option in Options) option.IsEnabled = true; }
     }
 }

@@ -1,112 +1,75 @@
-<div align="center">
-  <img src="logo.png" width="120" alt="OpenCleaner Logo" />
-  <h1>OpenCleaner 🧹</h1>
-  <p><b>L'alternative Open-Source, moderne et respectueuse de la vie privée pour nettoyer et optimiser Windows.</b></p>
-  
-  [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
-  [![.NET](https://github.com/votre-nom/OpenCleaner/actions/workflows/dotnet.yml/badge.svg)](https://github.com/votre-nom/OpenCleaner)
-  [![Platform](https://img.shields.io/badge/Platform-Windows%2010%20%7C%2011-0078D4.svg)]()
-</div>
+# OpenCleaner
 
-<hr />
+Utilitaire Windows gratuit et open source pour examiner les fichiers temporaires, les caches et l'occupation du disque. Interface WPF en français, thèmes sombre et clair.
 
-## 🌟 À propos d'OpenCleaner
+## Utilisation
 
-**OpenCleaner** est un utilitaire de nettoyage et d'optimisation conçu spécifiquement pour Windows. Contrairement aux solutions commerciales, OpenCleaner est **100% gratuit, Open-Source, sans aucune publicité**, et respecte intégralement votre vie privée (aucune télémétrie).
+1. Choisissez une catégorie puis lancez **Analyser**. L'analyse ne supprime rien.
+2. Vérifiez les résultats et leur niveau de risque. Une sélection de lignes limite le nettoyage à ces éléments ; sans sélection, le nettoyage porte sur les résultats de la catégorie.
+3. Confirmez **Nettoyer**. Chaque suppression de fichier passe par le gardien et une sauvegarde vérifiée.
+4. Consultez **Restauration** pour restaurer ou supprimer les sauvegardes.
 
-L'application est construite avec **.NET 8** et **WPF**, garantissant des performances exceptionnelles et une interface utilisateur fluide, dynamique et moderne.
+Les sauvegardes sont conservées localement : elles occupent de l'espace. Un nettoyage avec une sauvegarde sur le même disque ne libère pas immédiatement le volume affiché lors du scan. Supprimez seulement les sauvegardes dont vous n'avez plus besoin pour récupérer cet espace.
 
----
+## Fonctions disponibles
 
-## 🚀 Fonctionnalités Principales
+- **Nettoyage rapide** : analyse des caches à faible risque, puis confirmation avant suppression.
+- **Système et navigateurs** : temporaires anciens, miniatures, caches de Chrome, Edge et Brave sur plusieurs profils. Cookies et historique restent des options explicites ; les navigateurs doivent être fermés pour nettoyer.
+- **Applications** : certains caches Steam, journaux Office et caches npm, Yarn, VS Code et autres applications.
+- **Doublons** : comparaison SHA-256 dans les dossiers personnels courants. L'original conservé est identifié et revérifié avant la suppression des copies.
+- **Confidentialité** : repérage de certaines traces locales et fichiers contenant potentiellement des secrets. Ces résultats exigent une vérification manuelle ; cet outil n'est pas un antivirus.
+- **Espace disque** : classement des enfants d'un dossier selon leur taille accessible. Les dossiers inaccessibles, liés et certains dossiers système sont exclus ; les totaux sont donc partiels.
+- **Planification** : tâche Windows dans le contexte utilisateur, limitée aux fichiers à faible risque des catégories autorisées.
+- **Registre** : analyse conservatrice de traces d'historique utilisateur, en mode expert, avec exportation avant modification.
 
-- 🗑️ **Nettoyage Intelligent (Smart Clean) :** Analyse et supprime les fichiers temporaires de Windows, le cache des navigateurs (Chrome, Edge, Firefox), et vide la corbeille en un clic.
-- 💿 **Analyseur d'Espace Disque :** Visualisez graphiquement les dossiers et fichiers qui consomment le plus d'espace sur votre disque dur.
-- 🕵️ **Scanner de Confidentialité :** Détecte et neutralise les traceurs, l'historique de navigation et les fichiers de log inutiles pouvant compromettre votre vie privée.
-- 👨‍💻 **Dev Cleaner :** Outil dédié aux développeurs pour nettoyer les dossiers `bin`, `obj`, `node_modules` et autres caches locaux (NPM, NuGet) qui s'accumulent au fil du temps.
-- 🔁 **Détecteur de Doublons :** Identifie et vous permet de supprimer facilement les fichiers en double sur votre système (Optimisé pour gérer de très gros volumes avec un algorithme "Two-pass").
-- ⏱️ **Planificateur intégré :** Automatisez vos tâches de nettoyage pour qu'elles s'exécutent en arrière-plan en toute discrétion.
-- 🛡️ **Gardien (FileGuardian) :** Un système de sécurité robuste qui empêche la suppression des fichiers systèmes critiques, incluant une gestion de sauvegardes automatiques.
+Le nettoyage direct de Windows Update est suspendu. Les fichiers Office de récupération ou de synchronisation, Prefetch, node_modules et les contextes Docker sont conservés. Firefox, la corbeille, les extensions DLL externes et la suppression d'artefacts bin/obj ne sont pas implémentés.
 
----
-## 🛡️ Sécurité & SmartScreen
+## Compiler et tester
 
-OpenCleaner n'est pas encore signé numériquement (coût ~300€/an). Windows Defender peut afficher un avertissement.
+Prérequis : Windows 10/11 x64 et [SDK .NET 10 LTS](https://dotnet.microsoft.com/download/dotnet/10.0) à jour.
 
-**C'est normal et sûr** : Le code est 100% open source et audité.
-
-Pour lancer :
-- **Méthode 1** : Clic droit sur l'exe → Propriétés → ✅ Débloquer
-- **Méthode 2** : Cliquer "Informations complémentaires" → "Exécuter quand même"
-
-VirusTotal : 
-[lien](https://www.virustotal.com/gui/file/5b0a8095e0467ddffb45ae5d1b267120fba8496a4eba32c817da525ff086a390/detection)
----
-## 🛠️ Installation et Utilisation
-
-### Télécharger la version prête à l'emploi (Recommandé)
-1. Allez dans l'onglet [Releases](https://github.com/votre-nom/OpenCleaner/releases) de ce dépôt.
-2. Téléchargez le dernier installateur complet `OpenCleaner_Installer.exe` ou la version portable.
-3. Lancez l'application. Aucun prérequis n'est nécessaire (le framework .NET est inclus).
-
-### Compiler à partir du code source
-Si vous souhaitez contribuer ou compiler votre propre version :
-
-**Prérequis :**
-- [SDK .NET 8.0](https://dotnet.microsoft.com/download/dotnet/8.0)
-- Visual Studio 2022 ou Visual Studio Code
-
-**Étapes :**
-```cmd
-# 1. Cloner le dépôt
-git clone https://github.com/votre-nom/OpenCleaner.git
-
-# 2. Se rendre dans le dossier
+```powershell
+git clone https://github.com/VictorCESIVA/OpenCleaner.git
 cd OpenCleaner
-
-# 3. Compiler la solution
-dotnet build OpenCleaner.sln -c Release
-
-# 4. (Optionnel) Publier une version autonome
-dotnet publish src/OpenCleaner.UI/OpenCleaner.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
+dotnet restore OpenCleaner.sln
+dotnet build OpenCleaner.sln -c Release --no-restore
+dotnet test OpenCleaner.sln -c Release --no-build
+dotnet run --project src/OpenCleaner.UI -c Release --no-build
 ```
 
-L'exécutable se trouvera dans `src\OpenCleaner.UI\bin\Release\net8.0-windows\win-x64\publish\`.
+Publication autonome :
 
----
+```powershell
+dotnet publish src/OpenCleaner.UI/OpenCleaner.UI.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/publish
+```
 
-## 🧩 Architecture
+Contrôle des constructeurs et aperçu des fenêtres WPF, sans analyse ni nettoyage :
 
-OpenCleaner est conçu de façon modulaire avec l'injection de dépendances (`Microsoft.Extensions.DependencyInjection`).
+```powershell
+dotnet run --project tools/OpenCleaner.Preview -c Release -- artifacts/ui-preview
+```
 
-- `OpenCleaner.UI`: L'interface utilisateur WPF (.NET 8.0).
-- `OpenCleaner.Core`: La logique centrale (Moteur de scan, Gardien de fichiers, Planificateur).
-- `OpenCleaner.Contracts`: Interfaces et modèles de base, permettant de créer des plugins externes.
-- `OpenCleaner.Plugins.System`: Implémentation de tous les nettoyeurs officiels (Système, Navigateurs, Doublons, Dev).
+Les versions distribuées se trouvent dans [GitHub Releases](https://github.com/VictorCESIVA/OpenCleaner/releases). Les anciennes versions publiées ne contiennent pas nécessairement les correctifs présents dans ce dépôt. Un avertissement SmartScreen peut apparaître si le binaire n'est pas signé ; le caractère open source n'est pas une garantie de sûreté du fichier téléchargé.
 
-Vous pouvez facilement développer **vos propres plugins** en créant une DLL implémentant `ICleanerPlugin` et en la plaçant dans le dossier `Plugins/` de l'application.
+## Sauvegardes et sécurité
 
----
+Les sauvegardes de fichiers se trouvent sous %LOCALAPPDATA%/OpenCleaner/Backups. La restauration vérifie leur taille et leur empreinte SHA-256. Un fichier existant est sauvegardé avant remplacement. Les exportations du registre sont dans %LOCALAPPDATA%/OpenCleaner/RegistryBackups ; leur importation s'effectue manuellement après vérification.
 
-## 🤝 Contribuer
+Les sauvegardes locales ne sont pas chiffrées et ne remplacent pas une sauvegarde indépendante. Le gardien refuse notamment les chemins système critiques, les racines, les chemins réseau, les flux alternatifs et les liens/jonctions. Le nettoyage revalide la sélection issue du dernier scan.
 
-Les contributions sont les bienvenues ! 
-1. Forkez le projet.
-2. Créez une branche pour votre fonctionnalité (`git checkout -b feature/NouvelleFonctionnalite`).
-3. Commitez vos changements (`git commit -m 'Ajout d'une nouvelle fonctionnalité'`).
-4. Poussez sur la branche (`git push origin feature/NouvelleFonctionnalite`).
-5. Ouvrez une **Pull Request**.
+L'application ne force plus la fermeture des navigateurs et ne redémarre plus automatiquement pour appliquer une mise à jour. La recherche des mises à jour des installations Velopack contacte GitHub ; il n'y a pas de télémétrie applicative.
 
-Merci de respecter les conventions de nommage et d'ajouter/mettre à jour les tests unitaires via `xUnit` (`OpenCleaner.Core.Tests`).
+## Organisation
 
----
+- **Contracts** : interfaces et modèles.
+- **Core** : gardiens, sauvegardes, transactions, planification et nettoyage rapide.
+- **Plugins.System** : analyseurs et nettoyeurs intégrés.
+- **UI** : fenêtres WPF et coordination des opérations.
+- **Tests** : régressions du moteur et des plugins, sur des fixtures temporaires.
+- **docs** : site statique de présentation ; [rapport d'audit du 14 octobre 2026](docs/AUDIT-2026-10-14.md).
 
-## 📜 Licence
+La CI compile et teste la solution sur Windows et refuse les vulnérabilités NuGet connues. Le workflow de release valide le tag, exécute ces vérifications et construit un package Velopack.
 
-Ce projet est sous licence **MIT**. Vous êtes libre de l'utiliser, le modifier et le distribuer à la fois pour un usage commercial et privé. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+## Licence
 
----
-
-<div align="center">
-  <b>Conçu avec ❤️ pour la communauté Open-Source</b>
-</div>
+[MIT](LICENSE).

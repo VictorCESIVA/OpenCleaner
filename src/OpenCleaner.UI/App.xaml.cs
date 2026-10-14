@@ -22,7 +22,7 @@ public partial class App : System.Windows.Application
             MessageBox.Show($"Une erreur inattendue est survenue :\n\n{args.Exception.Message}", "Erreur critique", MessageBoxButton.OK, MessageBoxImage.Error);
             args.Handled = true;
         };
-        
+
         System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (s, args) =>
         {
             args.SetObserved();
@@ -93,8 +93,11 @@ public partial class App : System.Windows.Application
         int cleaned = 0;
         long freed  = 0;
 
-        foreach (var pluginId in pluginIds)
+        var failures = 0;
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(25));
+        foreach (var pluginId in pluginIds.Distinct(StringComparer.Ordinal))
         {
+            if (!ScheduleConfig.IsAutomaticPlugin(pluginId.Trim())) { failures++; continue; }
             ICleanerPlugin? plugin = pluginId.Trim() switch
             {
                 "system.temp"       => new SystemTempPlugin(fileGuardian,
@@ -112,28 +115,37 @@ public partial class App : System.Windows.Application
                 _                   => null
             };
 
-            if (plugin == null) continue;
+            if (plugin == null || !plugin.IsAvailable) { failures++; continue; }
 
             try
             {
-                var items  = await plugin.AnalyzeAsync();
-                var result = await plugin.CleanAsync(items, backupManager);
-                long deletedBytes = items.Where(i => !System.IO.File.Exists(i.Path)).Sum(i => i.Size);
-                if (deletedBytes > 0 || result.Success)
+                var analyzed = await Task.Run(() => plugin.AnalyzeAsync(ct: timeout.Token), timeout.Token);
+                var items = analyzed.Where(i => i.RiskLevel == RiskLevel.Safe && i.Type == ItemType.File).ToList();
+                var result = await Task.Run(() => plugin.CleanAsync(items, backupManager, ct: timeout.Token), timeout.Token);
+                if (result.Success)
                 {
                     cleaned++;
-                    freed += deletedBytes;
                 }
+                else failures++;
+                freed += result.BytesRecovered ?? 0;
             }
+            catch (OperationCanceledException) { failures++; break; }
             catch (Exception ex)
             {
+                failures++;
                 logger.LogError(ex, "Erreur plugin background {PluginId}", pluginId);
             }
         }
 
         // Log le résultat dans un fichier pour traçabilité
         LogBackgroundResult(cleaned, freed, logger);
-        Current.Shutdown();
+        Current.Shutdown(failures == 0 ? 0 : 1);
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        (Services as IDisposable)?.Dispose();
+        base.OnExit(e);
     }
 
     private static void LogBackgroundResult(int plugins, long bytes, ILogger logger)

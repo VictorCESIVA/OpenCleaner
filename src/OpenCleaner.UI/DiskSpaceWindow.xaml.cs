@@ -23,10 +23,10 @@ public sealed class DiskEntry
     public static DiskEntry From(CleanableItem item, long maxSize)
     {
         var pct   = maxSize > 0 ? Math.Min(100.0, item.Size * 100.0 / maxSize) : 0;
-        var color = item.Size >= 1_073_741_824 ? new SolidColorBrush(Color.FromRgb(0xC4, 0x2B, 0x1C)) :
-                    item.Size >= 104_857_600    ? new SolidColorBrush(Color.FromRgb(0xFF, 0x8C, 0x00)) :
-                    item.Size >= 10_485_760     ? new SolidColorBrush(Color.FromRgb(0xFF, 0xD7, 0x00)) :
-                                                  new SolidColorBrush(Color.FromRgb(0x10, 0x7C, 0x10));
+        var colorKey = item.Size >= 1_073_741_824 ? "SizeHuge" :
+                       item.Size >= 104_857_600 ? "SizeLarge" :
+                       item.Size >= 10_485_760 ? "SizeMed" : "SizeSmall";
+        var color = (Brush)Application.Current.FindResource(colorKey);
         return new DiskEntry
         {
             Path       = item.Path,
@@ -46,7 +46,7 @@ public partial class DiskSpaceWindow : System.Windows.Window
     private readonly ObservableCollection<DiskEntry> _entries = [];
     private IReadOnlyList<CleanableItem> _allItems = [];
     private readonly Stack<string> _navStack = new();
-    private string _currentRoot = @"C:\";
+    private string _currentRoot = Path.GetPathRoot(Environment.SystemDirectory) ?? @"C:\";
 
     public DiskSpaceWindow()
     {
@@ -64,17 +64,24 @@ public partial class DiskSpaceWindow : System.Windows.Window
 
     private void DriveCombo_Changed(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
     {
+        if (UiOperation.IsBusy) return;
         _currentRoot = (string?)DriveCombo.SelectedItem ?? @"C:\";
         _navStack.Clear();
         GoUpBtn.IsEnabled = false;
         PathBreadcrumb.Text = _currentRoot;
+        _entries.Clear();
+        _allItems = [];
+        ClearStats();
     }
 
     // ─── SCAN ───────────────────────────────────────────────────────────
 
     private async void Scan_Click(object sender, RoutedEventArgs e)
     {
+        if (!UiOperation.TryBegin(this, out var operation)) return;
+        using var scope = operation;
         ScanBtn.IsEnabled  = false;
+        DriveCombo.IsEnabled = ResultList.IsEnabled = GoUpBtn.IsEnabled = false;
         StatusText.Text    = "Analyse en cours… (peut prendre quelques secondes)";
         _entries.Clear();
         _allItems = [];
@@ -87,10 +94,11 @@ public partial class DiskSpaceWindow : System.Windows.Window
             var plugin       = new DiskAnalyzerPlugin(fileGuardian, logger) { ScanRoot = _currentRoot };
 
             _allItems = await plugin.AnalyzeAsync(new Progress<double>(p =>
-                StatusText.Text = $"Analyse… {p:P0}"));
+                StatusText.Text = $"Analyse… {p:P0}"), operation.Token);
 
             ShowItems(_allItems);
         }
+        catch (OperationCanceledException) { StatusText.Text = "Analyse annulée"; }
         catch (Exception ex)
         {
             StatusText.Text = "❌ " + ex.Message;
@@ -98,6 +106,8 @@ public partial class DiskSpaceWindow : System.Windows.Window
         finally
         {
             ScanBtn.IsEnabled = true;
+            DriveCombo.IsEnabled = ResultList.IsEnabled = true;
+            GoUpBtn.IsEnabled = _navStack.Count > 0;
         }
     }
 
@@ -117,7 +127,7 @@ public partial class DiskSpaceWindow : System.Windows.Window
         StatHuge.Text   = list.Count(i => i.Size >= 1_073_741_824).ToString();
         StatLarge.Text  = list.Count(i => i.Size >= 104_857_600).ToString();
         StatFiles.Text  = list.Count.ToString();
-        StatusText.Text = $"{list.Count} entrées trouvées dans « {_currentRoot} »";
+        StatusText.Text = $"{list.Count} entrées accessibles dans « {_currentRoot} » • certains dossiers système sont exclus";
     }
 
     private void ClearStats()
@@ -137,8 +147,9 @@ public partial class DiskSpaceWindow : System.Windows.Window
 
     // ─── DRILL-DOWN ─────────────────────────────────────────────────────
 
-    private async void ResultList_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    private void ResultList_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
     {
+        if (UiOperation.IsBusy) return;
         if (ResultList.SelectedItem is not DiskEntry entry) return;
         if (entry.TypeIcon != "📁") return;
 
@@ -147,25 +158,12 @@ public partial class DiskSpaceWindow : System.Windows.Window
         PathBreadcrumb.Text = _currentRoot;
         GoUpBtn.IsEnabled = true;
 
-        ScanBtn.IsEnabled = false;
-        StatusText.Text   = $"Sous-scan de « {_currentRoot } »…";
-        _entries.Clear();
-
-        try
-        {
-            var fileGuardian = App.Services.GetRequiredService<IFileGuardian>();
-            var logger       = App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<DiskAnalyzerPlugin>>();
-            var plugin       = new DiskAnalyzerPlugin(fileGuardian, logger) { ScanRoot = _currentRoot };
-
-            _allItems = await plugin.AnalyzeAsync();
-            ShowItems(_allItems);
-        }
-        catch (Exception ex) { StatusText.Text = "❌ " + ex.Message; }
-        finally { ScanBtn.IsEnabled = true; }
+        Scan_Click(sender, e);
     }
 
     private void GoUp_Click(object sender, RoutedEventArgs e)
     {
+        if (UiOperation.IsBusy) return;
         if (_navStack.Count == 0) return;
         _currentRoot = _navStack.Pop();
         PathBreadcrumb.Text = _currentRoot;

@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Globalization;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using OpenCleaner.Contracts;
@@ -10,351 +11,252 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
     private readonly IBackupManager _backupManager;
     private readonly ILogger<TransactionManager> _logger;
     private readonly string _connectionString;
-    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _transactionLocks = new();
-    private readonly ConcurrentDictionary<Guid, Transaction> _inMemoryTransactions = new();
+    private readonly ConcurrentDictionary<Guid, SemaphoreSlim> _locks = new();
+    private readonly ConcurrentDictionary<Guid, Transaction> _transactions = new();
 
     public TransactionManager(IBackupManager backupManager, ILogger<TransactionManager> logger)
+        : this(backupManager, logger, null) { }
+
+    public TransactionManager(IBackupManager backupManager, ILogger<TransactionManager> logger, string? databasePath)
     {
         _backupManager = backupManager;
         _logger = logger;
-
-        string dbPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
-            "OpenCleaner",
-            "transactions.db");
-
-        Directory.CreateDirectory(Path.GetDirectoryName(dbPath)!);
-        _connectionString = $"Data Source={dbPath};Foreign Keys=True";
-
+        string path = Path.GetFullPath(databasePath ?? Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenCleaner", "transactions.db"));
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
+        _connectionString = new SqliteConnectionStringBuilder { DataSource = path, ForeignKeys = true }.ToString();
         InitializeDatabase();
+    }
+
+    private SqliteConnection OpenConnection()
+    {
+        var connection = new SqliteConnection(_connectionString);
+        connection.Open();
+        return connection;
     }
 
     private void InitializeDatabase()
     {
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-
-        string createTransactionsTable = @"
-            CREATE TABLE IF NOT EXISTS Transactions (
-                Id TEXT PRIMARY KEY,
-                State INTEGER NOT NULL,
-                CreatedAt TEXT NOT NULL
-            );";
-
-        string createOperationsTable = @"
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = """
+            CREATE TABLE IF NOT EXISTS Transactions (Id TEXT PRIMARY KEY, State INTEGER NOT NULL, CreatedAt TEXT NOT NULL);
             CREATE TABLE IF NOT EXISTS Operations (
-                Id TEXT PRIMARY KEY,
-                TransactionId TEXT NOT NULL,
-                Success INTEGER NOT NULL,
-                Message TEXT NOT NULL,
-                OriginalPath TEXT,
-                BackupPath TEXT,
-                Timestamp TEXT NOT NULL,
-                FOREIGN KEY (TransactionId) REFERENCES Transactions(Id) ON DELETE CASCADE
-            );";
-
-        using (var cmd = new SqliteCommand(createTransactionsTable, connection))
+                Id TEXT PRIMARY KEY, TransactionId TEXT NOT NULL, Success INTEGER NOT NULL, Message TEXT NOT NULL,
+                OriginalPath TEXT, BackupPath TEXT, Timestamp TEXT NOT NULL,
+                OriginalSize INTEGER, OriginalLastAccess TEXT, OriginalHash TEXT, ItemsProcessed INTEGER, BytesRecovered INTEGER,
+                FOREIGN KEY (TransactionId) REFERENCES Transactions(Id) ON DELETE CASCADE);
+            """;
+        command.ExecuteNonQuery();
+        command.CommandText = "PRAGMA table_info(Operations);";
+        var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        using (var reader = command.ExecuteReader())
+            while (reader.Read()) columns.Add(reader.GetString(1));
+        foreach (var (name, type) in new[] { ("OriginalSize", "INTEGER"), ("OriginalLastAccess", "TEXT"),
+                     ("OriginalHash", "TEXT"), ("ItemsProcessed", "INTEGER"), ("BytesRecovered", "INTEGER") })
         {
-            cmd.ExecuteNonQuery();
-        }
-
-        using (var cmd = new SqliteCommand(createOperationsTable, connection))
-        {
-            cmd.ExecuteNonQuery();
+            if (columns.Contains(name)) continue;
+            command.CommandText = $"ALTER TABLE Operations ADD COLUMN {name} {type};";
+            command.ExecuteNonQuery();
         }
     }
 
     public Guid BeginTransaction()
     {
         var transaction = new Transaction();
-        _inMemoryTransactions[transaction.Id] = transaction;
-
-        using var connection = new SqliteConnection(_connectionString);
-        connection.Open();
-
-        const string insertSql = @"
-            INSERT INTO Transactions (Id, State, CreatedAt)
-            VALUES (@Id, @State, @CreatedAt);";
-
-        using var cmd = new SqliteCommand(insertSql, connection);
-        cmd.Parameters.AddWithValue("@Id", transaction.Id.ToString());
-        cmd.Parameters.AddWithValue("@State", (int)transaction.State);
-        cmd.Parameters.AddWithValue("@CreatedAt", transaction.CreatedAt.ToString("O"));
-        cmd.ExecuteNonQuery();
-
-        _logger.LogInformation("Transaction started: {TransactionId}", transaction.Id);
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "INSERT INTO Transactions (Id, State, CreatedAt) VALUES (@Id, @State, @CreatedAt);";
+        command.Parameters.AddWithValue("@Id", transaction.Id.ToString());
+        command.Parameters.AddWithValue("@State", (int)transaction.State);
+        command.Parameters.AddWithValue("@CreatedAt", transaction.CreatedAt.ToString("O", CultureInfo.InvariantCulture));
+        command.ExecuteNonQuery();
+        _transactions[transaction.Id] = transaction;
         return transaction.Id;
     }
 
     public async Task StageOperationAsync(Guid transactionId, OperationResult operation)
     {
-        if (!_inMemoryTransactions.TryGetValue(transactionId, out Transaction? transaction))
+        ArgumentNullException.ThrowIfNull(operation);
+        var gate = GetLock(transactionId);
+        await gate.WaitAsync();
+        try
         {
-            throw new InvalidOperationException($"Transaction {transactionId} not found");
+            Transaction transaction = GetTransaction(transactionId);
+            if (transaction.State != TransactionState.Pending)
+                throw new InvalidOperationException($"Transaction {transactionId} is not pending");
+            using var connection = OpenConnection();
+            using var command = connection.CreateCommand();
+            command.CommandText = """
+                INSERT INTO Operations (Id, TransactionId, Success, Message, OriginalPath, BackupPath, Timestamp,
+                    OriginalSize, OriginalLastAccess, OriginalHash, ItemsProcessed, BytesRecovered)
+                VALUES (@Id, @TransactionId, @Success, @Message, @OriginalPath, @BackupPath, @Timestamp,
+                    @Size, @LastAccess, @Hash, @Items, @Bytes);
+                """;
+            command.Parameters.AddWithValue("@Id", Guid.NewGuid().ToString());
+            command.Parameters.AddWithValue("@TransactionId", transactionId.ToString());
+            command.Parameters.AddWithValue("@Success", operation.Success ? 1 : 0);
+            command.Parameters.AddWithValue("@Message", operation.Message);
+            command.Parameters.AddWithValue("@OriginalPath", (object?)operation.OriginalFile?.Path ?? DBNull.Value);
+            command.Parameters.AddWithValue("@BackupPath", (object?)operation.BackupPath ?? DBNull.Value);
+            command.Parameters.AddWithValue("@Timestamp", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
+            command.Parameters.AddWithValue("@Size", (object?)operation.OriginalFile?.Size ?? DBNull.Value);
+            command.Parameters.AddWithValue("@LastAccess", (object?)operation.OriginalFile?.LastAccessTime.ToString("O", CultureInfo.InvariantCulture) ?? DBNull.Value);
+            command.Parameters.AddWithValue("@Hash", (object?)operation.OriginalFile?.ContentHash ?? DBNull.Value);
+            command.Parameters.AddWithValue("@Items", (object?)operation.ItemsProcessed ?? DBNull.Value);
+            command.Parameters.AddWithValue("@Bytes", (object?)operation.BytesRecovered ?? DBNull.Value);
+            command.ExecuteNonQuery();
+            transaction.Operations.Add(operation with { TransactionId = transactionId });
         }
-
-        if (transaction.State != TransactionState.Pending)
-        {
-            throw new InvalidOperationException($"Transaction {transactionId} is not in Pending state");
-        }
-
-        transaction.Operations.Add(operation);
-
-        await Task.Run(() =>
-        {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
-
-            const string insertSql = @"
-                INSERT INTO Operations (Id, TransactionId, Success, Message, OriginalPath, BackupPath, Timestamp)
-                VALUES (@Id, @TransactionId, @Success, @Message, @OriginalPath, @BackupPath, @Timestamp);";
-
-            using var cmd = new SqliteCommand(insertSql, connection);
-            cmd.Parameters.AddWithValue("@Id", Guid.NewGuid().ToString());
-            cmd.Parameters.AddWithValue("@TransactionId", transactionId.ToString());
-            cmd.Parameters.AddWithValue("@Success", operation.Success ? 1 : 0);
-            cmd.Parameters.AddWithValue("@Message", operation.Message);
-            cmd.Parameters.AddWithValue("@OriginalPath", operation.OriginalFile?.Path ?? (object)DBNull.Value);
-            cmd.Parameters.AddWithValue("@BackupPath", operation.BackupPath ?? (object)DBNull.Value);
-            cmd.Parameters.AddWithValue("@Timestamp", DateTime.UtcNow.ToString("O"));
-            cmd.ExecuteNonQuery();
-        });
-
-        _logger.LogDebug("Operation staged in transaction {TransactionId}: {Message}", transactionId, operation.Message);
+        finally { gate.Release(); }
     }
 
     public async Task CommitAsync(Guid transactionId, CancellationToken ct = default)
     {
-        SemaphoreSlim semaphore = _transactionLocks.GetOrAdd(transactionId, _ => new SemaphoreSlim(1, 1));
-        await semaphore.WaitAsync(ct);
-
+        var gate = GetLock(transactionId);
+        await gate.WaitAsync(ct);
         try
         {
-            if (!_inMemoryTransactions.TryGetValue(transactionId, out Transaction? transaction))
-            {
-                throw new InvalidOperationException($"Transaction {transactionId} not found");
-            }
-
+            Transaction transaction = GetTransaction(transactionId);
             if (transaction.State != TransactionState.Pending)
+                throw new InvalidOperationException($"Transaction {transactionId} is not pending");
+            if (transaction.Operations.Any(o => !o.Success))
             {
-                throw new InvalidOperationException($"Transaction {transactionId} is not in Pending state");
+                await DoRollbackAsync(transaction, ct);
+                throw new InvalidOperationException("Transaction contained failed operations and was rolled back");
             }
-
-            // Vérifie que toutes les opérations sont en succès
-            bool allSuccess = transaction.Operations.All(o => o.Success);
-
-            if (!allSuccess)
-            {
-                _logger.LogWarning("Transaction {TransactionId} has failed operations, rolling back", transactionId);
-                // Appel interne pour éviter un deadlock (le verrou est déjà acquis)
-                await DoRollbackAsync(transactionId, transaction, ct);
-                throw new InvalidOperationException("Transaction failed, rolled back");
-            }
-
-            await Task.Run(() =>
-            {
-                using var connection = new SqliteConnection(_connectionString);
-                connection.Open();
-
-                const string updateSql = @"
-                    UPDATE Transactions SET State = @State WHERE Id = @Id;";
-
-                using var cmd = new SqliteCommand(updateSql, connection);
-                cmd.Parameters.AddWithValue("@State", (int)TransactionState.Committed);
-                cmd.Parameters.AddWithValue("@Id", transactionId.ToString());
-                cmd.ExecuteNonQuery();
-            }, ct);
-
-            transaction.MarkCommitted();
-            _logger.LogInformation("Transaction committed: {TransactionId}", transactionId);
+            ct.ThrowIfCancellationRequested();
+            SaveState(transaction, TransactionState.Committed);
         }
-        finally
-        {
-            semaphore.Release();
-        }
+        finally { gate.Release(); }
     }
 
     public async Task RollbackAsync(Guid transactionId, CancellationToken ct = default)
     {
-        SemaphoreSlim semaphore = _transactionLocks.GetOrAdd(transactionId, _ => new SemaphoreSlim(1, 1));
-        await semaphore.WaitAsync(ct);
-
-        try
-        {
-            if (!_inMemoryTransactions.TryGetValue(transactionId, out Transaction? transaction))
-            {
-                throw new InvalidOperationException($"Transaction {transactionId} not found");
-            }
-
-            await DoRollbackAsync(transactionId, transaction, ct);
-        }
-        finally
-        {
-            semaphore.Release();
-        }
+        var gate = GetLock(transactionId);
+        await gate.WaitAsync(ct);
+        try { await DoRollbackAsync(GetTransaction(transactionId), ct); }
+        finally { gate.Release(); }
     }
 
-    // Logique de rollback sans acquisition du verrou — appelable depuis CommitAsync ou RollbackAsync.
-    private async Task DoRollbackAsync(Guid transactionId, Transaction transaction, CancellationToken ct)
+    private async Task DoRollbackAsync(Transaction transaction, CancellationToken ct)
     {
-        _logger.LogInformation("Rolling back transaction {TransactionId}", transactionId);
-
-        // Restaure les backups
-        foreach (OperationResult operation in transaction.Operations.Where(o => !string.IsNullOrEmpty(o.BackupPath)))
+        if (transaction.State == TransactionState.RolledBack) return;
+        var failures = new List<string>();
+        // Undo in reverse order. Failed operations did not delete anything and must not replace
+        // the user's still-existing file with an older backup.
+        try
         {
-            if (ct.IsCancellationRequested)
+            foreach (OperationResult operation in transaction.Operations.Where(o => o.Success).Reverse())
             {
-                break;
-            }
-
-            try
-            {
-                if (!string.IsNullOrEmpty(operation.BackupPath))
+                ct.ThrowIfCancellationRequested();
+                string? id = ExtractBackupId(operation.BackupPath);
+                if (id == null)
                 {
-                    // Extrait le backupId du chemin
-                    string? backupId = ExtractBackupIdFromPath(operation.BackupPath);
-                    if (!string.IsNullOrEmpty(backupId))
-                    {
-                        bool restored = await _backupManager.RestoreAsync(backupId, ct);
-                        if (restored)
-                        {
-                            _logger.LogInformation("Restored backup {BackupId} for transaction {TransactionId}", backupId, transactionId);
-                        }
-                        else
-                        {
-                            _logger.LogError("Failed to restore backup {BackupId} for transaction {TransactionId}", backupId, transactionId);
-                        }
-                    }
+                    failures.Add(operation.OriginalFile?.Path ?? operation.Message);
+                    continue;
                 }
+                try
+                {
+                    if (!await _backupManager.RestoreAsync(id, ct)) failures.Add(id);
+                }
+                catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
+                catch (Exception ex)
+                { _logger.LogError(ex, "Could not restore backup {BackupId}", id); failures.Add(id); }
             }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error restoring backup for operation in transaction {TransactionId}", transactionId);
-                // Continue malgré l'erreur (meilleur effort)
-            }
+            ct.ThrowIfCancellationRequested();
         }
-
-        await Task.Run(() =>
+        catch (OperationCanceledException)
         {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
+            SaveState(transaction, TransactionState.Failed);
+            throw;
+        }
+        if (failures.Count != 0)
+        {
+            SaveState(transaction, TransactionState.Failed);
+            throw new IOException($"Rollback incomplete: {failures.Count} operation(s) could not be restored");
+        }
+        SaveState(transaction, TransactionState.RolledBack);
+    }
 
-            const string updateSql = @"
-                UPDATE Transactions SET State = @State WHERE Id = @Id;";
-
-            using var cmd = new SqliteCommand(updateSql, connection);
-            cmd.Parameters.AddWithValue("@State", (int)TransactionState.RolledBack);
-            cmd.Parameters.AddWithValue("@Id", transactionId.ToString());
-            cmd.ExecuteNonQuery();
-        }, ct);
-
-        transaction.MarkRolledBack();
-        _logger.LogInformation("Transaction rolled back: {TransactionId}", transactionId);
+    private void SaveState(Transaction transaction, TransactionState state)
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "UPDATE Transactions SET State = @State WHERE Id = @Id;";
+        command.Parameters.AddWithValue("@State", (int)state);
+        command.Parameters.AddWithValue("@Id", transaction.Id.ToString());
+        if (command.ExecuteNonQuery() != 1) throw new InvalidOperationException("Transaction no longer exists");
+        switch (state)
+        {
+            case TransactionState.Committed: transaction.MarkCommitted(); break;
+            case TransactionState.RolledBack: transaction.MarkRolledBack(); break;
+            case TransactionState.Failed: transaction.MarkFailed(); break;
+        }
     }
 
     public async Task<TransactionState> GetTransactionStateAsync(Guid transactionId)
     {
-        if (_inMemoryTransactions.TryGetValue(transactionId, out Transaction? memoryTransaction))
-        {
-            return memoryTransaction.State;
-        }
-
-        return await Task.Run(() =>
-        {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
-
-            const string selectSql = @"
-                SELECT State FROM Transactions WHERE Id = @Id;";
-
-            using var cmd = new SqliteCommand(selectSql, connection);
-            cmd.Parameters.AddWithValue("@Id", transactionId.ToString());
-
-            object? result = cmd.ExecuteScalar();
-            if (result == null)
-            {
-                throw new InvalidOperationException($"Transaction {transactionId} not found");
-            }
-
-            return (TransactionState)Convert.ToInt32(result);
-        });
+        var gate = GetLock(transactionId);
+        await gate.WaitAsync();
+        try { return GetTransaction(transactionId).State; }
+        finally { gate.Release(); }
     }
 
     public async Task<IReadOnlyList<OperationResult>> GetTransactionHistoryAsync(Guid transactionId)
     {
-        if (_inMemoryTransactions.TryGetValue(transactionId, out Transaction? memoryTransaction))
-        {
-            return memoryTransaction.Operations.AsReadOnly();
-        }
-
-        var operations = new List<OperationResult>();
-
-        await Task.Run(() =>
-        {
-            using var connection = new SqliteConnection(_connectionString);
-            connection.Open();
-
-            const string selectSql = @"
-                SELECT Success, Message, OriginalPath, BackupPath
-                FROM Operations
-                WHERE TransactionId = @TransactionId
-                ORDER BY Timestamp;";
-
-            using var cmd = new SqliteCommand(selectSql, connection);
-            cmd.Parameters.AddWithValue("@TransactionId", transactionId.ToString());
-
-            using SqliteDataReader reader = cmd.ExecuteReader();
-            while (reader.Read())
-            {
-                bool success = reader.GetInt32(0) == 1;
-                string message = reader.GetString(1);
-                string? originalPath = reader.IsDBNull(2) ? null : reader.GetString(2);
-                string? backupPath = reader.IsDBNull(3) ? null : reader.GetString(3);
-
-                FileEntry? originalFile = null;
-                if (!string.IsNullOrEmpty(originalPath) && File.Exists(originalPath))
-                {
-                    var fileInfo = new FileInfo(originalPath);
-                    originalFile = new FileEntry(
-                        Path: originalPath,
-                        Size: fileInfo.Length,
-                        LastAccessTime: fileInfo.LastAccessTime,
-                        ContentHash: ""); // Hash non stocké en DB
-                }
-
-                operations.Add(new OperationResult(
-                    Success: success,
-                    Message: message,
-                    TransactionId: transactionId,
-                    OriginalFile: originalFile,
-                    BackupPath: backupPath));
-            }
-        });
-
-        return operations.AsReadOnly();
+        var gate = GetLock(transactionId);
+        await gate.WaitAsync();
+        try { return GetTransaction(transactionId).Operations.ToArray(); }
+        finally { gate.Release(); }
     }
 
-    private static string? ExtractBackupIdFromPath(string backupPath)
+    private Transaction GetTransaction(Guid id)
     {
-        // Extrait le GUID du chemin de backup
-        // Format: ...\Backups\yyyy-MM-dd\{guid}\data\filename
-        string[] parts = backupPath.Split(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
-        for (int i = 0; i < parts.Length - 1; i++)
+        if (_transactions.TryGetValue(id, out var transaction)) return transaction;
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT State, CreatedAt FROM Transactions WHERE Id = @Id;";
+        command.Parameters.AddWithValue("@Id", id.ToString());
+        using (var reader = command.ExecuteReader())
         {
-            if (parts[i + 1] == "data" && Guid.TryParse(parts[i], out _))
+            if (!reader.Read()) throw new InvalidOperationException($"Transaction {id} not found");
+            transaction = new Transaction(id, (TransactionState)reader.GetInt32(0),
+                DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
+        }
+        command.CommandText = """
+            SELECT Success, Message, OriginalPath, BackupPath, OriginalSize, OriginalLastAccess, OriginalHash, ItemsProcessed, BytesRecovered
+            FROM Operations WHERE TransactionId = @Id ORDER BY rowid;
+            """;
+        using (var reader = command.ExecuteReader())
+        {
+            while (reader.Read())
             {
-                return parts[i];
+                FileEntry? original = reader.IsDBNull(2) ? null : new(reader.GetString(2), reader.IsDBNull(4) ? 0 : reader.GetInt64(4),
+                    reader.IsDBNull(5) ? DateTime.MinValue : DateTime.Parse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
+                    reader.IsDBNull(6) ? "" : reader.GetString(6));
+                transaction.Operations.Add(new(reader.GetInt32(0) == 1, reader.GetString(1), id, original,
+                    reader.IsDBNull(3) ? null : reader.GetString(3), reader.IsDBNull(7) ? null : reader.GetInt32(7),
+                    reader.IsDBNull(8) ? null : reader.GetInt64(8)));
             }
         }
-        return null;
+        _transactions[id] = transaction;
+        return transaction;
+    }
+
+    private SemaphoreSlim GetLock(Guid id) => _locks.GetOrAdd(id, _ => new(1, 1));
+    private static string? ExtractBackupId(string? path)
+    {
+        if (string.IsNullOrEmpty(path)) return null;
+        string? data = Path.GetDirectoryName(path);
+        if (!string.Equals(Path.GetFileName(data), "data", StringComparison.OrdinalIgnoreCase)) return null;
+        string? id = Path.GetFileName(Path.GetDirectoryName(data));
+        return Guid.TryParseExact(id, "N", out _) ? id : null;
     }
 
     public void Dispose()
     {
-        foreach (SemaphoreSlim semaphore in _transactionLocks.Values)
-        {
-            semaphore.Dispose();
-        }
-        _transactionLocks.Clear();
+        foreach (var gate in _locks.Values) gate.Dispose();
+        _locks.Clear();
     }
 }

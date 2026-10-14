@@ -45,7 +45,7 @@ public class FileGuardianTests
     public async Task SafeDeleteAsync_System32File_ReturnsFailureWithoutDeleting()
     {
         var result = await _guardian.SafeDeleteAsync(@"C:\Windows\System32\kernel32.dll");
-        
+
         Assert.False(result.Success);
         Assert.Contains("critical", result.Message.ToLower());
         _backupMock.Verify(b => b.CreateBackupAsync(It.IsAny<string>(), default), Times.Never);

@@ -8,5 +8,7 @@ public sealed record CleanableItem(
     RiskLevel RiskLevel,
     ItemType Type,
     DateTime? LastAccessTime = null,
-    string? ParentPluginId = null
+    string? ParentPluginId = null,
+    string? DuplicateGroupId = null,
+    string? OriginalPath = null
 );

@@ -22,10 +22,15 @@ public class Transaction
     public List<OperationResult> Operations { get; } = [];
 
     public Transaction()
+        : this(Guid.NewGuid(), TransactionState.Pending, DateTime.UtcNow)
     {
-        Id = Guid.NewGuid();
-        State = TransactionState.Pending;
-        CreatedAt = DateTime.UtcNow;
+    }
+
+    internal Transaction(Guid id, TransactionState state, DateTime createdAt)
+    {
+        Id = id;
+        State = state;
+        CreatedAt = createdAt;
     }
 
     public void MarkCommitted() => State = TransactionState.Committed;

@@ -1,252 +1,147 @@
 using Microsoft.Extensions.Logging;
 using OpenCleaner.Contracts;
+using OpenCleaner.Core;
 using OpenCleaner.Core.Security;
 using System.Security.Cryptography;
-using OpenCleaner.Core;
 
 namespace OpenCleaner.Plugins.System.Plugins;
 
-/// <summary>
-/// Plugin de détection de doublons par hash SHA-256.
-/// Scanne Documents, Bureau, Téléchargements et Images.
-/// Seuls les fichiers de plus de 1 Mo sont analysés pour éviter le bruit.
-/// </summary>
-public class DuplicateFinderPlugin : ICleanerPlugin
+/// <summary>Personal-file duplicates require explicit review; application data is excluded.</summary>
+public sealed class DuplicateFinderPlugin : ICleanerPlugin
 {
+    private sealed record DuplicateEvidence(string OriginalPath, string Hash);
     private readonly IFileGuardian _fileGuardian;
     private readonly ILogger<DuplicateFinderPlugin> _logger;
+    private readonly string[] _roots;
+    private readonly ScannedFileSelection _selection = new();
+    private Dictionary<string, DuplicateEvidence> _evidence = new(StringComparer.Ordinal);
+    private const long MinSizeBytes = 1024 * 1024;
 
-    public string Id          => "system.duplicates";
-    public string Name        => "Détecteur de doublons";
-    public string Description => "Trouve les fichiers en double dans vos dossiers personnels (>1 Mo)";
-    public PluginCategory Category    => PluginCategory.System;
-    public RiskLevel MaxRiskLevel     => RiskLevel.Safe;
-    public bool IsAvailable           => true;
-    public bool RequiresAdmin         => false;
-
-    /// <summary>Taille minimum d'un fichier pour être analysé (1 Mo).</summary>
-    private const long MinSizeBytes = 1 * 1024 * 1024;
-
-    /// <summary>Dossiers utilisateur scannés.</summary>
-    private static readonly Environment.SpecialFolder[] ScanFolders =
-    [
-        Environment.SpecialFolder.MyDocuments,
-        Environment.SpecialFolder.DesktopDirectory,
-        Environment.SpecialFolder.UserProfile,   // contient Downloads
-        Environment.SpecialFolder.MyPictures,
-        Environment.SpecialFolder.MyVideos,
-        Environment.SpecialFolder.MyMusic,
-    ];
+    public string Id => "system.duplicates";
+    public string Name => "Détecteur de doublons";
+    public string Description => "Compare les fichiers personnels de plus de 1 Mo ; suppression après vérification";
+    public PluginCategory Category => PluginCategory.System;
+    public RiskLevel MaxRiskLevel => RiskLevel.ExpertOnly;
+    public bool IsAvailable => OperatingSystem.IsWindows();
+    public bool RequiresAdmin => false;
+    public event Action<string>? OnFileHashing;
 
     public DuplicateFinderPlugin(IFileGuardian fileGuardian, ILogger<DuplicateFinderPlugin> logger)
+        : this(fileGuardian, logger, DefaultRoots()) { }
+
+    internal DuplicateFinderPlugin(IFileGuardian fileGuardian, ILogger<DuplicateFinderPlugin> logger, IEnumerable<string> roots)
     {
         _fileGuardian = fileGuardian;
         _logger = logger;
+        _roots = roots.Where(p => !string.IsNullOrWhiteSpace(p)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
     }
 
-    public event Action<string>? OnFileHashing;
-
-    // ─────────────────────────────────────────────────────────────────────
-    //  ANALYZE
-    // ─────────────────────────────────────────────────────────────────────
-
-    public async Task<IReadOnlyList<CleanableItem>> AnalyzeAsync(
-        IProgress<double>? progress = null,
-        CancellationToken ct = default)
+    private static IEnumerable<string> DefaultRoots()
     {
-        var items = new List<CleanableItem>();
+        foreach (var folder in new[] { Environment.SpecialFolder.MyDocuments, Environment.SpecialFolder.DesktopDirectory,
+            Environment.SpecialFolder.MyPictures, Environment.SpecialFolder.MyVideos, Environment.SpecialFolder.MyMusic })
+            yield return Environment.GetFolderPath(folder);
+        yield return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
+    }
 
-        // 1. Collecte tous les fichiers éligibles
-        var allFiles = CollectFiles();
-        int total = allFiles.Count;
-
-        if (total == 0)
-        {
-            progress?.Report(1.0);
-            return items;
-        }
-
-        // 2. Passe préliminaire : Grouper par taille (ceux ayant une taille unique n'ont aucun doublon possible)
-        var sizeGroups = allFiles
-            .GroupBy(f =>
+    public async Task<IReadOnlyList<CleanableItem>> AnalyzeAsync(IProgress<double>? progress = null, CancellationToken ct = default)
+    {
+        _selection.Reset();
+        _evidence = new(StringComparer.Ordinal);
+        var candidates = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
+        foreach (var root in _roots)
+            foreach (var file in PluginFileSafety.EnumerateFiles(root, "*", recursive: true, ct))
             {
-                try { return new FileInfo(f).Length; }
-                catch { return -1L; }
-            })
-            .Where(g => g.Key > 0 && g.Count() > 1)
-            .ToList();
+                ct.ThrowIfCancellationRequested();
+                try
+                {
+                    var info = new FileInfo(file);
+                    if (info.Exists && info.Length >= MinSizeBytes && !_fileGuardian.IsSystemCriticalPath(file))
+                        candidates.TryAdd(file, info);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+            }
 
-        var suspectedFiles = sizeGroups.SelectMany(g => g).ToList();
-        var totalToHash = suspectedFiles.Count;
-
-        if (totalToHash == 0)
-        {
-            progress?.Report(1.0);
-            return items;
-        }
-
-        // 3. Passe de validation : Hash complet uniquement sur les suspects
-        var hashMap = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+        var suspects = candidates.Values.GroupBy(f => f.Length).Where(g => g.Count() > 1).SelectMany(g => g).ToList();
+        var hashes = new Dictionary<string, List<FileInfo>>(StringComparer.Ordinal);
         int done = 0;
-
-        foreach (var file in suspectedFiles)
+        foreach (var info in suspects)
         {
             ct.ThrowIfCancellationRequested();
             try
             {
-                OnFileHashing?.Invoke(file);
-                var hash = await HashHelper.ComputeHashAsync(file, ct);
-                if (!hashMap.TryGetValue(hash, out var paths))
-                {
-                    paths = [];
-                    hashMap[hash] = paths;
-                }
-                paths.Add(file);
+                var length = info.Length;
+                var modified = info.LastWriteTimeUtc;
+                OnFileHashing?.Invoke(info.FullName);
+                var hash = await HashHelper.ComputeHashAsync(info.FullName, ct);
+                info.Refresh();
+                if (!info.Exists || info.Length != length || info.LastWriteTimeUtc != modified) continue;
+                if (!hashes.TryGetValue(hash, out var group)) hashes[hash] = group = [];
+                group.Add(info);
             }
-            catch (Exception ex)
+            catch (OperationCanceledException) { throw; }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                _logger.LogDebug(ex, "Impossible de hasher {File}", file);
+                _logger.LogDebug(ex, "Comparaison impossible : {Path}", info.FullName);
             }
-
-            done++;
-            progress?.Report((double)done / totalToHash);
+            finally { progress?.Report(++done / (double)suspects.Count); }
         }
 
-        // 4. Seuls les groupes avec >= 2 fichiers sont des doublons
-        foreach (var kvp in hashMap)
+        var items = new List<CleanableItem>();
+        foreach (var group in hashes.Where(g => g.Value.Count > 1))
         {
-            if (kvp.Value.Count < 2) continue;
-
-            var group = kvp.Value;
-            // Trier : le plus récent d'abord = "original", les autres = copies
-            group.Sort((a, b) =>
+            ct.ThrowIfCancellationRequested();
+            // Stable order designates a keeper, without pretending to infer which file is the original.
+            var ordered = group.Value.OrderBy(f => f.FullName, StringComparer.OrdinalIgnoreCase).ToArray();
+            var original = ordered[0].FullName;
+            var groupId = Guid.NewGuid().ToString();
+            foreach (var copy in ordered.Skip(1))
             {
-                var ta = new FileInfo(a).LastWriteTime;
-                var tb = new FileInfo(b).LastWriteTime;
-                return tb.CompareTo(ta); // décroissant
-            });
-
-            // Le premier est l'original, les suivants sont des copies
-            var originalPath = group[0];
-            var originalInfo = new FileInfo(originalPath);
-            var originalName = Path.GetFileName(originalPath);
-
-            for (int i = 1; i < group.Count; i++)
-            {
-                ct.ThrowIfCancellationRequested();
-                var copyPath = group[i];
-                var copyInfo = new FileInfo(copyPath);
-
-                items.Add(new CleanableItem(
-                    Id: Guid.NewGuid().ToString(),
-                    Path: copyPath,
-                    Size: copyInfo.Length,
-                    Description: $"Doublon de « {originalName} » ({copyPath})",
-                    RiskLevel: RiskLevel.Safe,
-                    Type: ItemType.File,
-                    LastAccessTime: copyInfo.LastAccessTime,
-                    ParentPluginId: Id
-                ));
+                copy.Refresh();
+                if (!copy.Exists) continue;
+                var item = new CleanableItem(Guid.NewGuid().ToString(), copy.FullName, copy.Length,
+                    $"Identique à « {Path.GetFileName(original)} » — copie conservée : {original}",
+                    RiskLevel.ExpertOnly, ItemType.File, copy.LastAccessTime, Id, groupId, original);
+                items.Add(item);
+                _evidence[item.Id] = new DuplicateEvidence(original, group.Key);
             }
         }
-
-        _logger.LogInformation("Analyse doublons : {Count} copies trouvées", items.Count);
+        ct.ThrowIfCancellationRequested();
+        _selection.Publish(items);
+        progress?.Report(1);
         return items;
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    //  CLEAN
-    // ─────────────────────────────────────────────────────────────────────
-
-    public async Task<OperationResult> CleanAsync(
-        IEnumerable<CleanableItem> items,
-        IBackupManager backupManager,
-        IProgress<double>? progress = null,
-        CancellationToken ct = default)
+    public async Task<OperationResult> CleanAsync(IEnumerable<CleanableItem> items, IBackupManager backupManager,
+        IProgress<double>? progress = null, CancellationToken ct = default)
     {
-        var list    = items.ToList();
-        int total   = list.Count;
-        int current = 0;
-        int success = 0;
-        long freed  = 0;
-
-        foreach (var item in list)
+        var keepers = new Dictionary<string, FileStream>(StringComparer.OrdinalIgnoreCase);
+        try
         {
-            ct.ThrowIfCancellationRequested();
-
-            try
+            return await _selection.CleanAsync(items, _fileGuardian, _logger, progress, ct, async (item, token) =>
             {
-                if (_fileGuardian.IsSystemCriticalPath(item.Path)) continue;
-
-                var result = await _fileGuardian.SafeDeleteAsync(item.Path, createBackup: true, ct);
-                if (result.Success)
+                if (!_evidence.TryGetValue(item.Id, out var evidence) ||
+                    !PluginFileSafety.IsRegularPath(evidence.OriginalPath)) return false;
+                if (!keepers.TryGetValue(evidence.OriginalPath, out var original))
                 {
-                    success++;
-                    freed += item.Size;
+                    // Keep the surviving copy open without write/delete sharing throughout the cleanup.
+                    original = new FileStream(evidence.OriginalPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                        81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
+                    keepers[evidence.OriginalPath] = original;
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Erreur suppression doublon {Path}", item.Path);
-            }
-
-            current++;
-            progress?.Report((double)current / total);
+                original.Position = 0;
+                var originalHash = Convert.ToHexString(await SHA256.HashDataAsync(original, token));
+                var copyHash = await HashHelper.ComputeHashAsync(item.Path, token);
+                return originalHash.Equals(evidence.Hash, StringComparison.OrdinalIgnoreCase) &&
+                    copyHash.Equals(evidence.Hash, StringComparison.OrdinalIgnoreCase);
+            });
         }
-
-        var mb = freed / 1_048_576.0;
-        return new OperationResult(
-            Success: success > 0,
-            Message: $"{success}/{total} doublons supprimés ({mb:0.#} Mo libérés)",
-            TransactionId: Guid.NewGuid()
-        );
+        finally { foreach (var stream in keepers.Values) await stream.DisposeAsync(); }
     }
 
     public Task<long> EstimateSizeAsync(CancellationToken ct = default)
-        => Task.FromResult(0L);
-
-    // ─────────────────────────────────────────────────────────────────────
-    //  UTILITAIRES
-    // ─────────────────────────────────────────────────────────────────────
-
-    private List<string> CollectFiles()
     {
-        var files = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-        var downloadsPath = Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads");
-
-        var dirs = ScanFolders
-            .Select(f => Environment.GetFolderPath(f))
-            .Where(p => !string.IsNullOrEmpty(p))
-            .Concat([downloadsPath])
-            .Distinct(StringComparer.OrdinalIgnoreCase)
-            .Where(Directory.Exists)
-            .ToList();
-
-        foreach (var dir in dirs)
-        {
-            try
-            {
-                foreach (var file in Directory.EnumerateFiles(dir, "*", SearchOption.AllDirectories))
-                {
-                    try
-                    {
-                        if (_fileGuardian.IsSystemCriticalPath(file)) continue;
-                        var info = new FileInfo(file);
-                        if (info.Length >= MinSizeBytes)
-                            files.Add(file);
-                    }
-                    catch { /* ignore fichier individuel inaccessible */ }
-                }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Impossible de scanner {Dir}", dir);
-            }
-        }
-
-        return [.. files];
+        ct.ThrowIfCancellationRequested();
+        return Task.FromResult(0L);
     }
-
-
 }

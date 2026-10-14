@@ -5,4 +5,6 @@ public sealed record OperationResult(
     string Message,
     Guid TransactionId,
     FileEntry? OriginalFile = null,
-    string? BackupPath = null);
+    string? BackupPath = null,
+    int? ItemsProcessed = null,
+    long? BytesRecovered = null);

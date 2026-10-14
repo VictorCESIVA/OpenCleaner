@@ -1,43 +1,46 @@
 name: Build and Release
-
 on:
   push:
-    tags:
-      - 'v*'
-
+    tags: ['v*']
 permissions:
   contents: write
-
 jobs:
   release:
     runs-on: windows-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Get Version from Tag
-        id: version
-        shell: bash
-        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '8.0.x'
-
-      - name: Publish Application
-        run: dotnet publish src/OpenCleaner.UI/OpenCleaner.UI.csproj -c Release -o publish -r win-x64 --self-contained true /p:PublishSingleFile=true
-
-      - name: Install Velopack
-        run: dotnet tool install -g vpk --version 0.0.1298
-
-      - name: Create Velopack Release
+          dotnet-version: '10.0.x'
+      - name: Validate version
+        id: version
+        shell: pwsh
         run: |
-          # Télécharger les assets existants (pour delta updates)
-          vpk download github --repoUrl https://github.com/${{ github.repository }} || true
-          
-          # Créer le package (note: --mainExe doit correspondre au nom de sortie)
-          vpk pack -u OpenCleaner -v ${{ steps.version.outputs.version }} -p publish --mainExe OpenCleaner.UI.exe --channel win-x64
-          
-          # Uploader sur GitHub Releases
-          vpk upload github --repoUrl https://github.com/${{ github.repository }} --channel win-x64 --publish --releaseName "OpenCleaner ${{ steps.version.outputs.version }}" --tag ${{ github.ref_name }} --token ${{ secrets.GITHUB_TOKEN }}
+          $version = $env:GITHUB_REF_NAME -replace '^v', ''
+          if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$') {
+            throw "Expected a semantic version tag (v1.2.3 or v1.2.3-beta.1)."
+          }
+          "version=$version" >> $env:GITHUB_OUTPUT
+      - name: Restore and audit dependencies
+        run: |
+          dotnet restore OpenCleaner.sln -p:NuGetAudit=true -p:NuGetAuditMode=all
+      - name: Build
+        run: dotnet build OpenCleaner.sln -c Release --no-restore --warnaserror
+      - name: Test
+        run: dotnet test OpenCleaner.sln -c Release --no-build --logger trx
+      - name: Publish application
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+        run: dotnet publish src/OpenCleaner.UI/OpenCleaner.UI.csproj -c Release -o publish -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=$env:APP_VERSION
+      - name: Install Velopack
+        run: dotnet tool install -g vpk --version 1.2.161
+      - name: Package and release
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          vpk pack -u OpenCleaner -v $env:APP_VERSION -p publish --mainExe OpenCleaner.UI.exe --runtime win-x64 --channel win-x64
+          if ($LASTEXITCODE -ne 0) { throw "Packaging failed." }
+          vpk upload github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --channel win-x64 --publish --releaseName "OpenCleaner $env:APP_VERSION" --tag $env:GITHUB_REF_NAME --token $env:RELEASE_TOKEN
+          if ($LASTEXITCODE -ne 0) { throw "Release upload failed." }

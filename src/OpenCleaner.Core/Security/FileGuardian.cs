@@ -1,4 +1,3 @@
-using System.Security.Cryptography;
 using Microsoft.Extensions.Logging;
 using OpenCleaner.Contracts;
 
@@ -9,311 +8,144 @@ public sealed class FileGuardian : IFileGuardian
     private readonly IBackupManager _backupManager;
     private readonly ILogger<FileGuardian> _logger;
 
-    private static readonly HashSet<string> SystemPaths = new(StringComparer.OrdinalIgnoreCase)
-    {
-        @"C:\Windows\System32",
-        @"C:\Windows\SysWOW64",
-        @"C:\Program Files",
-        @"C:\ProgramData\Microsoft",
-        @"C:\$Recycle.Bin",
-        @"C:\Boot",
-        @"C:\Recovery"
-    };
-
-    private static readonly HashSet<string> SystemFileNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "pagefile.sys",
-        "hiberfil.sys",
-        "swapfile.sys",
-        "ntuser.dat"
-    };
-
     public FileGuardian(IBackupManager backupManager, ILogger<FileGuardian> logger)
     {
         _backupManager = backupManager;
         _logger = logger;
     }
 
-    public bool IsSystemCriticalPath(string path)
-    {
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return true;
-        }
-
-        string normalizedPath = Path.GetFullPath(path).ToLowerInvariant();
-
-        foreach (string systemPath in SystemPaths)
-        {
-            if (IsPathWithinDirectory(normalizedPath, systemPath))
-            {
-                return true;
-            }
-        }
-
-        string fileName = Path.GetFileName(normalizedPath);
-        if (SystemFileNames.Contains(fileName))
-        {
-            return true;
-        }
-
-        try
-        {
-            if (File.Exists(path))
-            {
-                FileAttributes attributes = File.GetAttributes(path);
-                if ((attributes & FileAttributes.System) == FileAttributes.System &&
-                    (attributes & FileAttributes.Hidden) == FileAttributes.Hidden)
-                {
-                    return true;
-                }
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogWarning(ex, "Could not check attributes for path: {Path}", path);
-        }
-
-        return false;
-    }
-
-    private static bool IsPathWithinDirectory(string normalizedPath, string directoryPath)
-    {
-        string normalizedDirectory = Path.GetFullPath(directoryPath).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar).ToLowerInvariant();
-        if (normalizedPath.Equals(normalizedDirectory, StringComparison.Ordinal))
-        {
-            return true;
-        }
-
-        return normalizedPath.StartsWith(normalizedDirectory + Path.DirectorySeparatorChar, StringComparison.Ordinal) ||
-               normalizedPath.StartsWith(normalizedDirectory + Path.AltDirectorySeparatorChar, StringComparison.Ordinal);
-    }
+    public bool IsSystemCriticalPath(string path) => PathSafety.IsCritical(path) ||
+        (_backupManager is BackupManager manager && PathSafety.IsWithin(PathSafety.Normalize(path), manager.BackupsRoot));
 
     public bool IsFileLocked(string path)
     {
-        if (!File.Exists(path))
-        {
-            return false;
-        }
-
-        FileStream? stream = null;
         try
         {
-            stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None);
+            if (!File.Exists(path)) return false;
+            using var stream = File.Open(path, FileMode.Open, FileAccess.Read, FileShare.None);
             return false;
         }
-        catch (IOException)
-        {
-            return true;
-        }
-        finally
-        {
-            stream?.Dispose();
-        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        { return true; }
     }
 
     public async Task<OperationResult> SafeDeleteAsync(string path, bool createBackup = true, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         Guid transactionId = Guid.NewGuid();
-
-        if (ct.IsCancellationRequested)
-        {
-            return new OperationResult(
-                Success: false,
-                Message: "Operation cancelled",
-                TransactionId: transactionId);
-        }
-
-        // Étape 1 : Vérification chemin critique système
-        if (IsSystemCriticalPath(path))
-        {
-            _logger.LogError("Attempted to delete system critical path: {Path}", path);
-            return new OperationResult(
-                Success: false,
-                Message: "System critical path blocked",
-                TransactionId: transactionId,
-                OriginalFile: null,
-                BackupPath: null);
-        }
-
-        // Étape 2 : Vérification existence fichier
-        if (!File.Exists(path))
-        {
-            return new OperationResult(
-                Success: false,
-                Message: "File not found",
-                TransactionId: transactionId,
-                OriginalFile: null,
-                BackupPath: null);
-        }
-
-        // Étape 3 : Vérification fichier verrouillé
-        if (IsFileLocked(path))
-        {
-            return new OperationResult(
-                Success: false,
-                Message: "File is locked by another process",
-                TransactionId: transactionId,
-                OriginalFile: null,
-                BackupPath: null);
-        }
-
-        // Récupération des infos avant suppression
-        FileInfo fileInfo = new(path);
-        string contentHash = await HashHelper.ComputeHashAsync(path, ct);
-        FileEntry originalFile = new(
-            Path: path,
-            Size: fileInfo.Length,
-            LastAccessTime: fileInfo.LastAccessTime,
-            ContentHash: contentHash);
-
+        FileEntry? originalFile = null;
         string? backupPath = null;
+        OperationResult Failure(string message) => new(false, message, transactionId, originalFile, backupPath, 0, 0);
 
-        // Étape 4 : Création du backup si demandé
-        if (createBackup)
-        {
-            try
-            {
-                BackupInfo backup = await _backupManager.CreateBackupAsync(path, ct);
-                backupPath = backup.BackupPath;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Backup failed for {Path}, aborting delete", path);
-                return new OperationResult(
-                    Success: false,
-                    Message: "Backup failed, aborting delete",
-                    TransactionId: transactionId,
-                    OriginalFile: originalFile,
-                    BackupPath: null);
-            }
-        }
+        if (IsSystemCriticalPath(path)) return Failure("System critical or unsafe path blocked");
+        path = PathSafety.Normalize(path);
 
-        if (ct.IsCancellationRequested)
-        {
-            return new OperationResult(
-                Success: false,
-                Message: "Operation cancelled before delete",
-                TransactionId: transactionId,
-                OriginalFile: originalFile,
-                BackupPath: backupPath);
-        }
-
-        // Étape 5 : Suppression du fichier (UNIQUEMENT ici)
         try
         {
-            try
+            if (!File.Exists(path)) return Failure("File not found");
+            if (IsFileLocked(path)) return Failure("File is locked or inaccessible");
+
+            var fileInfo = new FileInfo(path);
+            string contentHash = await HashHelper.ComputeHashAsync(path, ct);
+            originalFile = new FileEntry(path, fileInfo.Length, fileInfo.LastAccessTime, contentHash);
+
+            if (createBackup)
             {
-                FileAttributes attrs = File.GetAttributes(path);
-                if ((attrs & FileAttributes.ReadOnly) == FileAttributes.ReadOnly ||
-                    (attrs & FileAttributes.Hidden) == FileAttributes.Hidden)
+                BackupInfo backup;
+                try { backup = await _backupManager.CreateBackupAsync(path, ct); }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex)
                 {
-                    File.SetAttributes(path, FileAttributes.Normal);
+                    _logger.LogError(ex, "Backup failed for {Path}, aborting delete", path);
+                    return Failure("Backup failed, aborting delete");
                 }
-            }
-            catch (Exception ex)
-            {
-                _logger.LogDebug(ex, "Could not normalize attributes before delete: {Path}", path);
+                backupPath = backup.BackupPath;
+                if (backup.Size != originalFile.Size ||
+                    !string.Equals(backup.ContentHash, originalFile.ContentHash, StringComparison.OrdinalIgnoreCase) ||
+                    !File.Exists(backup.BackupPath) ||
+                    !string.Equals(await HashHelper.ComputeHashAsync(backup.BackupPath, ct), originalFile.ContentHash,
+                        StringComparison.OrdinalIgnoreCase))
+                    return Failure("Backup verification failed, aborting delete");
             }
 
-            File.Delete(path);
+            ct.ThrowIfCancellationRequested();
+            if (IsSystemCriticalPath(path)) return Failure("Path became unsafe before delete");
+
+            await using var deletion = new FileDeletionHandle(path);
+            string currentHash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(deletion.Stream, ct));
+            if (deletion.Stream.Length != originalFile.Size ||
+                !string.Equals(currentHash, originalFile.ContentHash, StringComparison.OrdinalIgnoreCase))
+                return Failure("File changed since backup, aborting delete");
+
+            ct.ThrowIfCancellationRequested();
+            if (IsSystemCriticalPath(path)) return Failure("Path became unsafe before delete");
+            deletion.Delete();
             _logger.LogInformation("File deleted successfully: {Path}", path);
+            return new OperationResult(true, "Deleted successfully", transactionId, originalFile, backupPath,
+                ItemsProcessed: 1, BytesRecovered: backupPath == null ? originalFile.Size : 0);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
         {
-            _logger.LogError(ex, "Failed to delete file: {Path}", path);
-            return new OperationResult(
-                Success: false,
-                Message: $"Delete failed: {ex.Message}",
-                TransactionId: transactionId,
-                OriginalFile: originalFile,
-                BackupPath: backupPath);
+            _logger.LogWarning(ex, "Delete failed for {Path}", path);
+            return Failure($"Delete failed: {ex.Message}");
         }
-
-        // Étape 6 : Retour du résultat succès
-        return new OperationResult(
-            Success: true,
-            Message: "Deleted successfully",
-            TransactionId: transactionId,
-            OriginalFile: originalFile,
-            BackupPath: backupPath);
     }
 
     public async Task<OperationResult> SafeCleanDirectoryAsync(string dir, string searchPattern = "*", bool recursive = false, CancellationToken ct = default)
     {
+        ct.ThrowIfCancellationRequested();
         Guid transactionId = Guid.NewGuid();
+        if (IsSystemCriticalPath(dir)) return new(false, "System critical or unsafe directory blocked", transactionId, ItemsProcessed: 0, BytesRecovered: 0);
+        if (!Directory.Exists(dir)) return new(false, "Directory not found", transactionId, ItemsProcessed: 0, BytesRecovered: 0);
 
-        if (ct.IsCancellationRequested)
-        {
-            return new OperationResult(
-                Success: false,
-                Message: "Operation cancelled",
-                TransactionId: transactionId);
-        }
-
-        // Vérification que le répertoire lui-même n'est pas un chemin critique
-        if (IsSystemCriticalPath(dir))
-        {
-            _logger.LogError("Attempted to clean system critical directory: {Dir}", dir);
-            return new OperationResult(
-                Success: false,
-                Message: "System critical directory blocked",
-                TransactionId: transactionId);
-        }
-
-        if (!Directory.Exists(dir))
-        {
-            return new OperationResult(
-                Success: false,
-                Message: "Directory not found",
-                TransactionId: transactionId);
-        }
-
-        List<OperationResult> results = [];
-        long totalSpaceRecovered = 0;
-        int filesProcessed = 0;
-
+        int cleaned = 0;
+        int failures = 0;
+        long recovered = 0;
         try
         {
-            IEnumerable<string> files = recursive
-                ? Directory.EnumerateFiles(dir, searchPattern, SearchOption.AllDirectories)
-                : Directory.EnumerateFiles(dir, searchPattern, SearchOption.TopDirectoryOnly);
-
-            foreach (string file in files)
+            foreach (string file in EnumerateSafeFiles(dir, searchPattern, recursive, ct))
             {
-                if (ct.IsCancellationRequested)
-                {
-                    break;
-                }
-
+                ct.ThrowIfCancellationRequested();
                 OperationResult result = await SafeDeleteAsync(file, createBackup: true, ct);
-                results.Add(result);
-
-                if (result.Success && result.OriginalFile != null)
+                if (result.Success)
                 {
-                    totalSpaceRecovered += result.OriginalFile.Size;
-                    filesProcessed++;
+                    cleaned += result.ItemsProcessed ?? 0;
+                    recovered += result.BytesRecovered ?? 0;
                 }
+                else failures++;
             }
+            return new(failures == 0, $"Cleaned {cleaned} files; {failures} failures", transactionId,
+                ItemsProcessed: cleaned, BytesRecovered: recovered);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException) { throw; }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
         {
-            _logger.LogError(ex, "Error enumerating files in directory: {Dir}", dir);
-            return new OperationResult(
-                Success: false,
-                Message: $"Directory enumeration failed: {ex.Message}",
-                TransactionId: transactionId);
+            _logger.LogWarning(ex, "Directory cleaning failed for {Directory}", dir);
+            return new(false, $"Directory cleaning failed: {ex.Message}", transactionId,
+                ItemsProcessed: cleaned, BytesRecovered: recovered);
         }
-
-        bool allSuccess = results.Count > 0 && results.All(r => r.Success);
-
-        return new OperationResult(
-            Success: allSuccess,
-            Message: allSuccess
-                ? $"Successfully cleaned {filesProcessed} files, recovered {totalSpaceRecovered} bytes"
-                : $"Cleaned with {results.Count(r => !r.Success)} failures out of {results.Count} files",
-            TransactionId: transactionId);
     }
 
-
+    private IEnumerable<string> EnumerateSafeFiles(string directory, string pattern, bool recursive, CancellationToken ct)
+    {
+        var options = new EnumerationOptions
+        {
+            RecurseSubdirectories = false,
+            AttributesToSkip = FileAttributes.ReparsePoint | FileAttributes.System,
+            IgnoreInaccessible = false,
+            ReturnSpecialDirectories = false
+        };
+        var pending = new Stack<string>();
+        pending.Push(directory);
+        while (pending.TryPop(out string? current))
+        {
+            ct.ThrowIfCancellationRequested();
+            if (IsSystemCriticalPath(current)) continue;
+            foreach (string file in Directory.EnumerateFiles(current, pattern, options)) yield return file;
+            if (!recursive) continue;
+            foreach (string child in Directory.EnumerateDirectories(current, "*", options))
+                if (!IsSystemCriticalPath(child)) pending.Push(child);
+        }
+    }
 }
