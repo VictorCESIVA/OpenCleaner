@@ -71,6 +71,8 @@
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock Grid.Column="0" Text="Lecteur :"
                                Foreground="{DynamicResource TextSecond}"
@@ -81,17 +83,26 @@
                               SelectionChanged="DriveCombo_Changed"
                               Height="32"/>
                     <TextBlock Grid.Column="2" x:Name="PathBreadcrumb"
-                               Text="" FontSize="11"
+                               Text="" FontSize="11" TextTrimming="CharacterEllipsis"
                                Foreground="{DynamicResource TextSecond}"
                                VerticalAlignment="Center" Margin="12,0"/>
                     <Button Grid.Column="3" Content="← Remonter"
                             Style="{StaticResource SecondBtn}"
                             Click="GoUp_Click" Margin="0,0,8,0"
                             x:Name="GoUpBtn" IsEnabled="False"/>
-                    <Button Grid.Column="4" Content="Fichiers &gt; 500 Mo"
+                    <Button Grid.Column="4" Content="Tout afficher"
+                            Style="{StaticResource SecondBtn}"
+                            Click="FilterAll_Click" Margin="0,0,8,0"
+                            x:Name="FilterAllBtn" IsEnabled="False"/>
+                    <Button Grid.Column="5" Content="Fichiers &gt; 500 Mo"
                             Style="{StaticResource SecondBtn}"
                             Click="FilterLarge_Click" Margin="0,0,8,0"/>
-                    <Button Grid.Column="5" Content="Analyser"
+                    <Button Grid.Column="6" Content="Explorer"
+                            ToolTip="Ouvrir l'élément sélectionné dans l'Explorateur Windows"
+                            Style="{StaticResource SecondBtn}"
+                            Click="Reveal_Click" Margin="0,0,8,0"
+                            x:Name="RevealBtn"/>
+                    <Button Grid.Column="7" Content="Analyser"
                             Style="{StaticResource AccentBtn}"
                             Click="Scan_Click" x:Name="ScanBtn"/>
                 </Grid>

@@ -8,6 +8,8 @@ namespace OpenCleaner.UI;
 public partial class RestoreWindow : Window
 {
     private bool _isBusy;
+    private IReadOnlyList<BackupInfo> _allBackups = [];
+
     public RestoreWindow()
     {
         InitializeComponent();
@@ -18,31 +20,64 @@ public partial class RestoreWindow : Window
     {
         try
         {
-            var backups = await App.Services.GetRequiredService<IBackupManager>().GetAllBackupsAsync();
-            BackupsListView.ItemsSource = backups;
+            _allBackups = await App.Services.GetRequiredService<IBackupManager>().GetAllBackupsAsync();
+            var totalBytes = _allBackups.Sum(b => b.Size);
+            BackupSummaryText.Text = _allBackups.Count == 0
+                ? "0 sauvegarde (0 o)"
+                : $"{_allBackups.Count:N0} sauvegarde(s) • {SizeFormatter.Format(totalBytes)}";
+            ApplyFilter();
+        }
+        catch (ObjectDisposedException)
+        {
+            // Ignore when application services are disposed during shutdown
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Impossible de lire les sauvegardes :\n{ex.Message}", "Restauration",
-                MessageBoxButton.OK, MessageBoxImage.Error);
+            if (IsLoaded && IsVisible)
+            {
+                MessageBox.Show(this, $"Impossible de lire les sauvegardes :\n{ex.Message}", "Restauration",
+                    MessageBoxButton.OK, MessageBoxImage.Error);
+            }
         }
+    }
+
+    private void SearchBox_TextChanged(object sender, TextChangedEventArgs e) => ApplyFilter();
+
+    private void ApplyFilter()
+    {
+        if (BackupsListView == null) return;
+        var query = SearchBox?.Text?.Trim() ?? "";
+        BackupsListView.ItemsSource = string.IsNullOrEmpty(query)
+            ? _allBackups
+            : _allBackups.Where(b => b.OriginalPath.Contains(query, StringComparison.OrdinalIgnoreCase)).ToList();
+        SetBusy(_isBusy);
     }
 
     private void SetBusy(bool busy)
     {
         _isBusy = busy;
-        BackupsListView.IsEnabled = SelectAllBtn.IsEnabled = RefreshBtn.IsEnabled = DeleteOldBtn.IsEnabled = !busy;
-        RestoreBtn.IsEnabled = !busy && BackupsListView.SelectedItems.Count == 1;
+        BackupsListView.IsEnabled = SelectAllBtn.IsEnabled = RefreshBtn.IsEnabled = DeleteOldBtn.IsEnabled = SearchBox.IsEnabled = !busy;
+        RestoreBtn.IsEnabled = !busy && BackupsListView.SelectedItems.Count > 0;
         DeleteSelectedBtn.IsEnabled = !busy && BackupsListView.SelectedItems.Count > 0;
+        OpenFolderBtn.IsEnabled = !busy && BackupsListView.SelectedItem is BackupInfo;
     }
 
     private void BackupsListView_SelectionChanged(object sender, SelectionChangedEventArgs e) => SetBusy(_isBusy);
 
+    private void OpenFolder_Click(object sender, RoutedEventArgs e)
+    {
+        if (BackupsListView.SelectedItem is BackupInfo backup)
+            ExplorerHelper.RevealInExplorer(backup.OriginalPath);
+    }
+
     private async void Restore_Click(object sender, RoutedEventArgs e)
     {
-        if (BackupsListView.SelectedItem is not BackupInfo backup || UiOperation.IsBusy) return;
-        if (MessageBox.Show(this, $"Restaurer ce fichier ?\n\n{backup.OriginalPath}\n\n" +
-            "Le fichier existant sera sauvegardé avant remplacement.",
+        var selected = BackupsListView.SelectedItems.Cast<BackupInfo>().ToList();
+        if (selected.Count == 0 || UiOperation.IsBusy) return;
+        var prompt = selected.Count == 1
+            ? $"Restaurer ce fichier ?\n\n{selected[0].OriginalPath}\n\nLe fichier existant sera sauvegardé avant remplacement."
+            : $"Restaurer {selected.Count} fichiers sélectionnés ?\n\nTout fichier existant sera sauvegardé avant remplacement.";
+        if (MessageBox.Show(this, prompt,
             "Confirmer la restauration", MessageBoxButton.YesNo, MessageBoxImage.Question,
             MessageBoxResult.No) != MessageBoxResult.Yes) return;
         if (!UiOperation.TryBegin(this, out var operation)) return;
@@ -51,9 +86,20 @@ public partial class RestoreWindow : Window
             SetBusy(true);
             try
             {
-                var success = await App.Services.GetRequiredService<IBackupManager>().RestoreAsync(backup.BackupId, operation.Token);
-                MessageBox.Show(this, success ? "Fichier restauré." : "La restauration a échoué. La sauvegarde est conservée.",
-                    "Restauration", MessageBoxButton.OK, success ? MessageBoxImage.Information : MessageBoxImage.Error);
+                var manager = App.Services.GetRequiredService<IBackupManager>();
+                int restoredCount = 0;
+                foreach (var backup in selected)
+                {
+                    operation.Token.ThrowIfCancellationRequested();
+                    if (await manager.RestoreAsync(backup.BackupId, operation.Token))
+                        restoredCount++;
+                }
+                var allOk = restoredCount == selected.Count;
+                var msg = selected.Count == 1
+                    ? (allOk ? "Fichier restauré." : "La restauration a échoué. La sauvegarde est conservée.")
+                    : $"{restoredCount}/{selected.Count} fichier(s) restauré(s).";
+                MessageBox.Show(this, msg,
+                    "Restauration", MessageBoxButton.OK, allOk ? MessageBoxImage.Information : MessageBoxImage.Warning);
                 await LoadBackupsAsync();
             }
             catch (OperationCanceledException) { }

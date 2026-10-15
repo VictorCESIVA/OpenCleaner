@@ -61,6 +61,8 @@
                           FontSize="12"
                           VirtualizingPanel.IsVirtualizing="True"
                           VirtualizingPanel.VirtualizationMode="Recycling"
+                          SelectionChanged="AlertList_SelectionChanged"
+                          MouseDoubleClick="AlertList_DoubleClick"
                           SelectionMode="Multiple">
                     <ListView.View>
                         <GridView>
@@ -104,16 +106,21 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock TextWrapping="Wrap" Margin="0,0,16,0" Grid.Column="0" x:Name="StatusText"
                                Text="Lancez une analyse, puis vérifiez les alertes."
                                Foreground="{DynamicResource TextSecond}"
                                VerticalAlignment="Center" FontSize="12"/>
-                    <Button Grid.Column="1" Content="Analyser"
+                    <Button Grid.Column="1" Content="Ouvrir l'emplacement"
+                            Style="{StaticResource SecondBtn}"
+                            Click="Reveal_Click" x:Name="RevealBtn"
+                            IsEnabled="False" Margin="0,0,10,0"/>
+                    <Button Grid.Column="2" Content="Analyser"
                             Style="{StaticResource AccentBtn}"
                             Click="Scan_Click" x:Name="ScanBtn"
                             Margin="0,0,10,0"/>
-                    <Button Grid.Column="2" Content="Supprimer la sélection"
+                    <Button Grid.Column="3" Content="Supprimer la sélection"
                             Style="{StaticResource AccentBtn}"
                             Click="SecureSelected_Click"
                             x:Name="SecureBtn" IsEnabled="False"/>

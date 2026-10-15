@@ -15,7 +15,14 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
     private readonly string[] _roots;
     private readonly ScannedFileSelection _selection = new();
     private Dictionary<string, DuplicateEvidence> _evidence = new(StringComparer.Ordinal);
-    private const long MinSizeBytes = 1024 * 1024;
+    private const long DefaultMinSizeBytes = 1024 * 1024;
+    private long _minSizeBytes = DefaultMinSizeBytes;
+
+    public long MinFileSizeBytes
+    {
+        get => _minSizeBytes;
+        set => _minSizeBytes = Math.Max(1024L, value);
+    }
 
     public string Id => "system.duplicates";
     public string Name => "Détecteur de doublons";
@@ -55,7 +62,7 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
                 ct.ThrowIfCancellationRequested();
                 try
                 {
-                    if (info.Exists && info.Length >= MinSizeBytes && !_fileGuardian.IsSystemCriticalPath(info.FullName))
+                    if (info.Exists && info.Length >= _minSizeBytes && !_fileGuardian.IsSystemCriticalPath(info.FullName))
                         candidates.TryAdd(info.FullName, info);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }

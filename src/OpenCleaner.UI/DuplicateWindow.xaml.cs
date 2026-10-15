@@ -44,6 +44,7 @@ public partial class DuplicateWindow : Window
     private readonly ObservableCollection<DuplicateGroup> _groups = [];
     private List<CleanableItem> _allItems = [];
     private DuplicateFinderPlugin? _plugin;
+    private DuplicateFile? _selectedPreviewFile;
     private IProgress<string>? _hashingProgress;
     private readonly System.Diagnostics.Stopwatch _hashThrottle = new();
 
@@ -64,6 +65,8 @@ public partial class DuplicateWindow : Window
         ScanBtn.IsEnabled       = false;
         DeleteBtn.IsEnabled     = false;
         AutoSelectBtn.IsEnabled = false;
+        UnselectAllBtn.IsEnabled = false;
+        MinSizeCombo.IsEnabled  = false;
         DupTree.Items.Clear();
         _groups.Clear();
         _allItems.Clear();
@@ -78,7 +81,9 @@ public partial class DuplicateWindow : Window
         {
             var fileGuardian = App.Services.GetRequiredService<IFileGuardian>();
             var logger       = App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<DuplicateFinderPlugin>>();
-            var plugin       = _plugin = new DuplicateFinderPlugin(fileGuardian, logger);
+            long minBytes    = long.TryParse((MinSizeCombo.SelectedItem as ComboBoxItem)?.Tag as string, out var parsed)
+                ? parsed : 1024L * 1024L;
+            var plugin       = _plugin = new DuplicateFinderPlugin(fileGuardian, logger) { MinFileSizeBytes = minBytes };
 
             var progress = operation.CreateProgress<double>(p =>
                 ScanProgress.Text = $"{p:P0}");
@@ -112,6 +117,7 @@ public partial class DuplicateWindow : Window
                 : $"🔁 {files} copies trouvées dans {groups} groupes.";
 
             AutoSelectBtn.IsEnabled = files > 0;
+            UnselectAllBtn.IsEnabled = files > 0;
         }
         catch (OperationCanceledException) { StatusText.Text = "Opération annulée — relancez lʼanalyse."; _plugin = null; }
         catch (Exception ex)
@@ -123,6 +129,7 @@ public partial class DuplicateWindow : Window
             if (_plugin != null) _plugin.OnFileHashing -= Plugin_OnFileHashing;
             _hashingProgress = null;
             ScanBtn.IsEnabled = true;
+            MinSizeCombo.IsEnabled = true;
         }
     }
 
@@ -190,12 +197,23 @@ public partial class DuplicateWindow : Window
         }
     }
 
+    private void UnselectAll_Click(object sender, RoutedEventArgs e)
+    {
+        foreach (TreeViewItem node in DupTree.Items)
+        {
+            foreach (var child in node.Items)
+            {
+                if (child is CheckBox cb) cb.IsChecked = false;
+            }
+        }
+    }
+
     private void FileCheckBox_Changed(object sender, RoutedEventArgs e)
     {
-        var checkedCount = CountChecked();
-        DeleteBtn.IsEnabled = checkedCount > 0;
-        StatusText.Text = checkedCount > 0
-            ? $"{checkedCount} fichier(s) sélectionné(s) pour suppression."
+        var checkedItems = GetCheckedItems();
+        DeleteBtn.IsEnabled = checkedItems.Count > 0;
+        StatusText.Text = checkedItems.Count > 0
+            ? $"{checkedItems.Count} fichier(s) sélectionné(s) ({SizeFormatter.Format(checkedItems.Sum(i => i.Size))}) pour suppression."
             : "Sélectionnez des fichiers puis cliquez Supprimer.";
     }
 
@@ -260,6 +278,8 @@ public partial class DuplicateWindow : Window
 
     private void LoadPreview(DuplicateFile file)
     {
+        _selectedPreviewFile = file;
+        RevealDupBtn.IsEnabled = true;
         PreviewName.Text = System.IO.Path.GetFileName(file.Path);
         PreviewSize.Text = SizeFormatter.Format(file.Size);
         PreviewImage.Source = null;
@@ -298,11 +318,19 @@ public partial class DuplicateWindow : Window
 
     private void ClearPreview()
     {
+        _selectedPreviewFile = null;
+        RevealDupBtn.IsEnabled = false;
         PreviewName.Text = "—";
         PreviewSize.Text = "";
         PreviewImage.Source = null;
         PreviewPlaceholder.Text = "Sélectionnez un fichier pour voir l'aperçu";
         PreviewPlaceholder.Visibility = Visibility.Visible;
+    }
+
+    private void RevealDup_Click(object sender, RoutedEventArgs e)
+    {
+        if (_selectedPreviewFile != null)
+            ExplorerHelper.RevealInExplorer(_selectedPreviewFile.Path);
     }
 
     // ─── UTILITAIRES ────────────────────────────────────────────────────

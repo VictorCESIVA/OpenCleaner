@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core;
 using OpenCleaner.Core.Security;
@@ -7,6 +8,7 @@ using OpenCleaner.Plugins.System.Plugins;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -17,6 +19,7 @@ namespace OpenCleaner.UI;
 public partial class MainWindow : Window
 {
     private readonly ObservableCollection<CleanableItem> _foundItems = [];
+    private List<CleanableItem> _allAnalyzedItems = [];
     private ICleanerPlugin? _currentPlugin;
     private string _selectedPluginTag = "system";
     private bool _isDarkTheme = true;
@@ -25,10 +28,10 @@ public partial class MainWindow : Window
 
     private static readonly Dictionary<string, (string Title, string Desc)> PluginMeta = new()
     {
-        ["system"] = ("Fichiers temporaires", "Caches temporaires de votre session et de Windows"),
+        ["system"] = ("Fichiers temporaires", "Caches temporaires, rapports d'erreurs et shaders DirectX"),
         ["windowsupdate"] = ("Windows Update", "Téléchargements de mises à jour datant d'au moins 3 jours"),
         ["thumbnails"] = ("Miniatures Windows", "Cache des aperçus de l'Explorateur de fichiers"),
-        ["browser"] = ("Navigateurs", "Choisissez les données à analyser dans Chrome, Edge et Brave"),
+        ["browser"] = ("Navigateurs", "Choisissez les données à analyser dans Chrome, Edge, Brave, Firefox, Opera et Vivaldi"),
         ["steam"] = ("Steam", "Caches de téléchargement — vos jeux sont conservés"),
         ["office"] = ("Microsoft Office", "Fichiers temporaires — les documents de récupération sont conservés"),
         ["registry"] = ("Registre Windows", "Analyse experte — vérifiez chaque résultat avant toute modification"),
@@ -69,9 +72,10 @@ public partial class MainWindow : Window
     private void InvalidateAnalysis()
     {
         _currentPlugin = null;
+        _allAnalyzedItems.Clear();
         _foundItems.Clear();
         _smartScanResults = null;
-        CleanBtn.IsEnabled = SmartCleanBtn.IsEnabled = false;
+        CleanBtn.IsEnabled = SmartCleanBtn.IsEnabled = ExportReportBtn.IsEnabled = RevealFileBtn.IsEnabled = false;
         SmartCleanResult.Visibility = Visibility.Collapsed;
         ResetStats();
         EmptyState.Visibility = Visibility.Visible;
@@ -144,7 +148,10 @@ public partial class MainWindow : Window
     {
         SidebarPanel.IsEnabled = BrowserOptionsPanel.IsEnabled = !busy;
         AnalyzeBtn.IsEnabled = SmartScanBtn.IsEnabled = !busy;
+        SearchBox.IsEnabled = RiskFilterCombo.IsEnabled = !busy;
         CleanBtn.IsEnabled = !busy && _currentPlugin != null && _foundItems.Count > 0;
+        ExportReportBtn.IsEnabled = !busy && _allAnalyzedItems.Count > 0;
+        RevealFileBtn.IsEnabled = !busy && FilesListView.SelectedItem is CleanableItem;
         SmartCleanBtn.IsEnabled = !busy && _smartScanResults?.Any(r => r.Items.Count > 0) == true;
     }
 
@@ -191,10 +198,10 @@ public partial class MainWindow : Window
                 _currentPlugin = plugin;
                 var progress = CreateProgress();
                 var items = await Task.Run(() => plugin.AnalyzeAsync(progress, operation.Token), operation.Token);
-                foreach (var item in items) _foundItems.Add(item);
-                EmptyState.Visibility = items.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+                _allAnalyzedItems = items.ToList();
+                ApplyFilter();
                 if (items.Count > 0 && TryFindResource("FadeInStory") is Storyboard story) story.Begin();
-                UpdateStats(items);
+                UpdateStats(_allAnalyzedItems);
                 StatusText.Text = items.Count == 0 ? "Aucun élément à nettoyer" :
                     $"{items.Count:N0} éléments • {SizeFormatter.Format(items.Sum(i => i.Size))}";
                 if (_selectedPluginTag == "browser" && BrowsersRunning())
@@ -217,15 +224,108 @@ public partial class MainWindow : Window
         }
     }
 
-    private static bool BrowsersRunning()
+    private static bool BrowsersRunning() => ChromeCleanerPlugin.IsAnyBrowserRunning();
+
+    private void Filter_Changed(object sender, TextChangedEventArgs e)
     {
-        foreach (var name in new[] { "chrome", "msedge", "brave" })
+        if (_loadingOptions) return;
+        ApplyFilter();
+    }
+
+    private void RiskFilter_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingOptions) return;
+        ApplyFilter();
+    }
+
+    private void ApplyFilter()
+    {
+        if (FilesListView == null) return;
+        var query = SearchBox?.Text?.Trim() ?? "";
+        var riskTag = (RiskFilterCombo?.SelectedItem as ComboBoxItem)?.Tag as string ?? "All";
+
+        IEnumerable<CleanableItem> filtered = _allAnalyzedItems;
+        if (!string.IsNullOrEmpty(query))
         {
-            var processes = Process.GetProcessesByName(name);
-            try { if (processes.Length > 0) return true; }
-            finally { foreach (var process in processes) process.Dispose(); }
+            filtered = filtered.Where(i =>
+                i.Path.Contains(query, StringComparison.OrdinalIgnoreCase) ||
+                i.Description.Contains(query, StringComparison.OrdinalIgnoreCase));
         }
-        return false;
+
+        filtered = riskTag switch
+        {
+            "Safe" => filtered.Where(i => i.RiskLevel == RiskLevel.Safe),
+            "Recommended" => filtered.Where(i => i.RiskLevel == RiskLevel.Recommended),
+            "ExpertOnly" => filtered.Where(i => i.RiskLevel == RiskLevel.ExpertOnly),
+            _ => filtered
+        };
+
+        _foundItems.Clear();
+        foreach (var item in filtered) _foundItems.Add(item);
+        if (EmptyState != null)
+            EmptyState.Visibility = _foundItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+        if (CleanBtn != null && !UiOperation.IsBusy)
+            CleanBtn.IsEnabled = _currentPlugin != null && _foundItems.Count > 0;
+        if (ExportReportBtn != null && !UiOperation.IsBusy)
+            ExportReportBtn.IsEnabled = _allAnalyzedItems.Count > 0;
+    }
+
+    private void FilesListView_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (RevealFileBtn != null)
+            RevealFileBtn.IsEnabled = !UiOperation.IsBusy && FilesListView.SelectedItem is CleanableItem;
+        var selected = FilesListView.SelectedItems.Cast<CleanableItem>().ToList();
+        if (selected.Count > 0)
+            ActionStatus.Text = $"{selected.Count:N0} élément(s) sélectionné(s) ({SizeFormatter.Format(selected.Sum(i => i.Size))})";
+    }
+
+    private void FilesListView_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
+        RevealSelected_Click(sender, e);
+
+    private void RevealSelected_Click(object sender, RoutedEventArgs e)
+    {
+        if (FilesListView.SelectedItem is CleanableItem item && item.Type is ItemType.File or ItemType.Directory)
+            ExplorerHelper.RevealInExplorer(item.Path);
+    }
+
+    private async void ExportReport_Click(object sender, RoutedEventArgs e)
+    {
+        if (_allAnalyzedItems.Count == 0 || UiOperation.IsBusy) return;
+        var dlg = new SaveFileDialog
+        {
+            Title = "Exporter le rapport d'analyse",
+            Filter = "Rapport JSON (*.json)|*.json",
+            FileName = $"OpenCleaner-Rapport-{_selectedPluginTag}-{DateTime.Now:yyyyMMdd-HHmm}.json"
+        };
+        if (dlg.ShowDialog(this) != true) return;
+        try
+        {
+            var payload = new
+            {
+                ExportedAt = DateTime.Now,
+                Category = _selectedPluginTag,
+                TotalItems = _allAnalyzedItems.Count,
+                TotalBytes = _allAnalyzedItems.Sum(i => i.Size),
+                TotalFormatted = SizeFormatter.Format(_allAnalyzedItems.Sum(i => i.Size)),
+                Items = _allAnalyzedItems.Select(i => new
+                {
+                    i.Path,
+                    i.Size,
+                    SizeFormatted = SizeFormatter.Format(i.Size),
+                    i.Description,
+                    RiskLevel = i.RiskLevel.ToString(),
+                    Type = i.Type.ToString(),
+                    i.LastAccessTime
+                })
+            };
+            var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(dlg.FileName, json);
+            ActionStatus.Text = $"Rapport exporté : {Path.GetFileName(dlg.FileName)}";
+        }
+        catch (Exception ex)
+        {
+            ActionStatus.Text = $"Échec de l'export : {ex.Message}";
+        }
     }
 
     private IProgress<double> CreateProgress()
@@ -274,8 +374,7 @@ public partial class MainWindow : Window
                 if (_selectedPluginTag == "registry")
                 {
                     var remaining = await Task.Run(() => plugin.AnalyzeAsync(ct: operation.Token), operation.Token);
-                    _foundItems.Clear();
-                    foreach (var item in remaining) _foundItems.Add(item);
+                    _allAnalyzedItems = remaining.ToList();
                 }
                 else
                 {
@@ -284,14 +383,10 @@ public partial class MainWindow : Window
                         .Select(i => i.Id)
                         .ToHashSet(StringComparer.Ordinal), operation.Token);
                     if (removedIds.Count > 0)
-                    {
-                        var remaining = _foundItems.Where(i => !removedIds.Contains(i.Id)).ToList();
-                        _foundItems.Clear();
-                        foreach (var item in remaining) _foundItems.Add(item);
-                    }
+                        _allAnalyzedItems = _allAnalyzedItems.Where(i => !removedIds.Contains(i.Id)).ToList();
                 }
-                UpdateStats(_foundItems);
-                EmptyState.Visibility = _foundItems.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+                ApplyFilter();
+                UpdateStats(_allAnalyzedItems);
                 _smartScanResults = null;
                 SmartCleanResult.Visibility = Visibility.Collapsed;
             }

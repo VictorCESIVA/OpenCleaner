@@ -201,6 +201,9 @@ public sealed class BackupManager : IBackupManager, IDisposable
 
     public async Task<IReadOnlyList<BackupInfo>> GetAllBackupsAsync()
     {
+        if (!Directory.Exists(_backupsRoot))
+            return [];
+
         await _gate.WaitAsync();
         try
         {
@@ -221,7 +224,11 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 return (IReadOnlyList<BackupInfo>)backups;
             });
         }
-        finally { _gate.Release(); }
+        finally
+        {
+            try { _gate.Release(); }
+            catch (ObjectDisposedException) { }
+        }
     }
 
     private IEnumerable<string> EnumerateBackupDirectories()

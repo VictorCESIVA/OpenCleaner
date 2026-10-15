@@ -81,9 +81,40 @@
                 <Border Grid.Column="4" Style="{StaticResource Card}" Padding="20,15"><StackPanel><TextBlock Text="NIVEAU DE RISQUE" Style="{StaticResource Eyebrow}"/><TextBlock x:Name="StatRisk" Text="—" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource RiskSafe}" Margin="0,8,0,0"/></StackPanel></Border>
             </Grid>
             <ProgressBar Grid.Row="5" x:Name="ProgressBar" Style="{StaticResource ModernProgressBar}" Margin="0,0,0,10" Value="0" Visibility="Collapsed" AutomationProperties.Name="Progression de l'opération"/>
-            <Border Grid.Row="6" Style="{StaticResource Card}" Padding="8,0,8,8" MinHeight="140">
+            <Border Grid.Row="6" Style="{StaticResource Card}" Padding="8,8,8,8" MinHeight="140">
                 <Grid x:Name="ResultsPanel" Opacity="1">
-                    <ListView x:Name="FilesListView" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource FileListItemStyle}" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" AutomationProperties.Name="Résultats de l'analyse">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+                    <Grid Grid.Row="0" Margin="6,2,6,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="170"/>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBox x:Name="SearchBox" Grid.Column="0" Margin="0,0,8,0" Padding="10,6" FontSize="12"
+                                 ToolTip="Filtrer les résultats par chemin ou description"
+                                 AutomationProperties.Name="Filtrer les résultats"
+                                 TextChanged="Filter_Changed"/>
+                        <ComboBox x:Name="RiskFilterCombo" Grid.Column="1" Margin="0,0,8,0" SelectedIndex="0"
+                                  FontSize="12" SelectionChanged="RiskFilter_Changed"
+                                  AutomationProperties.Name="Filtrer par niveau de risque">
+                            <ComboBoxItem Content="Tous les risques" Tag="All"/>
+                            <ComboBoxItem Content="Risque faible" Tag="Safe"/>
+                            <ComboBoxItem Content="À vérifier" Tag="Recommended"/>
+                            <ComboBoxItem Content="Expert" Tag="ExpertOnly"/>
+                        </ComboBox>
+                        <Button x:Name="RevealFileBtn" Grid.Column="2" Content="Ouvrir l'emplacement"
+                                Style="{StaticResource SecondBtnStyle}" Padding="12,6" MinHeight="32" Margin="0,0,8,0"
+                                IsEnabled="False" Click="RevealSelected_Click"/>
+                        <Button x:Name="ExportReportBtn" Grid.Column="3" Content="Exporter"
+                                ToolTip="Exporter les résultats d'analyse en JSON"
+                                Style="{StaticResource SecondBtnStyle}" Padding="12,6" MinHeight="32"
+                                IsEnabled="False" Click="ExportReport_Click"/>
+                    </Grid>
+                    <ListView Grid.Row="1" x:Name="FilesListView" Background="Transparent" BorderThickness="0" ItemContainerStyle="{StaticResource FileListItemStyle}" ScrollViewer.HorizontalScrollBarVisibility="Auto" ScrollViewer.VerticalScrollBarVisibility="Auto" VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" SelectionChanged="FilesListView_SelectionChanged" MouseDoubleClick="FilesListView_DoubleClick" AutomationProperties.Name="Résultats de l'analyse">
                         <ListView.View><GridView>
                             <GridViewColumn Header="" Width="30"><GridViewColumn.CellTemplate><DataTemplate><Ellipse Width="6" Height="6" Fill="{Binding RiskLevel, Converter={x:Static local:RiskColorConverter.Instance}}" ToolTip="{Binding RiskLevel, Converter={x:Static local:RiskLabelConverter.Instance}}"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
                             <GridViewColumn Header="Fichier ou emplacement" Width="360"><GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Path}" ToolTip="{Binding Path}" FontSize="12" TextTrimming="CharacterEllipsis"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
@@ -92,7 +123,7 @@
                             <GridViewColumn Header="Risque" Width="108"><GridViewColumn.CellTemplate><DataTemplate><Border CornerRadius="5" Padding="8,3" Background="{Binding RiskLevel, Converter={x:Static local:RiskBgConverter.Instance}}"><TextBlock Text="{Binding RiskLevel, Converter={x:Static local:RiskLabelConverter.Instance}}" FontSize="10" FontWeight="SemiBold" Foreground="{Binding RiskLevel, Converter={x:Static local:RiskColorConverter.Instance}}"/></Border></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
                         </GridView></ListView.View>
                     </ListView>
-                    <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,44,20,0" IsHitTestVisible="False">
+                    <StackPanel Grid.Row="1" x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,44,20,0" IsHitTestVisible="False">
                         <Border Width="54" Height="54" Background="{DynamicResource BgHover}" CornerRadius="17" HorizontalAlignment="Center" Margin="0,0,0,12"><Path Data="M 17,13 L 32,13 L 38,19 L 38,40 L 17,40 Z M 32,13 L 32,20 L 38,20 M 23,27 L 32,27 M 23,33 L 30,33" Stroke="{DynamicResource Accent}" StrokeThickness="1.5"/></Border>
                         <TextBlock Text="Tout commence par une analyse." FontSize="15" FontWeight="SemiBold" TextAlignment="Center"/><TextBlock Text="Les éléments trouvés apparaîtront ici pour vérification." FontSize="12" Foreground="{DynamicResource TextSecond}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"/>
                     </StackPanel>

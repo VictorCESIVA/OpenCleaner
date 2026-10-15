@@ -55,7 +55,7 @@ public partial class DevCleanerWindow : System.Windows.Window
         }
     }
 
-    private System.Windows.Controls.CheckBox[] Options => [CbNpm, CbYarn, CbVsCode, CbDiscord, CbSpotify, CbJetBrains];
+    private System.Windows.Controls.CheckBox[] Options => [CbNpm, CbYarn, CbNuGet, CbPip, CbGradle, CbVsCode, CbDiscord, CbSpotify, CbTeams, CbJetBrains];
 
     private void OptionsChanged(object sender, RoutedEventArgs e)
     {
@@ -93,9 +93,13 @@ public partial class DevCleanerWindow : System.Windows.Window
                 ScanNodeModules = CbNode.IsChecked    == true,
                 ScanNpmCache    = CbNpm.IsChecked     == true,
                 ScanYarnCache   = CbYarn.IsChecked    == true,
+                ScanNuGetCache  = CbNuGet.IsChecked   == true,
+                ScanPipCache    = CbPip.IsChecked     == true,
+                ScanGradleCache = CbGradle.IsChecked  == true,
                 ScanVsCode      = CbVsCode.IsChecked  == true,
                 ScanDiscord     = CbDiscord.IsChecked == true,
                 ScanSpotify     = CbSpotify.IsChecked == true,
+                ScanTeams       = CbTeams.IsChecked   == true,
                 ScanJetBrains   = CbJetBrains.IsChecked == true,
                 ScanDocker      = CbDocker.IsChecked  == true,
             };
@@ -131,7 +135,14 @@ public partial class DevCleanerWindow : System.Windows.Window
 
     private void SelectAll_Click(object sender, RoutedEventArgs e)
     {
-        foreach (var item in _items) item.IsSelected = true;
+        bool allSelected = _items.Count > 0 && _items.All(i => i.IsSelected);
+        foreach (var item in _items) item.IsSelected = !allSelected;
+    }
+
+    private void ResultList_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (ResultList.SelectedItem is DevItem item)
+            ExplorerHelper.RevealInExplorer(item.Item.Path);
     }
 
     // ─── NETTOYAGE ──────────────────────────────────────────────────────

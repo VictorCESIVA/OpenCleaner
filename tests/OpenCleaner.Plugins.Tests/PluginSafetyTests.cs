@@ -234,6 +234,20 @@ public sealed class PluginSafetyTests : IDisposable
         Assert.Empty(hashedFiles);
     }
 
+    [Fact]
+    public async Task DuplicateFinderRespectsCustomMinFileSizeBytes()
+    {
+        var content = new string('z', 200 * 1024); // 200 KB
+        Write("small1.bin", content);
+        Write("small2.bin", content);
+        var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
+        Assert.Empty(await scanner.AnalyzeAsync()); // Default is 1 MB
+
+        scanner.MinFileSizeBytes = 100 * 1024; // 100 KB
+        var item = Assert.Single(await scanner.AnalyzeAsync());
+        Assert.Equal(200 * 1024, item.Size);
+    }
+
     public void Dispose()
     {
         foreach (var junction in _junctions.Where(Directory.Exists)) Directory.Delete(junction, recursive: false);

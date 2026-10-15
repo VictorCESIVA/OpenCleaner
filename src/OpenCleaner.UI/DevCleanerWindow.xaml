@@ -39,9 +39,13 @@
                             <CheckBox x:Name="CbNode" Content="node_modules" IsChecked="False" IsEnabled="False" ToolTipService.ShowOnDisabled="True" ToolTip="Conservés : un dossier sans manifeste peut encore appartenir à un projet actif." Margin="0,5,24,5"/>
                             <CheckBox x:Name="CbNpm"     Content="Cache npm"              IsChecked="True" Margin="0,5,24,5"/>
                             <CheckBox x:Name="CbYarn"    Content="Cache yarn"             IsChecked="True" Margin="0,5,24,5"/>
+                            <CheckBox x:Name="CbNuGet"   Content="Cache NuGet"            IsChecked="True" Margin="0,5,24,5"/>
+                            <CheckBox x:Name="CbPip"     Content="Cache pip"              IsChecked="True" Margin="0,5,24,5"/>
+                            <CheckBox x:Name="CbGradle"  Content="Cache Gradle"           IsChecked="True" Margin="0,5,24,5"/>
                             <CheckBox x:Name="CbVsCode"  Content="VS Code"                IsChecked="True" Margin="0,5,24,5"/>
                             <CheckBox x:Name="CbDiscord" Content="Discord"                IsChecked="True" Margin="0,5,24,5"/>
-                            <CheckBox x:Name="CbSpotify" Content="Spotify"               IsChecked="True" Margin="0,5,24,5"/>
+                            <CheckBox x:Name="CbSpotify" Content="Spotify"                IsChecked="True" Margin="0,5,24,5"/>
+                            <CheckBox x:Name="CbTeams"   Content="Microsoft Teams"        IsChecked="True" Margin="0,5,24,5"/>
                             <CheckBox x:Name="CbJetBrains" Content="JetBrains"            IsChecked="True" Margin="0,5,24,5"/>
                             <CheckBox x:Name="CbDocker" Content="Docker" IsChecked="False" IsEnabled="False" ToolTipService.ShowOnDisabled="True" ToolTip="Les contextes Docker sont des configurations actives et sont conservés." Margin="0,5,24,5"/>
                         </WrapPanel>
@@ -87,6 +91,7 @@
                           FontSize="12"
                           VirtualizingPanel.IsVirtualizing="True"
                           VirtualizingPanel.VirtualizationMode="Recycling"
+                          MouseDoubleClick="ResultList_DoubleClick"
                           SelectionMode="Multiple">
                     <ListView.View>
                         <GridView>

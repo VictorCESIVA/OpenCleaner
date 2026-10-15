@@ -137,12 +137,28 @@ public partial class DiskSpaceWindow : System.Windows.Window
 
     // ─── FILTRE GROS FICHIERS ────────────────────────────────────────────
 
+    private void FilterAll_Click(object sender, RoutedEventArgs e)
+    {
+        if (!_allItems.Any()) return;
+        ShowItems(_allItems);
+        FilterAllBtn.IsEnabled = false;
+    }
+
     private void FilterLarge_Click(object sender, RoutedEventArgs e)
     {
         if (!_allItems.Any()) return;
         var filtered = _allItems.Where(i => i.Size >= 500L * 1024 * 1024 && i.Type == ItemType.File);
         ShowItems(filtered);
+        FilterAllBtn.IsEnabled = true;
         StatusText.Text = "Filtre actif : fichiers > 500 Mo";
+    }
+
+    private void Reveal_Click(object sender, RoutedEventArgs e)
+    {
+        if (ResultList.SelectedItem is DiskEntry entry)
+            ExplorerHelper.RevealInExplorer(entry.Path);
+        else
+            ExplorerHelper.RevealInExplorer(_currentRoot);
     }
 
     // ─── DRILL-DOWN ─────────────────────────────────────────────────────

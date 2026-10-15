@@ -14,15 +14,15 @@ Les sauvegardes sont conservées localement : elles occupent de l'espace. Un net
 ## Fonctions disponibles
 
 - **Nettoyage rapide** : analyse des caches à faible risque, puis confirmation avant suppression.
-- **Système et navigateurs** : temporaires anciens, miniatures, caches de Chrome, Edge et Brave sur plusieurs profils. Cookies et historique restent des options explicites ; les navigateurs doivent être fermés pour nettoyer.
-- **Applications** : certains caches Steam, journaux Office et caches npm, Yarn, VS Code et autres applications.
-- **Doublons** : comparaison SHA-256 dans les dossiers personnels courants. L'original conservé est identifié et revérifié avant la suppression des copies.
+- **Système et navigateurs** : temporaires anciens, rapports d'erreurs Windows (WER), vidages mémoire d'applications, shaders DirectX, miniatures, caches de Chrome, Edge, Brave, Firefox, Opera et Vivaldi sur plusieurs profils. Cookies et historique restent des options explicites ; les navigateurs doivent être fermés pour nettoyer.
+- **Applications** : certains caches Steam, journaux Office et caches npm, Yarn, NuGet, pip, Gradle, VS Code, Teams, Discord, Spotify et JetBrains.
+- **Doublons** : comparaison SHA-256 (avec seuil de taille configurable et pré-empreinte rapide) dans les dossiers personnels courants. L'original conservé est identifié et revérifié avant la suppression des copies.
 - **Confidentialité** : repérage de certaines traces locales et fichiers contenant potentiellement des secrets. Ces résultats exigent une vérification manuelle ; cet outil n'est pas un antivirus.
 - **Espace disque** : classement des enfants d'un dossier selon leur taille accessible. Les dossiers inaccessibles, liés et certains dossiers système sont exclus ; les totaux sont donc partiels.
 - **Planification** : tâche Windows dans le contexte utilisateur, limitée aux fichiers à faible risque des catégories autorisées.
 - **Registre** : analyse conservatrice de traces d'historique utilisateur, en mode expert, avec exportation avant modification.
 
-Le nettoyage direct de Windows Update est suspendu. Les fichiers Office de récupération ou de synchronisation, Prefetch, node_modules et les contextes Docker sont conservés. Firefox, la corbeille, les extensions DLL externes et la suppression d'artefacts bin/obj ne sont pas implémentés.
+Le nettoyage direct de Windows Update est suspendu. Les fichiers Office de récupération ou de synchronisation, Prefetch, node_modules et les contextes Docker sont conservés. La corbeille, les extensions DLL externes et la suppression d'artefacts bin/obj ne sont pas implémentés.
 
 ## Compiler et tester
 

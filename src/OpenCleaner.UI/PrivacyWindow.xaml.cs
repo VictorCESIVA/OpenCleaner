@@ -51,6 +51,7 @@ public partial class PrivacyWindow : System.Windows.Window
         using var scope = operation;
         ScanBtn.IsEnabled   = false;
         SecureBtn.IsEnabled = false;
+        RevealBtn.IsEnabled = false;
         _alerts.Clear();
         _currentItems.Clear();
         StatCritical.Text = StatMedium.Text = StatTotal.Text = "—";
@@ -93,6 +94,21 @@ public partial class PrivacyWindow : System.Windows.Window
     }
 
     // ─── SÉCURISER ──────────────────────────────────────────────────────
+
+    private void AlertList_SelectionChanged(object sender, System.Windows.Controls.SelectionChangedEventArgs e)
+    {
+        if (RevealBtn != null)
+            RevealBtn.IsEnabled = !UiOperation.IsBusy && AlertList.SelectedItem is PrivacyAlert;
+    }
+
+    private void AlertList_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
+        Reveal_Click(sender, e);
+
+    private void Reveal_Click(object sender, RoutedEventArgs e)
+    {
+        if (AlertList.SelectedItem is PrivacyAlert alert)
+            ExplorerHelper.RevealInExplorer(alert.Path);
+    }
 
     private async void SecureSelected_Click(object sender, RoutedEventArgs e)
     {
