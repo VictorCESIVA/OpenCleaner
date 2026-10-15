@@ -1,124 +1,486 @@
-<!DOCTYPE html>
-<html lang="fr" class="dark">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenCleaner | L'optimiseur Windows Open-Source</title>
-    <meta name="description" content="Une alternative Open-Source, moderne et respectueuse de la vie privée pour nettoyer et optimiser Windows sans publicités.">
-    <link rel="stylesheet" href="styles.css">
-    <link rel="icon" type="image/png" href="assets/logo.png">
-</head>
-<body>
-    <!-- Particules d'arrière plan -->
-    <div id="particles-container"></div>
-
-    <nav class="navbar glass">
-        <div class="nav-content">
-            <div class="logo">
-                <img src="assets/logo.png" alt="OpenCleaner Logo">
-                <span class="gradient-text">OpenCleaner</span>
-            </div>
-            <div class="nav-links">
-                <a href="#features">Fonctionnalités</a>
-                <a href="#transparency">Transparence</a>
-                <a href="https://github.com/VictorCESIVA/OpenCleaner" target="_blank" rel="noopener noreferrer" class="github-link">
-                    <i data-lucide="github"></i> <span>GitHub</span>
-                </a>
-            </div>
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f8f5" />
+    <meta
+      name="description"
+      content="Faites de la place sur votre PC avec OpenCleaner. Analysez les caches, repérez les doublons et choisissez ce que vous nettoyez. Gratuit, open source, pour Windows 10 et 11."
+    />
+    <meta property="og:title" content="OpenCleaner — De l’air pour votre PC." />
+    <meta
+      property="og:description"
+      content="Un utilitaire Windows gratuit et open source. Analysez, vérifiez, puis nettoyez : vous gardez la main."
+    />
+    <meta property="og:type" content="website" />
+    <title>OpenCleaner — De l’air pour votre PC.</title>
+    <link rel="icon" type="image/svg+xml" href="assets/mark.svg" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="script.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Aller au contenu</a>
+    <header class="site-header">
+      <nav class="nav shell" aria-label="Navigation principale">
+        <a class="brand" href="#" aria-label="OpenCleaner, accueil"
+          ><img
+            src="assets/mark.svg"
+            width="34"
+            height="34"
+            alt=""
+          />OpenCleaner<span class="brand-dot">.</span></a
+        >
+        <button
+          class="menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="nav-links"
+          hidden
+        >
+          <span data-icon="menu"></span
+          ><span class="sr-only">Ouvrir le menu</span>
+        </button>
+        <div class="nav-links" id="nav-links">
+          <a href="#fonctionnalites">Fonctionnalités</a>
+          <a href="#comment-ca-marche">Comment ça marche</a>
+          <a href="#questions">Questions</a>
+          <a
+            class="nav-github"
+            href="https://github.com/VictorCESIVA/OpenCleaner"
+            ><span data-icon="github"></span> Le projet
+            <span aria-hidden="true">↗</span></a
+          >
         </div>
-    </nav>
-
-    <header class="hero">
-        <div class="hero-bg">
-            <img src="assets/hero.png" alt="Hero Background" class="parallax-bg">
-            <div class="overlay gradient-overlay"></div>
-        </div>
-        <div class="hero-content">
-            <div class="badge reveal fade-down">Open source · Windows 10 et 11</div>
-            <h1 class="reveal fade-up">Ramenez votre PC <br/><span class="gradient-text">à la vie.</span></h1>
-            <p class="reveal fade-up delay-1">
-                Analysez vos caches et vos fichiers avant de choisir ce qui doit être nettoyé. Une interface claire, des sauvegardes locales et aucun abonnement.
-            </p>
-            <div class="actions reveal fade-up delay-2">
-                <a href="https://github.com/VictorCESIVA/OpenCleaner/releases" id="download-btn" class="btn primary glow-effect">
-                    <span class="btn-content">
-                        <i data-lucide="download"></i>
-                        <span id="dl-text">Voir les téléchargements</span>
-                    </span>
-                </a>
-                <a href="#features" class="btn secondary glass">Découvrir</a>
-            </div>
-            <p class="dl-info reveal fade-up delay-3">
-                <i data-lucide="shield-check" class="small-icon"></i> Pour Windows 10 & 11 • <span id="version-text">Vérification de la version...</span>
-            </p>
-        </div>
-        <div class="scroll-indicator">
-            <i data-lucide="chevron-down"></i>
-        </div>
+      </nav>
     </header>
-
-    <section id="features" class="features">
-        <div class="section-header reveal fade-up">
-            <h2 class="section-title">Un outil pour <span class="gradient-text">tout nettoyer</span></h2>
-            <p>Une collection d'outils puissants, architecturés pour respecter votre système.</p>
+    <main id="main">
+      <section class="hero shell" aria-labelledby="hero-title">
+        <div class="hero-copy">
+          <p class="eyebrow hero-eyebrow">
+            <span class="status-dot"></span> Un peu d’ordre. Beaucoup d’air.
+          </p>
+          <h1 id="hero-title">
+            De l’air pour<br />votre <span class="highlight">PC.</span>
+          </h1>
+          <p class="hero-description">
+            Les fichiers s’accumulent. Faites le tri.<br />OpenCleaner vous aide
+            à repérer l’inutile et à choisir ce qui peut partir.
+          </p>
+          <div class="hero-actions">
+            <a
+              class="button button-dark"
+              data-download
+              href="https://github.com/VictorCESIVA/OpenCleaner/releases"
+              ><span data-icon="download"></span
+              ><span>Télécharger pour Windows</span></a
+            >
+            <a class="text-link" href="#fonctionnalites"
+              >Faire le tour <span aria-hidden="true">↗</span></a
+            >
+          </div>
+          <p class="download-meta">Windows 10 & 11 · 64 bits · Gratuit</p>
+          <a
+            class="release-link"
+            id="release-link"
+            href="https://github.com/VictorCESIVA/OpenCleaner/releases"
+            ><span id="version-text">Versions et notes sur GitHub</span>
+            <span aria-hidden="true">↗</span></a
+          >
         </div>
-
-        <div class="bento-grid">
-            <div class="bento-card glass reveal scale-up card-hover">
-                <div class="icon-wrapper blue-glow"><i data-lucide="sparkles"></i></div>
-                <h3>Smart Clean</h3>
-                <p>Analysez les temporaires et les caches de Chrome, Edge et Brave, vérifiez les résultats puis confirmez le nettoyage.</p>
-            </div>
-
-            <div class="bento-card glass reveal scale-up delay-1 card-hover">
-                <div class="icon-wrapper purple-glow"><i data-lucide="pie-chart"></i></div>
-                <h3>Analyseur d'Espace</h3>
-                <p>Repérez les dossiers et fichiers volumineux dans un classement visuel. Les tailles portent sur les éléments accessibles.</p>
-            </div>
-
-            <div class="bento-card glass reveal scale-up delay-2 card-hover">
-                <div class="icon-wrapper green-glow"><i data-lucide="eye-off"></i></div>
-                <h3>Protection Vie Privée</h3>
-                <p>Examinez certaines traces locales et les fichiers potentiellement sensibles. Vous choisissez explicitement les éléments à supprimer.</p>
-            </div>
-
-            <div class="bento-card glass reveal scale-up col-span-2 card-hover feature-showcase">
-                <div class="feature-content">
-                    <div class="icon-wrapper orange-glow"><i data-lucide="files"></i></div>
-                    <h3>Détecteur de Doublons Extrême</h3>
-                    <p>Identifiez des giga-octets de fichiers copiés en double avec une vitesse fulgurante grâce à notre algorithme maison optimisé "Two-Pass" qui filtre intelligemment par taille avant tout hachage SHA-256.</p>
-                </div>
-            </div>
-
-            <div class="bento-card glass reveal scale-up delay-1 card-hover">
-                <div class="icon-wrapper red-glow"><i data-lucide="terminal"></i></div>
-                <h3>Dev Cleaner</h3>
-                <p>Examinez les caches npm, Yarn, VS Code et les journaux des outils de développement. Les projets et les configurations restent conservés.</p>
-            </div>
+        <div class="hero-product">
+          <div class="product-caption">
+            <span class="eyebrow">Votre espace, en mieux</span
+            ><span
+              class="preview-controls"
+              role="group"
+              aria-label="Thème de l’aperçu"
+              hidden
+              ><button
+                type="button"
+                data-preview-theme="dark"
+                aria-pressed="true"
+              >
+                Sombre</button
+              ><button
+                type="button"
+                data-preview-theme="light"
+                aria-pressed="false"
+              >
+                Clair
+              </button></span
+            >
+          </div>
+          <div class="product-window">
+            <img
+              id="app-preview"
+              src="preview/dashboard.png"
+              width="1280"
+              height="824"
+              alt="Interface sombre d’OpenCleaner : catégories de nettoyage, bouton d’analyse et liste des résultats à vérifier."
+              fetchpriority="high"
+            />
+          </div>
+          <div class="product-bottom">
+            <span
+              ><span class="status-dot"></span> L’application, tout
+              simplement.</span
+            ><span class="product-note"
+              ><span data-icon="check"></span> Vous gardez la main</span
+            >
+          </div>
+          <div class="orbit-label" aria-hidden="true">
+            <span data-icon="leaf"></span> Gardez l’essentiel.
+          </div>
         </div>
-    </section>
-
-    <section id="transparency" class="banner reveal fade-up">
-        <div class="glass banner-content">
-            <div class="banner-text">
-                <h2>Transparence totale.<br/>Zéro concession.</h2>
-                <p>Le code source d'OpenCleaner est public et conçu en WPF moderne. Il n'y a aucune télémétrie incognito, aucune barre d'outils douteuse ou pop-up intrusive. C'est simplement le nettoyeur dont Windows a toujours eu besoin.</p>
-            </div>
-            <a href="https://github.com/VictorCESIVA/OpenCleaner" target="_blank" rel="noopener noreferrer" class="btn outline-glow">Jeter un œil au code <i data-lucide="arrow-right"></i></a>
+      </section>
+      <div class="principles shell" aria-label="Les engagements d’OpenCleaner">
+        <p>
+          <span data-icon="code"></span><strong>100 % open source</strong
+          ><span>Le code est à vous aussi.</span>
+        </p>
+        <p>
+          <span data-icon="wallet"></span
+          ><strong>Gratuit, sans abonnement</strong
+          ><span>Et sans publicité.</span>
+        </p>
+        <p>
+          <span data-icon="eye"></span
+          ><strong>Sans télémétrie applicative</strong
+          ><span>Vos fichiers restent sur votre PC.</span>
+        </p>
+      </div>
+      <section
+        class="features section shell"
+        id="fonctionnalites"
+        aria-labelledby="features-title"
+      >
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">Moins de désordre</p>
+            <h2 id="features-title">
+              Une place pour tout.<br />Pas pour l’inutile.
+            </h2>
+          </div>
+          <p>
+            Du cache oublié au fichier en double :<br />des outils concrets pour
+            y voir plus clair.
+          </p>
         </div>
-    </section>
-
-    <footer class="glass">
-        <div class="footer-content">
-            <div class="footer-brand">
-                <img src="assets/logo.png" alt="Logo" class="footer-logo">
-                <span class="gradient-text">OpenCleaner</span>
+        <div class="feature-grid">
+          <article class="feature feature-clean">
+            <div class="feature-top">
+              <span class="feature-icon"
+                ><span data-icon="sparkles"></span></span
+              ><span class="feature-number">01 / NETTOYER</span>
             </div>
-            <p class="copyright">© 2026 OpenCleaner. Projet gratuit et Open-Source sous licence MIT.</p>
-            <p class="credits">Construit avec .NET 10 et WPF</p>
+            <h3>Un nouveau départ<br />pour vos caches.</h3>
+            <p>
+              Fichiers temporaires, miniatures, caches de Chrome, Edge et Brave
+              : examinez les résultats avant de confirmer le nettoyage.
+            </p>
+            <div class="cache-illustration" aria-hidden="true">
+              <div>
+                <span data-icon="folder"></span><span>Fichiers temporaires</span
+                ><span class="cache-tag">À examiner</span>
+              </div>
+              <div>
+                <span data-icon="globe"></span
+                ><span>Caches des navigateurs</span
+                ><span data-icon="check"></span>
+              </div>
+              <div>
+                <span data-icon="image"></span><span>Miniatures Windows</span
+                ><span data-icon="check"></span>
+              </div>
+            </div>
+            <span class="illustration-note"
+              >Illustration des catégories disponibles</span
+            >
+          </article>
+          <article class="feature feature-space">
+            <div class="feature-top">
+              <span class="feature-icon"><span data-icon="chart"></span></span
+              ><span class="feature-number">02 / COMPRENDRE</span>
+            </div>
+            <h3>Où est passé<br />tout cet espace ?</h3>
+            <p>
+              Explorez la taille des dossiers et repérez les plus volumineux. Le
+              classement porte sur les éléments accessibles à l’application.
+            </p>
+            <div class="space-illustration" aria-hidden="true">
+              <span>Votre disque, sous un autre angle</span>
+              <div class="space-bar"><i></i><i></i><i></i><i></i></div>
+              <div class="space-legend">
+                <span><i></i> Dossiers</span><span><i></i> Fichiers</span
+                ><span><i></i> Autres</span>
+              </div>
+            </div>
+            <span class="illustration-note"
+              >Répartition illustrative, sans données de votre PC</span
+            >
+          </article>
+          <article class="feature feature-small">
+            <span class="feature-icon"><span data-icon="copy"></span></span>
+            <h3>Une copie suffit.</h3>
+            <p>
+              Repérez les doublons par empreinte SHA-256. L’original conservé
+              est identifié et revérifié avant de supprimer les copies.
+            </p>
+            <span class="feature-label">Détection de doublons</span>
+          </article>
+          <article class="feature feature-small">
+            <span class="feature-icon"><span data-icon="terminal"></span></span>
+            <h3>Les caches aussi codent.</h3>
+            <p>
+              Examinez les caches npm, Yarn et VS Code. Vos projets, leurs
+              dossiers node_modules et leurs configurations sont conservés.
+            </p>
+            <span class="feature-label">Outils de développement</span>
+          </article>
+          <article class="feature feature-small">
+            <span class="feature-icon"><span data-icon="shield"></span></span>
+            <h3>Un œil sur vos traces.</h3>
+            <p>
+              Repérez certaines traces locales et des fichiers potentiellement
+              sensibles. Vérifiez chaque résultat avant de décider.
+            </p>
+            <span class="feature-label">Confidentialité</span>
+          </article>
         </div>
+      </section>
+      <section
+        class="workflow-section"
+        id="comment-ca-marche"
+        aria-labelledby="workflow-title"
+      >
+        <div class="shell workflow-layout">
+          <div class="workflow-intro">
+            <p class="eyebrow">Pas de grand bouton magique</p>
+            <h2 id="workflow-title">D’abord voir.<br />Ensuite choisir.</h2>
+            <p>
+              Un nettoyage commence par une décision éclairée. OpenCleaner vous
+              accompagne à chaque étape.
+            </p>
+            <div class="workflow-seal">
+              <span data-icon="shield"></span
+              ><span
+                >Une analyse ne supprime<br /><strong
+                  >aucun fichier.</strong
+                ></span
+              >
+            </div>
+          </div>
+          <ol class="steps">
+            <li>
+              <span class="step-number">01</span>
+              <div>
+                <h3>Analysez votre PC</h3>
+                <p>
+                  Choisissez une catégorie. L’application repère les fichiers
+                  concernés et estime leur volume.
+                </p>
+              </div>
+              <span data-icon="search"></span>
+            </li>
+            <li>
+              <span class="step-number">02</span>
+              <div>
+                <h3>Vérifiez les résultats</h3>
+                <p>
+                  Consultez les éléments et leur niveau de risque. Sélectionnez
+                  ceux que vous souhaitez nettoyer.
+                </p>
+              </div>
+              <span data-icon="list"></span>
+            </li>
+            <li>
+              <span class="step-number">03</span>
+              <div>
+                <h3>Confirmez le nettoyage</h3>
+                <p>
+                  Les suppressions de fichiers passent par des contrôles et une
+                  sauvegarde locale vérifiée.
+                </p>
+              </div>
+              <span data-icon="check"></span>
+            </li>
+          </ol>
+        </div>
+        <aside class="backup-note shell">
+          <span data-icon="info"></span>
+          <p>
+            <strong>Et les sauvegardes ?</strong> Elles restent sur votre disque
+            et occupent de l’espace jusqu’à leur suppression dans Restauration.
+            Avec une sauvegarde sur le même disque, le nettoyage ne libère donc
+            pas immédiatement le volume annoncé par l’analyse.
+          </p>
+        </aside>
+      </section>
+      <section
+        class="open-source section shell"
+        id="transparence"
+        aria-labelledby="source-title"
+      >
+        <div class="source-art" aria-hidden="true">
+          <span class="source-bracket">{</span
+          ><img src="assets/mark.svg" alt="" width="92" height="92" /><span
+            class="source-bracket"
+            >}</span
+          ><span class="source-art-note"
+            >FAIT POUR WINDOWS. OUVERT À TOUS.</span
+          >
+        </div>
+        <div class="source-copy">
+          <p class="eyebrow">Rien à cacher</p>
+          <h2 id="source-title">
+            Le code est ouvert.<br />La confiance aussi.
+          </h2>
+          <p>
+            OpenCleaner est un projet gratuit sous licence MIT, construit avec
+            .NET et WPF. Vous pouvez lire le code, signaler un problème ou
+            contribuer à la suite.
+          </p>
+          <p>
+            Pas de publicité ni de télémétrie applicative. La recherche de mises
+            à jour des installations Velopack contacte GitHub.
+          </p>
+          <a
+            class="text-link"
+            href="https://github.com/VictorCESIVA/OpenCleaner"
+            >Explorer le projet sur GitHub <span data-icon="arrow-right"></span
+          ></a>
+        </div>
+      </section>
+      <section
+        class="faq section shell"
+        id="questions"
+        aria-labelledby="faq-title"
+      >
+        <div class="faq-heading">
+          <p class="eyebrow">Avant de faire le tri</p>
+          <h2 id="faq-title">C’est bon<br />à savoir.</h2>
+          <p>Un peu de clarté, même<br />avant le téléchargement.</p>
+        </div>
+        <div class="faq-list">
+          <details>
+            <summary>
+              Est-ce vraiment gratuit ? <span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Oui. OpenCleaner est gratuit et open source sous licence MIT.
+              Aucun abonnement et aucune publicité dans l’application.
+            </p>
+          </details>
+          <details>
+            <summary>
+              De quoi ai-je besoin pour l’utiliser ?
+              <span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              D’un PC Windows 10 ou Windows 11 en 64 bits. Retrouvez les
+              installateurs et les notes de chaque version sur
+              <a href="https://github.com/VictorCESIVA/OpenCleaner/releases"
+                >GitHub Releases</a
+              >.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Mes fichiers sont-ils supprimés automatiquement ?
+              <span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Une analyse ne supprime rien. Vous examinez les résultats, puis
+              confirmez le nettoyage. Si vous activez la planification dans
+              l’application, elle se limite aux fichiers à faible risque des
+              catégories autorisées.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Comment restaurer un fichier nettoyé ?
+              <span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Ouvrez Restauration dans OpenCleaner pour retrouver les
+              sauvegardes encore conservées. Elles sont locales et non chiffrées
+              ; elles ne remplacent pas une sauvegarde indépendante. Les
+              exportations du registre se réimportent manuellement après
+              vérification.
+            </p>
+          </details>
+          <details>
+            <summary>
+              Pourquoi Windows affiche-t-il un avertissement ?
+              <span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              SmartScreen peut afficher un avertissement si le binaire
+              téléchargé n’est pas signé. Vérifiez sa provenance et consultez
+              les notes de version sur le dépôt officiel. Le caractère open
+              source ne garantit pas, à lui seul, la sûreté d’un fichier
+              téléchargé.
+            </p>
+          </details>
+          <details>
+            <summary>
+              OpenCleaner remplace-t-il un antivirus ?
+              <span aria-hidden="true">+</span>
+            </summary>
+            <p>
+              Non. L’outil de confidentialité repère certaines traces et des
+              fichiers potentiellement sensibles, qui demandent une vérification
+              manuelle. OpenCleaner n’est pas un antivirus.
+            </p>
+          </details>
+        </div>
+      </section>
+      <section class="download-section shell" aria-labelledby="download-title">
+        <div>
+          <p class="eyebrow">On fait un peu de place ?</p>
+          <h2 id="download-title">Votre PC.<br />Un peu plus léger.</h2>
+        </div>
+        <div class="download-final">
+          <a
+            class="button button-dark"
+            data-download
+            href="https://github.com/VictorCESIVA/OpenCleaner/releases"
+            ><span data-icon="download"></span
+            ><span>Télécharger OpenCleaner</span></a
+          >
+          <p>
+            Windows 10 & 11 · 64 bits<br />Gratuit aujourd’hui. Code ouvert pour
+            la suite.
+          </p>
+        </div>
+        <span class="download-decoration" aria-hidden="true">↗</span>
+      </section>
+    </main>
+    <footer class="footer shell">
+      <div>
+        <a class="brand" href="#"
+          ><img
+            src="assets/mark.svg"
+            width="28"
+            height="28"
+            alt=""
+          />OpenCleaner<span class="brand-dot">.</span></a
+        >
+        <p>De l’air pour votre PC.</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://github.com/VictorCESIVA/OpenCleaner">GitHub ↗</a
+        ><a href="https://github.com/VictorCESIVA/OpenCleaner/issues"
+          >Signaler un problème ↗</a
+        ><a
+          href="https://github.com/VictorCESIVA/OpenCleaner/blob/master/LICENSE"
+          >Licence MIT ↗</a
+        >
+      </div>
+      <p class="footer-credit">
+        © 2026 OpenCleaner<br />Conçu pour garder l’essentiel.
+      </p>
     </footer>
-
-    <script src="script.js"></script>
-</body>
+  </body>
 </html>
