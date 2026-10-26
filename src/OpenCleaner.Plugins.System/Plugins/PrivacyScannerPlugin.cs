@@ -30,7 +30,8 @@ public sealed class PrivacyScannerPlugin : ICleanerPlugin
     public bool RequiresAdmin => false;
 
     public PrivacyScannerPlugin(IFileGuardian fileGuardian, ILogger<PrivacyScannerPlugin> logger)
-        : this(fileGuardian, logger, [Path.GetTempPath(),
+        : this(fileGuardian, logger, [Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Temp"),
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), "Downloads"),
             Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory)]) { }
 

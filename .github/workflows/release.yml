@@ -20,6 +20,8 @@ jobs:
           if ($version -notmatch '^\d+\.\d+\.\d+(?:-[0-9A-Za-z]+(?:[.-][0-9A-Za-z]+)*)?$') {
             throw "Expected a semantic version tag (v1.2.3 or v1.2.3-beta.1)."
           }
+          $notesPath = "docs/releases/$version.md"
+          if (-not (Test-Path -LiteralPath $notesPath)) { throw "Release notes missing: $notesPath" }
           "version=$version" >> $env:GITHUB_OUTPUT
       - name: Restore and audit dependencies
         run: |
@@ -34,6 +36,13 @@ jobs:
         run: dotnet publish src/OpenCleaner.UI/OpenCleaner.UI.csproj -c Release -o publish -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=$env:APP_VERSION
       - name: Install Velopack
         run: dotnet tool install -g vpk --version 1.2.161
+      - name: Download previous release for delta packages
+        continue-on-error: true
+        env:
+          RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
+          vpk download github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --channel win-x64 --token $env:RELEASE_TOKEN
       - name: Package and release
         env:
           APP_VERSION: ${{ steps.version.outputs.version }}
@@ -41,8 +50,17 @@ jobs:
         shell: pwsh
         run: |
           $notesPath = "docs/releases/$env:APP_VERSION.md"
-          if (-not (Test-Path -LiteralPath $notesPath)) { throw "Release notes missing: $notesPath" }
           vpk pack -u OpenCleaner -v $env:APP_VERSION -p publish --mainExe OpenCleaner.UI.exe --runtime win-x64 --channel win-x64 --releaseNotes $notesPath
           if ($LASTEXITCODE -ne 0) { throw "Packaging failed." }
-          vpk upload github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --channel win-x64 --publish --releaseName "OpenCleaner $env:APP_VERSION" --tag $env:GITHUB_REF_NAME --token $env:RELEASE_TOKEN
+          $uploadArgs = @(
+            "upload", "github",
+            "--repoUrl", "https://github.com/$env:GITHUB_REPOSITORY",
+            "--channel", "win-x64",
+            "--publish", "--merge",
+            "--releaseName", "OpenCleaner $env:APP_VERSION",
+            "--tag", $env:GITHUB_REF_NAME,
+            "--token", $env:RELEASE_TOKEN
+          )
+          if ($env:APP_VERSION -match '-') { $uploadArgs += "--pre" }
+          vpk @uploadArgs
           if ($LASTEXITCODE -ne 0) { throw "Release upload failed." }

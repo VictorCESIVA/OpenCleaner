@@ -1,7 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Win32.TaskScheduler;
-using System.Text.Json;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+using System.Text.Json;
 
 namespace OpenCleaner.Core.Scheduler;
 
@@ -10,6 +11,7 @@ namespace OpenCleaner.Core.Scheduler;
 /// Utilise le wrapper Microsoft.Win32.TaskScheduler (NuGet TaskScheduler v2.11).
 /// La tâche s'exécute dans le contexte de l'utilisateur courant — aucun droit admin requis.
 /// </summary>
+[SupportedOSPlatform("windows")]
 public sealed class SchedulerService
 {
     private const string TaskFolder = "OpenCleaner";
@@ -29,8 +31,11 @@ public sealed class SchedulerService
 
     private static readonly JsonSerializerOptions _jsonOpts = new() { WriteIndented = true };
 
-    public static ScheduleConfig LoadConfig()
+    public static ScheduleConfig LoadConfig() => LoadConfig(out _);
+
+    public static ScheduleConfig LoadConfig(out string? error)
     {
+        error = null;
         if (!File.Exists(ScheduleConfig.ConfigPath))
             return new ScheduleConfig();
 
@@ -41,7 +46,12 @@ public sealed class SchedulerService
             config.Validate();
             return config;
         }
-        catch { return new ScheduleConfig(); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or
+            ArgumentException or NotSupportedException)
+        {
+            error = ex.Message;
+            return new ScheduleConfig();
+        }
     }
 
     public static void SaveConfig(ScheduleConfig config)

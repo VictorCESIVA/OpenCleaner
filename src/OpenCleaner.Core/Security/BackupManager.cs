@@ -44,9 +44,11 @@ public sealed class BackupManager : IBackupManager, IDisposable
         string dataDirectory = Path.Combine(backupDirectory, "data");
         string fileName = Path.GetFileName(originalPath);
         string backupFilePath = Path.Combine(dataDirectory, fileName);
-        Directory.CreateDirectory(dataDirectory);
         try
         {
+            Directory.CreateDirectory(dataDirectory);
+            if (PathSafety.HasReparsePoint(backupDirectory))
+                throw new IOException("Backup directory contains a reparse point");
             // A single stable source handle prevents writes/deletion during the copy. Hash the
             // saved bytes in-stream while copying, avoiding a second read pass over the backup file.
             long fileSize = 0;
@@ -105,10 +107,18 @@ public sealed class BackupManager : IBackupManager, IDisposable
         try
         {
             string? directory = ResolveBackupDirectory(backupId);
-            if (directory == null) return false;
+            if (directory == null)
+            {
+                _logger.LogWarning("Backup {BackupId} not found", backupId);
+                return false;
+            }
             BackupMetadata metadata = ReadMetadata(directory);
             string originalPath = PathSafety.Normalize(metadata.OriginalPath);
-            if (PathSafety.IsCritical(originalPath)) return false;
+            if (PathSafety.IsCritical(originalPath) || PathSafety.IsWithin(originalPath, _backupsRoot))
+            {
+                _logger.LogWarning("Restore target for {BackupId} is protected: {Path}", backupId, originalPath);
+                return false;
+            }
             string backupFile = GetBackupFile(directory, metadata);
 
             await using var source = new FileStream(backupFile, FileMode.Open, FileAccess.Read,
@@ -122,6 +132,11 @@ public sealed class BackupManager : IBackupManager, IDisposable
             source.Position = 0;
             string originalDirectory = Path.GetDirectoryName(originalPath)!;
             Directory.CreateDirectory(originalDirectory);
+            if (PathSafety.HasReparsePoint(originalDirectory))
+            {
+                _logger.LogWarning("Restore directory for {BackupId} contains a reparse point: {Path}", backupId, originalDirectory);
+                return false;
+            }
             stagedFile = Path.Combine(originalDirectory, $".opencleaner-restore-{Guid.NewGuid():N}.tmp");
             await using (var destination = new FileStream(stagedFile, FileMode.CreateNew, FileAccess.Write,
                              FileShare.None, 65536, FileOptions.Asynchronous))
@@ -130,11 +145,28 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 await destination.FlushAsync(ct);
             }
 
+            await using (var staged = new FileStream(stagedFile, FileMode.Open, FileAccess.Read,
+                             FileShare.None, 65536, FileOptions.Asynchronous))
+            {
+                string stagedHash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(staged, ct));
+                if (staged.Length != metadata.FileSize ||
+                    !stagedHash.Equals(metadata.OriginalHash, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogError("Staged restore for {BackupId} failed verification", backupId);
+                    return false;
+                }
+            }
+
             // Preserve an existing newer file before replacing it. Cancellation or a failed copy
             // leaves the current file in place, and replacement happens only after verification.
             if (File.Exists(originalPath)) await CreateBackupCoreAsync(originalPath, ct);
             ct.ThrowIfCancellationRequested();
-            if (PathSafety.IsCritical(originalPath) || PathSafety.HasReparsePoint(stagedFile)) return false;
+            if (PathSafety.IsCritical(originalPath) || PathSafety.HasReparsePoint(originalDirectory) ||
+                PathSafety.HasReparsePoint(stagedFile))
+            {
+                _logger.LogWarning("Restore target for {BackupId} became unsafe: {Path}", backupId, originalPath);
+                return false;
+            }
             File.Move(stagedFile, originalPath, overwrite: true);
             stagedFile = null;
             _logger.LogInformation("Restored backup {BackupId} to {OriginalPath}", backupId, originalPath);

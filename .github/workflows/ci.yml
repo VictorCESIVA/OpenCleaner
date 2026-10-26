@@ -18,7 +18,7 @@ jobs:
       - name: Build
         run: dotnet build OpenCleaner.sln -c Release --no-restore --warnaserror
       - name: Test
-        run: dotnet test OpenCleaner.sln -c Release --no-build --logger trx
+        run: dotnet test OpenCleaner.sln -c Release --no-build --logger trx --collect:"XPlat Code Coverage"
       - name: Validate WPF windows and render previews
         run: dotnet run --project tools/OpenCleaner.Preview -c Release -- artifacts/ui-preview
       - name: Save test results
@@ -33,3 +33,9 @@ jobs:
         with:
           name: interface-previews
           path: artifacts/ui-preview/*.png
+      - name: Save coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: tests/**/TestResults/**/coverage.cobertura.xml

@@ -11,10 +11,12 @@ internal sealed class FileDeletionHandle : IAsyncDisposable
     private readonly string _path;
     private readonly FileAttributes _attributes;
     public FileStream Stream { get; }
+    public string ResolvedPath { get; private set; }
 
     public FileDeletionHandle(string path)
     {
         _path = path;
+        ResolvedPath = path;
         if (!OperatingSystem.IsWindows())
         {
             Stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete,
@@ -45,6 +47,7 @@ internal sealed class FileDeletionHandle : IAsyncDisposable
             _attributes = (FileAttributes)information.FileAttributes;
             if ((_attributes & (FileAttributes.ReparsePoint | FileAttributes.System | FileAttributes.Directory)) != 0)
                 throw new IOException("Linked, directory or system file target blocked");
+            ResolvedPath = resolved;
             Stream = new FileStream(handle, FileAccess.Read, 65536, isAsync: false);
         }
         catch { handle.Dispose(); throw; }

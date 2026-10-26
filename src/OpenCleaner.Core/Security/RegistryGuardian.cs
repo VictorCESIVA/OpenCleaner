@@ -16,13 +16,28 @@ public sealed class RegistryGuardian : IRegistryGuardian
     private static readonly string[] ForbiddenKeys =
     [
         @"HKEY_LOCAL_MACHINE\SYSTEM", @"HKEY_LOCAL_MACHINE\HARDWARE", @"HKEY_LOCAL_MACHINE\SECURITY",
-        @"HKEY_LOCAL_MACHINE\SAM", @"HKEY_LOCAL_MACHINE\BCD00000000",
+        @"HKEY_LOCAL_MACHINE\SAM", @"HKEY_LOCAL_MACHINE\BCD00000000", @"HKEY_LOCAL_MACHINE\COMPONENTS",
+        @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft", @"HKEY_LOCAL_MACHINE\SOFTWARE\Wow6432Node",
+        @"HKEY_LOCAL_MACHINE\SOFTWARE\Policies", @"HKEY_LOCAL_MACHINE\SOFTWARE\Classes",
         @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon",
         @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
         @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce",
+        @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\RunServices",
+        @"HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnceEx",
         @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Run",
         @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\RunOnce",
-        @"HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion\Winlogon"
+        @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\RunServices",
+        @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\RunOnceEx",
+        @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Policies",
+        @"HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion",
+        @"HKEY_CURRENT_USER\Software\Policies", @"HKEY_CURRENT_USER\Software\Classes",
+        @"HKEY_USERS", @"HKEY_CLASSES_ROOT", @"HKEY_CURRENT_CONFIG"
+    ];
+
+    private static readonly string[] AllowedKeys =
+    [
+        @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\StreamMRU",
+        @"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\Explorer\ComDlg32\OpenSavePidlMRU"
     ];
 
     public RegistryGuardian(ILogger<RegistryGuardian> logger) => _logger = logger;
@@ -31,10 +46,10 @@ public sealed class RegistryGuardian : IRegistryGuardian
     {
         if (!TryNormalizeKeyPath(keyPath, out string normalized)) return true;
         if (!normalized.Contains('\\')) return true;
-        // Ancestors are protected too: deleting SOFTWARE must never remove a protected child.
         if (ForbiddenKeys.Any(forbidden => IsWithin(normalized, forbidden) || IsWithin(forbidden, normalized))) return true;
-        return normalized.Split('\\').Any(part => part.Equals("CLSID", StringComparison.OrdinalIgnoreCase) ||
-            part.Equals("Interface", StringComparison.OrdinalIgnoreCase));
+        if (normalized.Split('\\').Any(part => part.Equals("CLSID", StringComparison.OrdinalIgnoreCase) ||
+            part.Equals("Interface", StringComparison.OrdinalIgnoreCase))) return true;
+        return !AllowedKeys.Any(allowed => IsWithin(normalized, allowed));
     }
 
     public async Task<string> ExportKeyAsync(string keyPath, string backupDirectory, CancellationToken ct = default)
@@ -45,6 +60,7 @@ public sealed class RegistryGuardian : IRegistryGuardian
         string directory = PathSafety.Normalize(backupDirectory);
         if (PathSafety.HasReparsePoint(directory)) throw new IOException("Linked registry backup directory blocked");
         Directory.CreateDirectory(directory);
+        if (PathSafety.HasReparsePoint(directory)) throw new IOException("Linked registry backup directory blocked");
         string path = Path.Combine(directory, $"registry-{DateTime.UtcNow:yyyyMMdd-HHmmss}-{Guid.NewGuid():N}.reg");
         var output = new StringBuilder();
         output.AppendLine("Windows Registry Editor Version 5.00");
@@ -87,12 +103,20 @@ public sealed class RegistryGuardian : IRegistryGuardian
                 backupPath = await ExportKeyAsync(keyPath, directory, ct);
             }
             ct.ThrowIfCancellationRequested();
-            if (valueName == null)
-                root.DeleteSubKey(subPath, throwOnMissingSubKey: true);
-            else
+            using (RegistryKey? key = root.OpenSubKey(subPath, writable: true))
             {
-                using RegistryKey key = root.OpenSubKey(subPath, writable: true) ?? throw new IOException("Registry key disappeared");
-                key.DeleteValue(valueName, throwOnMissingValue: true);
+                if (key == null) return Failure("Registry key disappeared");
+                if (valueName == null)
+                {
+                    if (key.SubKeyCount != 0) return Failure("Registry key changed; deletion aborted");
+                    root.DeleteSubKey(subPath, throwOnMissingSubKey: true);
+                }
+                else
+                {
+                    if (!key.GetValueNames().Contains(valueName, StringComparer.OrdinalIgnoreCase))
+                        return Failure("Registry value disappeared");
+                    key.DeleteValue(valueName, throwOnMissingValue: true);
+                }
             }
             return new(true, valueName == null ? "Registry key deleted" : "Registry value deleted", id,
                 BackupPath: backupPath, ItemsProcessed: 1, BytesRecovered: 0);

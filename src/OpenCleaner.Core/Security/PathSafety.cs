@@ -6,7 +6,8 @@ internal static class PathSafety
     private static readonly HashSet<string> CriticalFileNames = new(StringComparer.OrdinalIgnoreCase)
     {
         "pagefile.sys", "hiberfil.sys", "swapfile.sys", "ntuser.dat", "ntuser.dat.log1",
-        "ntuser.dat.log2", "bootmgr", "bootnxt", "ntldr", "ntdetect.com"
+        "ntuser.dat.log2", "usrclass.dat", "usrclass.dat.log1", "usrclass.dat.log2",
+        "bootmgr", "bootnxt", "ntldr", "ntdetect.com"
     };
 
     private static readonly HashSet<string> RootCriticalFolderNames = new(StringComparer.OrdinalIgnoreCase)
@@ -48,7 +49,7 @@ internal static class PathSafety
 
         string commonData = Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData);
         if (!string.IsNullOrEmpty(commonData))
-            dirs.Add(Path.Combine(commonData, "Microsoft"));
+            dirs.Add(commonData.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 
         foreach (var applicationData in new[] { Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolder.ApplicationData })
         {
@@ -62,15 +63,58 @@ internal static class PathSafety
 
     public static string Normalize(string path)
     {
-        if (string.IsNullOrWhiteSpace(path) || !Path.IsPathFullyQualified(path))
+        if (string.IsNullOrWhiteSpace(path) || path.Any(c => c is '\0' or '\r' or '\n') ||
+            !Path.IsPathFullyQualified(path))
             throw new ArgumentException("An absolute local path is required", nameof(path));
 
-        // Extended/device paths and alternate data streams bypass normal path comparisons.
-        if (OperatingSystem.IsWindows() &&
-            (path.StartsWith(@"\\", StringComparison.Ordinal) || path.AsSpan(2).IndexOf(':') >= 0))
-            throw new ArgumentException("Network, device and alternate stream paths are not supported", nameof(path));
+        if (OperatingSystem.IsWindows())
+        {
+            string root = Path.GetPathRoot(path) ?? string.Empty;
+            if (!IsLocalDriveRoot(root))
+                throw new ArgumentException("Network, device and volume paths are not supported", nameof(path));
+            if (path.AsSpan(2).Contains(':'))
+                throw new ArgumentException("Alternate data streams are not supported", nameof(path));
+            ValidateLocalComponents(path, root.Length);
+        }
 
-        return Path.GetFullPath(path).TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        string fullPath = Path.GetFullPath(path);
+        if (OperatingSystem.IsWindows())
+        {
+            string root = Path.GetPathRoot(fullPath) ?? string.Empty;
+            if (!IsLocalDriveRoot(root))
+                throw new ArgumentException("Network, device and volume paths are not supported", nameof(path));
+            ValidateLocalComponents(fullPath, root.Length);
+        }
+
+        return fullPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+    }
+
+    private static bool IsLocalDriveRoot(string root) =>
+        root.Length == 3 && char.IsAsciiLetter(root[0]) && root[1] == ':' &&
+        (root[2] == Path.DirectorySeparatorChar || root[2] == Path.AltDirectorySeparatorChar);
+
+    private static void ValidateLocalComponents(string path, int rootLength)
+    {
+        if (rootLength >= path.Length) return;
+        foreach (string segment in path[rootLength..].Split(['\\', '/'], StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (segment is "." or "..")
+                throw new ArgumentException("Relative path components are not supported", nameof(path));
+            if (segment.EndsWith(' ') || segment.EndsWith('.'))
+                throw new ArgumentException("Trailing spaces and dots are not supported", nameof(path));
+            string stem = Path.GetFileNameWithoutExtension(segment);
+            int tilde = stem.LastIndexOf('~');
+            if (tilde >= 0 && tilde < stem.Length - 1 &&
+                stem.AsSpan(tilde + 1).IndexOfAnyExcept("0123456789") < 0)
+                throw new ArgumentException("Short (8.3) path aliases are not supported", nameof(path));
+        }
+    }
+
+    public static bool IsSamePath(string left, string right)
+    {
+        try { return string.Equals(Normalize(left), Normalize(right), StringComparison.OrdinalIgnoreCase); }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        { return false; }
     }
 
     public static bool IsWithin(string path, string directory)
@@ -118,8 +162,8 @@ internal static class PathSafety
         if (CriticalFileNames.Contains(Path.GetFileName(normalized)) || HasReparsePoint(normalized))
             return true;
 
-        if (!string.IsNullOrEmpty(WindowsDirectory) &&
-            string.Equals(normalized, WindowsDirectory, StringComparison.OrdinalIgnoreCase))
+        if (!string.IsNullOrEmpty(WindowsDirectory) && IsWithin(normalized, WindowsDirectory) &&
+            !IsWithin(normalized, Path.Combine(WindowsDirectory, "Temp")))
             return true;
 
         if (normalized.Length > root.Length)

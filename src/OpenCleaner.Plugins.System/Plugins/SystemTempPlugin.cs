@@ -15,15 +15,13 @@ public sealed class SystemTempPlugin : SafeFileCleanerPlugin
 
     protected override IEnumerable<ScanTarget> GetTargets()
     {
-        yield return new ScanTarget(Path.GetTempPath(), "Fichier temporaire", MinAge: TimeSpan.FromHours(24));
-        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
-        if (!string.IsNullOrWhiteSpace(windows))
-            yield return new ScanTarget(Path.Combine(windows, "Temp"), "Temporaire Windows",
-                RiskLevel.Recommended, MinAge: TimeSpan.FromDays(7));
-
         var local = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         if (!string.IsNullOrWhiteSpace(local))
         {
+            string userTemp = Path.Combine(local, "Temp");
+            if (Directory.Exists(userTemp))
+                yield return new ScanTarget(userTemp, "Fichier temporaire", MinAge: TimeSpan.FromHours(24));
+
             yield return new ScanTarget(Path.Combine(local, "Microsoft", "Windows", "WER", "ReportArchive"),
                 "Rapport d'erreur Windows archivé", RiskLevel.Safe, MinAge: TimeSpan.FromDays(7));
             yield return new ScanTarget(Path.Combine(local, "Microsoft", "Windows", "WER", "ReportQueue"),
@@ -33,5 +31,10 @@ public sealed class SystemTempPlugin : SafeFileCleanerPlugin
             yield return new ScanTarget(Path.Combine(local, "D3DSCache"),
                 "Cache de shaders DirectX", RiskLevel.Safe, MinAge: TimeSpan.FromDays(7));
         }
+
+        var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+        if (!string.IsNullOrWhiteSpace(windows))
+            yield return new ScanTarget(Path.Combine(windows, "Temp"), "Temporaire Windows",
+                RiskLevel.Recommended, MinAge: TimeSpan.FromDays(7));
     }
 }

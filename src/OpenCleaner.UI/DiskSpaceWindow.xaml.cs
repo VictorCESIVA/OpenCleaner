@@ -57,7 +57,8 @@ public partial class DiskSpaceWindow : System.Windows.Window
 
     private void LoadDrives()
     {
-        foreach (var d in DriveInfo.GetDrives().Where(d => d.IsReady))
+        foreach (var d in DriveInfo.GetDrives().Where(d =>
+                     d.IsReady && d.DriveType is DriveType.Fixed or DriveType.Removable))
             DriveCombo.Items.Add(d.RootDirectory.FullName);
         if (DriveCombo.Items.Count > 0) DriveCombo.SelectedIndex = 0;
     }

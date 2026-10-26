@@ -5,7 +5,7 @@ Utilitaire Windows gratuit et open source pour examiner les fichiers temporaires
 ## Utilisation
 
 1. Choisissez une catégorie puis lancez **Analyser**. L'analyse ne supprime rien.
-2. Vérifiez les résultats et leur niveau de risque. Une sélection de lignes limite le nettoyage à ces éléments ; sans sélection, le nettoyage porte sur les résultats de la catégorie.
+2. Vérifiez les résultats et leur niveau de risque. Une sélection de lignes limite le nettoyage à ces éléments ; sans sélection, le nettoyage porte sur les résultats affichés (filtre et recherche compris).
 3. Confirmez **Nettoyer**. Chaque suppression de fichier passe par le gardien et une sauvegarde vérifiée.
 4. Consultez **Restauration** pour restaurer ou supprimer les sauvegardes.
 
@@ -55,7 +55,7 @@ Les versions distribuées se trouvent dans [GitHub Releases](https://github.com/
 
 Les sauvegardes de fichiers se trouvent sous %LOCALAPPDATA%/OpenCleaner/Backups. La restauration vérifie leur taille et leur empreinte SHA-256. Un fichier existant est sauvegardé avant remplacement. Les exportations du registre sont dans %LOCALAPPDATA%/OpenCleaner/RegistryBackups ; leur importation s'effectue manuellement après vérification.
 
-Les sauvegardes locales ne sont pas chiffrées et ne remplacent pas une sauvegarde indépendante. Le gardien refuse notamment les chemins système critiques, les racines, les chemins réseau, les flux alternatifs et les liens/jonctions. Le nettoyage revalide la sélection issue du dernier scan.
+Les sauvegardes locales ne sont pas chiffrées et ne remplacent pas une sauvegarde indépendante. Le gardien refuse notamment les chemins système critiques, les racines, les chemins réseau et périphériques, les alias 8.3, les flux alternatifs et les liens/jonctions. Tout `C:\Windows` est protégé sauf `Windows\Temp`, et `ProgramData` est refusé. Le nettoyage revalide la sélection issue du dernier scan et vérifie la sauvegarde avant chaque suppression.
 
 L'application ne force plus la fermeture des navigateurs et ne redémarre plus automatiquement pour appliquer une mise à jour. La recherche des mises à jour des installations Velopack contacte GitHub ; il n'y a pas de télémétrie applicative.
 
@@ -66,7 +66,7 @@ L'application ne force plus la fermeture des navigateurs et ne redémarre plus a
 - **Plugins.System** : analyseurs et nettoyeurs intégrés.
 - **UI** : fenêtres WPF et coordination des opérations.
 - **Tests** : régressions du moteur et des plugins, sur des fixtures temporaires.
-- **docs** : site statique de présentation ; [rapport d'audit du 14 octobre 2026](docs/AUDIT-2026-10-14.md).
+- **docs** : site statique de présentation ; rapports d'audit du [14 octobre 2026](docs/AUDIT-2026-10-14.md) et du [26 octobre 2026](docs/AUDIT-2026-10-26.md).
 
 La CI compile et teste la solution sur Windows et refuse les vulnérabilités NuGet connues. Le workflow de release valide le tag, exécute ces vérifications et construit un package Velopack.
 

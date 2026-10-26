@@ -335,15 +335,6 @@ public partial class DuplicateWindow : Window
 
     // ─── UTILITAIRES ────────────────────────────────────────────────────
 
-    private int CountChecked()
-    {
-        int n = 0;
-        foreach (TreeViewItem node in DupTree.Items)
-            foreach (var child in node.Items)
-                if (child is CheckBox { IsChecked: true }) n++;
-        return n;
-    }
-
     private List<CleanableItem> GetCheckedItems()
     {
         var list = new List<CleanableItem>();
@@ -352,15 +343,5 @@ public partial class DuplicateWindow : Window
                 if (child is CheckBox { IsChecked: true, Tag: DuplicateFile f })
                     list.Add(f.Item);
         return list;
-    }
-
-    private static string ExtractOriginalName(string description)
-    {
-        // Description = "Doublon de « X » (chemin)" → on retourne X
-        var start = description.IndexOf('«');
-        var end   = description.IndexOf('»');
-        if (start >= 0 && end > start)
-            return description.Substring(start + 1, end - start - 1).Trim();
-        return description;
     }
 }

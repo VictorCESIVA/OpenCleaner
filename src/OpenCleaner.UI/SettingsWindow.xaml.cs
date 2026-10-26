@@ -25,7 +25,9 @@ public partial class SettingsWindow : Window
 
     private void LoadConfig()
     {
-        var config = SchedulerService.LoadConfig();
+        var config = SchedulerService.LoadConfig(out string? configError);
+        if (configError != null)
+            SaveStatus.Text = "Configuration illisible, valeurs par défaut utilisées : " + configError;
 
         EnabledCheck.IsChecked = config.IsEnabled;
         TimeBox.Text = config.TimeOfDay.ToString(@"hh\:mm");
@@ -42,6 +44,15 @@ public partial class SettingsWindow : Window
         var plugBoxes = new[] { PlugSystem, PlugWinUpd, PlugBrowser, PlugThumb, PlugOffice, PlugSteam };
         foreach (var cb in plugBoxes)
             cb.IsChecked = cb != PlugWinUpd && config.PluginIds.Contains((string)cb.Tag);
+
+        if (configError == null)
+        {
+            bool taskExists = _scheduler.GetScheduledTask() != null;
+            if (config.IsEnabled != taskExists)
+                SaveStatus.Text = config.IsEnabled
+                    ? "Attention : la tâche planifiée est absente. Enregistrez pour la recréer."
+                    : "Attention : une tâche planifiée existe encore. Enregistrez pour la supprimer.";
+        }
     }
 
     // ─── SAVE ────────────────────────────────────────────────────────────
@@ -95,8 +106,18 @@ public partial class SettingsWindow : Window
 
         try
         {
-            _scheduler.CreateOrUpdateScheduledTask(config);
+            var previous = SchedulerService.LoadConfig();
             SchedulerService.SaveConfig(config);
+            try
+            {
+                _scheduler.CreateOrUpdateScheduledTask(config);
+            }
+            catch
+            {
+                try { SchedulerService.SaveConfig(previous); }
+                catch { /* keep the original scheduler error */ }
+                throw;
+            }
 
             SaveStatus.Text = config.IsEnabled
                 ? $"✅ Tâche planifiée à {config.TimeOfDay:hh\\:mm} ({string.Join(", ", config.Days)})"

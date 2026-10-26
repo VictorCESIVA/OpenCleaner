@@ -29,7 +29,7 @@ public partial class MainWindow : Window
     private static readonly Dictionary<string, (string Title, string Desc)> PluginMeta = new()
     {
         ["system"] = ("Fichiers temporaires", "Caches temporaires, rapports d'erreurs et shaders DirectX"),
-        ["windowsupdate"] = ("Windows Update", "Téléchargements de mises à jour datant d'au moins 3 jours"),
+        ["windowsupdate"] = ("Windows Update", "Nettoyage suspendu : utilisez Paramètres Windows > Stockage > Fichiers temporaires"),
         ["thumbnails"] = ("Miniatures Windows", "Cache des aperçus de l'Explorateur de fichiers"),
         ["browser"] = ("Navigateurs", "Choisissez les données à analyser dans Chrome, Edge, Brave, Firefox, Opera et Vivaldi"),
         ["steam"] = ("Steam", "Caches de téléchargement — vos jeux sont conservés"),
@@ -345,7 +345,7 @@ public partial class MainWindow : Window
         if (_currentPlugin == null || _foundItems.Count == 0 || UiOperation.IsBusy) return;
         if (_selectedPluginTag == "browser" && BrowsersRunning())
         {
-            MessageBox.Show(this, "Fermez Chrome, Edge et Brave, puis relancez le nettoyage.",
+            MessageBox.Show(this, "Fermez tous les navigateurs (Chrome, Edge, Brave, Firefox, Opera, Vivaldi), puis relancez le nettoyage.",
                 "Navigateurs ouverts", MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }

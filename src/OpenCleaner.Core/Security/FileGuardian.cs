@@ -65,9 +65,8 @@ public sealed class FileGuardian : IFileGuardian
                     !string.Equals(backup.ContentHash, originalFile.ContentHash, StringComparison.OrdinalIgnoreCase) ||
                     !backupInfo.Exists ||
                     backupInfo.Length != originalFile.Size ||
-                    (_backupManager is not BackupManager &&
-                     !string.Equals(await HashHelper.ComputeHashAsync(backup.BackupPath, ct), originalFile.ContentHash,
-                         StringComparison.OrdinalIgnoreCase)))
+                    !string.Equals(await HashHelper.ComputeHashAsync(backup.BackupPath, ct), originalFile.ContentHash,
+                        StringComparison.OrdinalIgnoreCase))
                     return Failure("Backup verification failed, aborting delete");
             }
 
@@ -75,6 +74,8 @@ public sealed class FileGuardian : IFileGuardian
             if (IsSystemCriticalPath(path)) return Failure("Path became unsafe before delete");
 
             await using var deletion = new FileDeletionHandle(path);
+            if (!PathSafety.IsSamePath(deletion.ResolvedPath, path))
+                return Failure("Resolved file target changed, aborting delete");
             string currentHash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(deletion.Stream, ct));
             if (deletion.Stream.Length != originalFile.Size ||
                 !string.Equals(currentHash, originalFile.ContentHash, StringComparison.OrdinalIgnoreCase))
