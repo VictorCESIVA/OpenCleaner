@@ -7,6 +7,7 @@ public interface ITransactionManager
     Guid BeginTransaction();
     Task StageOperationAsync(Guid transactionId, OperationResult operation);
     Task CommitAsync(Guid transactionId, CancellationToken ct = default);
+    Task CommitPartialAsync(Guid transactionId, CancellationToken ct = default);
     Task RollbackAsync(Guid transactionId, CancellationToken ct = default);
     Task<TransactionState> GetTransactionStateAsync(Guid transactionId);
     Task<IReadOnlyList<OperationResult>> GetTransactionHistoryAsync(Guid transactionId);

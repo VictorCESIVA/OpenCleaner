@@ -42,6 +42,49 @@ public sealed class TransactionRegressionTests : IDisposable
     }
 
     [Fact]
+    public async Task GuardianStagesDeletionAndScopeCommits()
+    {
+        string source = Path.Combine(_root, "committed.txt");
+        await File.WriteAllTextAsync(source, "keep this");
+        using var backups = new BackupManager(NullLogger<BackupManager>.Instance, Path.Combine(_root, "backups"));
+        using var transactions = new TransactionManager(backups, NullLogger<TransactionManager>.Instance, Database);
+        var guardian = new FileGuardian(backups, NullLogger<FileGuardian>.Instance, transactions);
+
+        Guid transactionId;
+        await using (var scope = new CleanupTransactionScope(transactions))
+        {
+            transactionId = scope.TransactionId;
+            Assert.True((await guardian.SafeDeleteAsync(source)).Success);
+            await scope.CommitAsync();
+        }
+
+        Assert.Equal(TransactionState.Committed, await transactions.GetTransactionStateAsync(transactionId));
+        Assert.Single(await transactions.GetTransactionHistoryAsync(transactionId));
+        Assert.False(File.Exists(source));
+    }
+
+    [Fact]
+    public async Task GuardianRollbackRestoresDeletedFile()
+    {
+        string source = Path.Combine(_root, "rolled-back.txt");
+        await File.WriteAllTextAsync(source, "restore this");
+        using var backups = new BackupManager(NullLogger<BackupManager>.Instance, Path.Combine(_root, "backups"));
+        using var transactions = new TransactionManager(backups, NullLogger<TransactionManager>.Instance, Database);
+        var guardian = new FileGuardian(backups, NullLogger<FileGuardian>.Instance, transactions);
+
+        Guid transactionId;
+        await using (var scope = new CleanupTransactionScope(transactions))
+        {
+            transactionId = scope.TransactionId;
+            Assert.True((await guardian.SafeDeleteAsync(source)).Success);
+            await scope.RollbackAsync();
+        }
+
+        Assert.Equal(TransactionState.RolledBack, await transactions.GetTransactionStateAsync(transactionId));
+        Assert.Equal("restore this", await File.ReadAllTextAsync(source));
+    }
+
+    [Fact]
     public async Task FailedRestoreLeavesTruthfulFailedState()
     {
         string backupId = Guid.NewGuid().ToString("N");

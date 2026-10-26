@@ -131,6 +131,21 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
         finally { gate.Release(); }
     }
 
+    public async Task CommitPartialAsync(Guid transactionId, CancellationToken ct = default)
+    {
+        var gate = GetLock(transactionId);
+        await gate.WaitAsync(ct);
+        try
+        {
+            Transaction transaction = GetTransaction(transactionId);
+            if (transaction.State != TransactionState.Pending)
+                throw new InvalidOperationException($"Transaction {transactionId} is not pending");
+            ct.ThrowIfCancellationRequested();
+            SaveState(transaction, TransactionState.Committed);
+        }
+        finally { gate.Release(); }
+    }
+
     public async Task RollbackAsync(Guid transactionId, CancellationToken ct = default)
     {
         var gate = GetLock(transactionId);

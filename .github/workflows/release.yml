@@ -47,11 +47,42 @@ jobs:
         env:
           APP_VERSION: ${{ steps.version.outputs.version }}
           RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SIGNING_CERTIFICATE_BASE64: ${{ secrets.SIGNING_CERTIFICATE_BASE64 }}
+          SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.SIGNING_CERTIFICATE_PASSWORD }}
         shell: pwsh
         run: |
           $notesPath = "docs/releases/$env:APP_VERSION.md"
-          vpk pack -u OpenCleaner -v $env:APP_VERSION -p publish --mainExe OpenCleaner.UI.exe --runtime win-x64 --channel win-x64 --releaseNotes $notesPath
-          if ($LASTEXITCODE -ne 0) { throw "Packaging failed." }
+          $packArgs = @(
+            "pack",
+            "-u", "OpenCleaner",
+            "-v", $env:APP_VERSION,
+            "-p", "publish",
+            "--mainExe", "OpenCleaner.UI.exe",
+            "--runtime", "win-x64",
+            "--channel", "win-x64",
+            "--releaseNotes", $notesPath
+          )
+          $certPath = $null
+          if ($env:SIGNING_CERTIFICATE_BASE64) {
+            if (-not $env:SIGNING_CERTIFICATE_PASSWORD) { throw "SIGNING_CERTIFICATE_PASSWORD is required" }
+            $certPath = Join-Path $env:RUNNER_TEMP "codesign.pfx"
+            [System.IO.File]::WriteAllBytes($certPath, [Convert]::FromBase64String($env:SIGNING_CERTIFICATE_BASE64))
+            $signParams = "/f `"$certPath`" /p `"$env:SIGNING_CERTIFICATE_PASSWORD`" /tr http://timestamp.digicert.com /td sha256"
+            $packArgs += @("--signParams", $signParams)
+          }
+          else {
+            Write-Warning "Code signing secret not configured; release packages will be unsigned."
+          }
+          try {
+            vpk @packArgs
+            $packExit = $LASTEXITCODE
+          }
+          finally {
+            if ($certPath -and (Test-Path -LiteralPath $certPath)) {
+              Remove-Item -LiteralPath $certPath -Force
+            }
+          }
+          if ($packExit -ne 0) { throw "Packaging failed." }
           $uploadArgs = @(
             "upload", "github",
             "--repoUrl", "https://github.com/$env:GITHUB_REPOSITORY",

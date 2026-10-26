@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using OpenCleaner.Contracts;
+using OpenCleaner.Core.Transactions;
 
 namespace OpenCleaner.Core.Security;
 
@@ -7,11 +8,14 @@ public sealed class FileGuardian : IFileGuardian
 {
     private readonly IBackupManager _backupManager;
     private readonly ILogger<FileGuardian> _logger;
+    private readonly ITransactionManager? _transactions;
 
-    public FileGuardian(IBackupManager backupManager, ILogger<FileGuardian> logger)
+    public FileGuardian(IBackupManager backupManager, ILogger<FileGuardian> logger,
+        ITransactionManager? transactions = null)
     {
         _backupManager = backupManager;
         _logger = logger;
+        _transactions = transactions;
     }
 
     public bool IsSystemCriticalPath(string path) => PathSafety.IsCritical(path) ||
@@ -61,13 +65,18 @@ public sealed class FileGuardian : IFileGuardian
                 }
                 backupPath = backup.BackupPath;
                 var backupInfo = new FileInfo(backup.BackupPath);
-                if (backup.Size != originalFile.Size ||
-                    !string.Equals(backup.ContentHash, originalFile.ContentHash, StringComparison.OrdinalIgnoreCase) ||
-                    !backupInfo.Exists ||
-                    backupInfo.Length != originalFile.Size ||
-                    !string.Equals(await HashHelper.ComputeHashAsync(backup.BackupPath, ct), originalFile.ContentHash,
-                        StringComparison.OrdinalIgnoreCase))
-                    return Failure("Backup verification failed, aborting delete");
+                bool verified = backup.Size == originalFile.Size &&
+                    string.Equals(backup.ContentHash, originalFile.ContentHash, StringComparison.OrdinalIgnoreCase) &&
+                    backupInfo.Exists;
+                if (verified)
+                {
+                    verified = _backupManager is BackupManager manager
+                        ? await manager.VerifyBackupAsync(backup, ct)
+                        : backupInfo.Length == originalFile.Size &&
+                          string.Equals(await HashHelper.ComputeHashAsync(backup.BackupPath, ct),
+                              originalFile.ContentHash, StringComparison.OrdinalIgnoreCase);
+                }
+                if (!verified) return Failure("Backup verification failed, aborting delete");
             }
 
             ct.ThrowIfCancellationRequested();
@@ -85,8 +94,10 @@ public sealed class FileGuardian : IFileGuardian
             if (IsSystemCriticalPath(path)) return Failure("Path became unsafe before delete");
             deletion.Delete();
             _logger.LogInformation("File deleted successfully: {Path}", path);
-            return new OperationResult(true, "Deleted successfully", transactionId, originalFile, backupPath,
+            var result = new OperationResult(true, "Deleted successfully", transactionId, originalFile, backupPath,
                 ItemsProcessed: 1, BytesRecovered: backupPath == null ? originalFile.Size : 0);
+            await StageAsync(result);
+            return result;
         }
         catch (OperationCanceledException) { throw; }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
@@ -129,6 +140,15 @@ public sealed class FileGuardian : IFileGuardian
             return new(false, $"Directory cleaning failed: {ex.Message}", transactionId,
                 ItemsProcessed: cleaned, BytesRecovered: recovered);
         }
+    }
+
+    private async Task StageAsync(OperationResult result)
+    {
+        if (_transactions == null || result.BackupPath == null ||
+            CleanupTransactionScope.CurrentTransactionId is not Guid transactionId) return;
+        try { await _transactions.StageOperationAsync(transactionId, result); }
+        catch (Exception ex)
+        { _logger.LogWarning(ex, "Could not stage deletion {Path} in the transaction journal", result.OriginalFile?.Path); }
     }
 
     private IEnumerable<string> EnumerateSafeFiles(string directory, string pattern, bool recursive, CancellationToken ct)

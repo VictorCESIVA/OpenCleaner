@@ -49,13 +49,13 @@ Contrôle des constructeurs et aperçu des fenêtres WPF, sans analyse ni nettoy
 dotnet run --project tools/OpenCleaner.Preview -c Release -- artifacts/ui-preview
 ```
 
-Les versions distribuées se trouvent dans [GitHub Releases](https://github.com/VictorCESIVA/OpenCleaner/releases). Les anciennes versions publiées ne contiennent pas nécessairement les correctifs présents dans ce dépôt. Un avertissement SmartScreen peut apparaître si le binaire n'est pas signé ; le caractère open source n'est pas une garantie de sûreté du fichier téléchargé.
+Les versions distribuées se trouvent dans [GitHub Releases](https://github.com/VictorCESIVA/OpenCleaner/releases). Les anciennes versions publiées ne contiennent pas nécessairement les correctifs présents dans ce dépôt. Le workflow de release peut signer les binaires si les secrets `SIGNING_CERTIFICATE_BASE64` et `SIGNING_CERTIFICATE_PASSWORD` sont configurés ; sans certificat, un avertissement SmartScreen peut apparaître. Le caractère open source n'est pas une garantie de sûreté du fichier téléchargé.
 
 ## Sauvegardes et sécurité
 
-Les sauvegardes de fichiers se trouvent sous %LOCALAPPDATA%/OpenCleaner/Backups. La restauration vérifie leur taille et leur empreinte SHA-256. Un fichier existant est sauvegardé avant remplacement. Les exportations du registre sont dans %LOCALAPPDATA%/OpenCleaner/RegistryBackups ; leur importation s'effectue manuellement après vérification.
+Les sauvegardes de fichiers se trouvent sous %LOCALAPPDATA%/OpenCleaner/Backups. Leur contenu est chiffré en AES-256-GCM par blocs et leurs métadonnées sont authentifiées par HMAC-SHA256. La clé est protégée par DPAPI pour l'utilisateur courant dans %LOCALAPPDATA%/OpenCleaner/keys/backup.key ; la perdre rend les sauvegardes illisibles et elle n'est pas transférable vers un autre utilisateur ou une autre machine. Les sauvegardes antérieures sont migrées au démarrage ; le format chiffré n'est pas lisible par une version antérieure d'OpenCleaner. La restauration vérifie la taille, l'empreinte SHA-256 et l'authentification avant remplacement ; un fichier existant est sauvegardé avant remplacement. Les exportations du registre sont dans %LOCALAPPDATA%/OpenCleaner/RegistryBackups ; leur importation s'effectue manuellement après vérification.
 
-Les sauvegardes locales ne sont pas chiffrées et ne remplacent pas une sauvegarde indépendante. Le gardien refuse notamment les chemins système critiques, les racines, les chemins réseau et périphériques, les alias 8.3, les flux alternatifs et les liens/jonctions. Tout `C:\Windows` est protégé sauf `Windows\Temp`, et `ProgramData` est refusé. Le nettoyage revalide la sélection issue du dernier scan et vérifie la sauvegarde avant chaque suppression.
+Le gardien refuse notamment les chemins système critiques, les racines, les chemins réseau et périphériques, les alias 8.3, les flux alternatifs et les liens/jonctions. Tout `C:\Windows` est protégé sauf `Windows\Temp` ; `ProgramData` et les autres profils utilisateur sont refusés. Le nettoyage revalide la sélection issue du dernier scan et vérifie la sauvegarde avant chaque suppression. Chaque nettoyage de l'interface ou du planificateur est enregistré dans `%LOCALAPPDATA%/OpenCleaner/transactions.db` ; une annulation ou une erreur restaure les suppressions déjà effectuées. Le journal n'est pas une transaction atomique avec NTFS et n'est pas chiffré.
 
 L'application ne force plus la fermeture des navigateurs et ne redémarre plus automatiquement pour appliquer une mise à jour. La recherche des mises à jour des installations Velopack contacte GitHub ; il n'y a pas de télémétrie applicative.
 
@@ -68,7 +68,7 @@ L'application ne force plus la fermeture des navigateurs et ne redémarre plus a
 - **Tests** : régressions du moteur et des plugins, sur des fixtures temporaires.
 - **docs** : site statique de présentation ; rapports d'audit du [14 octobre 2026](docs/AUDIT-2026-10-14.md) et du [26 octobre 2026](docs/AUDIT-2026-10-26.md).
 
-La CI compile et teste la solution sur Windows et refuse les vulnérabilités NuGet connues. Le workflow de release valide le tag, exécute ces vérifications et construit un package Velopack.
+La CI compile et teste la solution sur Windows et refuse les vulnérabilités NuGet connues. Le workflow de release valide le tag, exécute ces vérifications, construit un package Velopack et le signe si le certificat est fourni via les secrets GitHub.
 
 ## Licence
 

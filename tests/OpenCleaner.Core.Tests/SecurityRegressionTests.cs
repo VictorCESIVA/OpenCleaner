@@ -1,6 +1,5 @@
 using System.Diagnostics;
 using System.Reflection;
-using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Win32;
 using Moq;
@@ -126,7 +125,8 @@ public sealed class SecurityRegressionTests : IDisposable
         Assert.True(await manager.RestoreAsync(backup.BackupId));
         Assert.Equal("initial", await File.ReadAllTextAsync(Original));
         var preserved = Assert.Single(await manager.GetAllBackupsAsync(), b => b.BackupId != backup.BackupId);
-        Assert.Equal("newer data", await File.ReadAllTextAsync(preserved.BackupPath));
+        Assert.True(await manager.RestoreAsync(preserved.BackupId));
+        Assert.Equal("newer data", await File.ReadAllTextAsync(Original));
     }
 
     [Fact]
@@ -146,17 +146,29 @@ public sealed class SecurityRegressionTests : IDisposable
     [Fact]
     public async Task CleanupUsesBackupMetadataAndLeavesUnrecognizedDirectories()
     {
-        await File.WriteAllTextAsync(Original, "backup");
-        using var manager = Manager();
-        var backup = await manager.CreateBackupAsync(Original);
-        string metadataPath = Path.Combine(Directory.GetParent(Directory.GetParent(backup.BackupPath)!.FullName)!.FullName, "metadata.json");
-        var metadata = JsonNode.Parse(await File.ReadAllTextAsync(metadataPath))!;
-        metadata["CreationDate"] = DateTime.UtcNow.AddDays(-90);
-        await File.WriteAllTextAsync(metadataPath, metadata.ToJsonString());
+        string backupDirectory = Path.Combine(Backups, "2020-01-01", Guid.NewGuid().ToString("N"));
+        string dataDirectory = Path.Combine(backupDirectory, "data");
+        Directory.CreateDirectory(dataDirectory);
+        string payload = Path.Combine(dataDirectory, "old.txt");
+        await File.WriteAllTextAsync(payload, "backup");
+        byte[] content = System.Text.Encoding.UTF8.GetBytes("backup");
+        var metadata = new
+        {
+            OriginalPath = Original,
+            OriginalHash = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(content)),
+            CreationDate = DateTime.UtcNow.AddDays(-90),
+            FileSize = content.Length,
+            FileName = "old.txt",
+            Encrypted = false
+        };
+        await File.WriteAllTextAsync(Path.Combine(backupDirectory, "metadata.json"),
+            System.Text.Json.JsonSerializer.Serialize(metadata));
         string unrelated = Path.Combine(Backups, "unrelated");
         Directory.CreateDirectory(unrelated);
         await File.WriteAllTextAsync(Path.Combine(unrelated, "keep.txt"), "keep");
+        using var manager = Manager();
         await manager.CleanupOldBackupsAsync(TimeSpan.FromDays(30));
+        Assert.False(Directory.Exists(backupDirectory));
         Assert.Empty(await manager.GetAllBackupsAsync());
         Assert.True(File.Exists(Path.Combine(unrelated, "keep.txt")));
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() => manager.CleanupOldBackupsAsync(TimeSpan.Zero));

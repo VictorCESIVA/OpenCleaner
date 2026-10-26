@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core;
 using OpenCleaner.Core.Security;
+using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System.Plugins;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
@@ -366,8 +367,14 @@ public partial class MainWindow : Window
             {
                 var backup = App.Services.GetRequiredService<IBackupManager>();
                 var progress = CreateProgress();
-                var result = await Task.Run(() => plugin.CleanAsync(items, backup, progress, operation.Token),
-                    operation.Token);
+                OperationResult result;
+                await using (var transaction = new CleanupTransactionScope(
+                                 App.Services.GetRequiredService<ITransactionManager>()))
+                {
+                    result = await Task.Run(() => plugin.CleanAsync(items, backup, progress, operation.Token),
+                        operation.Token);
+                    await transaction.CommitAsync(operation.Token);
+                }
                 ActionStatus.Text = result.Message;
                 StatusText.Text = result.Success ? "Nettoyage terminé" : "Nettoyage terminé avec des éléments ignorés";
                 // Re-analyze registry paths; File.Exists cannot represent a registry key.
@@ -532,8 +539,14 @@ public partial class MainWindow : Window
                 var service = new SmartCleanService(App.Services.GetRequiredService<IBackupManager>());
                 var progress = new Progress<(int current, int total, string plugin)>(p =>
                     SmartCleanDesc.Text = $"Nettoyage {p.plugin}… ({p.current}/{p.total})");
-                var result = await Task.Run(() => service.ExecuteSmartCleanAsync(scans, progress, operation.Token),
-                    operation.Token);
+                SmartCleanResult result;
+                await using (var transaction = new CleanupTransactionScope(
+                                 App.Services.GetRequiredService<ITransactionManager>()))
+                {
+                    result = await Task.Run(() => service.ExecuteSmartCleanAsync(scans, progress, operation.Token),
+                        operation.Token);
+                    await transaction.CommitAsync(operation.Token);
+                }
                 SmartCleanDesc.Text = $"{result.ItemsCleaned:N0} fichiers supprimés • {SizeFormatter.Format(result.BytesFreed)} libérés";
                 if (!result.Success) SmartCleanDesc.Text += $" • {result.Errors.Count} erreur(s)";
                 _smartScanResults = null;

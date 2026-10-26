@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
+using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System.Plugins;
 using System.Collections.ObjectModel;
 using System.Windows;
@@ -247,7 +248,14 @@ public partial class DuplicateWindow : Window
             var plugin        = _plugin;
 
             var progress = operation.CreateProgress<double>(p => StatusText.Text = $"Suppression… {p:P0}");
-            var result = await Task.Run(() => plugin.CleanAsync(toDelete, backupManager, progress, operation.Token), operation.Token);
+            OperationResult result;
+            await using (var transaction = new CleanupTransactionScope(
+                             App.Services.GetRequiredService<ITransactionManager>()))
+            {
+                result = await Task.Run(() => plugin.CleanAsync(toDelete, backupManager, progress, operation.Token),
+                    operation.Token);
+                await transaction.CommitAsync(operation.Token);
+            }
 
             StatusText.Text = result.Success ? "✅ " + result.Message : "⚠️ " + result.Message;
             // Relancer l'analyse pour mettre à jour l'arbre

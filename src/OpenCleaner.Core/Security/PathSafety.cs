@@ -51,6 +51,26 @@ internal static class PathSafety
         if (!string.IsNullOrEmpty(commonData))
             dirs.Add(commonData.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar));
 
+        string systemDrive = Path.GetPathRoot(WindowsDirectory) ??
+            Path.GetPathRoot(Environment.SystemDirectory) ?? @"C:\";
+        string usersRoot = Path.Combine(systemDrive, "Users");
+        string currentProfile = Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        if (Directory.Exists(usersRoot))
+        {
+            try
+            {
+                foreach (string profile in Directory.EnumerateDirectories(usersRoot))
+                {
+                    string normalized = profile.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+                    if (!string.Equals(normalized, currentProfile, StringComparison.OrdinalIgnoreCase))
+                        dirs.Add(normalized);
+                }
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or System.Security.SecurityException)
+            { }
+        }
+
         foreach (var applicationData in new[] { Environment.SpecialFolder.LocalApplicationData, Environment.SpecialFolder.ApplicationData })
         {
             string directory = Environment.GetFolderPath(applicationData);

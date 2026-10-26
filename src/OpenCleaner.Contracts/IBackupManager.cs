@@ -7,6 +7,8 @@ public interface IBackupManager
     Task<bool> DeleteBackupAsync(string backupId, CancellationToken ct = default);
     Task CleanupOldBackupsAsync(TimeSpan maxAge, CancellationToken ct = default);
     Task<IReadOnlyList<BackupInfo>> GetAllBackupsAsync();
+    Task<int> UpgradeLegacyBackupsAsync(CancellationToken ct = default);
+    Task<bool> VerifyBackupAsync(BackupInfo backup, CancellationToken ct = default);
 }
 
 public record BackupInfo(

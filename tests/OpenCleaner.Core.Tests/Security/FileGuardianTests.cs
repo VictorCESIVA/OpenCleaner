@@ -46,6 +46,13 @@ public sealed class FileGuardianTests
             Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Vendor", "config.json")));
 
     [Fact]
+    public void IsSystemCriticalPath_PublicProfile_ReturnsTrue()
+    {
+        string systemDrive = Path.GetPathRoot(Environment.GetFolderPath(Environment.SpecialFolder.Windows)) ?? @"C:\";
+        Assert.True(_guardian.IsSystemCriticalPath(Path.Combine(systemDrive, "Users", "Public", "document.txt")));
+    }
+
+    [Fact]
     public void IsSystemCriticalPath_NonWindowsSiblingPrefix_ReturnsFalse() =>
         Assert.False(_guardian.IsSystemCriticalPath(@"C:\WindowsBackup\kernel32.dll"));
 
