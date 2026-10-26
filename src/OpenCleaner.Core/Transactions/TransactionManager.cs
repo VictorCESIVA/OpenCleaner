@@ -44,7 +44,8 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
             CREATE TABLE IF NOT EXISTS Operations (
                 Id TEXT PRIMARY KEY, TransactionId TEXT NOT NULL, Success INTEGER NOT NULL, Message TEXT NOT NULL,
                 OriginalPath TEXT, BackupPath TEXT, Timestamp TEXT NOT NULL,
-                OriginalSize INTEGER, OriginalLastAccess TEXT, OriginalHash TEXT, ItemsProcessed INTEGER, BytesRecovered INTEGER,
+                OriginalSize INTEGER, OriginalLastAccess TEXT, OriginalHash TEXT, ItemsProcessed INTEGER,
+                BytesRecovered INTEGER, BackupId TEXT,
                 FOREIGN KEY (TransactionId) REFERENCES Transactions(Id) ON DELETE CASCADE);
             """;
         command.ExecuteNonQuery();
@@ -53,11 +54,40 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
         using (var reader = command.ExecuteReader())
             while (reader.Read()) columns.Add(reader.GetString(1));
         foreach (var (name, type) in new[] { ("OriginalSize", "INTEGER"), ("OriginalLastAccess", "TEXT"),
-                     ("OriginalHash", "TEXT"), ("ItemsProcessed", "INTEGER"), ("BytesRecovered", "INTEGER") })
+                     ("OriginalHash", "TEXT"), ("ItemsProcessed", "INTEGER"), ("BytesRecovered", "INTEGER"),
+                     ("BackupId", "TEXT") })
         {
             if (columns.Contains(name)) continue;
             command.CommandText = $"ALTER TABLE Operations ADD COLUMN {name} {type};";
             command.ExecuteNonQuery();
+        }
+
+        command.CommandText = """
+            SELECT Id, BackupPath FROM Operations
+            WHERE BackupPath IS NOT NULL OR OriginalPath IS NOT NULL OR OriginalLastAccess IS NOT NULL;
+            """;
+        var paths = new List<(string Id, string? BackupPath)>();
+        using (var reader = command.ExecuteReader())
+            while (reader.Read())
+                paths.Add((reader.GetString(0), reader.IsDBNull(1) ? null : reader.GetString(1)));
+        if (paths.Count > 0)
+        {
+            command.CommandText = """
+                UPDATE Operations SET BackupId = @BackupId, BackupPath = NULL,
+                    OriginalPath = NULL, OriginalLastAccess = NULL WHERE Id = @Id;
+                """;
+            var idParameter = command.CreateParameter();
+            idParameter.ParameterName = "@Id";
+            command.Parameters.Add(idParameter);
+            var backupParameter = command.CreateParameter();
+            backupParameter.ParameterName = "@BackupId";
+            command.Parameters.Add(backupParameter);
+            foreach (var (id, backupPath) in paths)
+            {
+                idParameter.Value = id;
+                backupParameter.Value = (object?)ExtractBackupId(backupPath) ?? DBNull.Value;
+                command.ExecuteNonQuery();
+            }
         }
     }
 
@@ -85,28 +115,42 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
             Transaction transaction = GetTransaction(transactionId);
             if (transaction.State != TransactionState.Pending)
                 throw new InvalidOperationException($"Transaction {transactionId} is not pending");
+            string? backupId = ExtractBackupId(operation);
             using var connection = OpenConnection();
             using var command = connection.CreateCommand();
             command.CommandText = """
                 INSERT INTO Operations (Id, TransactionId, Success, Message, OriginalPath, BackupPath, Timestamp,
-                    OriginalSize, OriginalLastAccess, OriginalHash, ItemsProcessed, BytesRecovered)
+                    OriginalSize, OriginalLastAccess, OriginalHash, ItemsProcessed, BytesRecovered, BackupId)
                 VALUES (@Id, @TransactionId, @Success, @Message, @OriginalPath, @BackupPath, @Timestamp,
-                    @Size, @LastAccess, @Hash, @Items, @Bytes);
+                    @Size, @LastAccess, @Hash, @Items, @Bytes, @BackupId);
                 """;
             command.Parameters.AddWithValue("@Id", Guid.NewGuid().ToString());
             command.Parameters.AddWithValue("@TransactionId", transactionId.ToString());
             command.Parameters.AddWithValue("@Success", operation.Success ? 1 : 0);
-            command.Parameters.AddWithValue("@Message", operation.Message);
-            command.Parameters.AddWithValue("@OriginalPath", (object?)operation.OriginalFile?.Path ?? DBNull.Value);
-            command.Parameters.AddWithValue("@BackupPath", (object?)operation.BackupPath ?? DBNull.Value);
+            command.Parameters.AddWithValue("@Message", operation.Success ? "success" : "failure");
+            command.Parameters.AddWithValue("@OriginalPath", DBNull.Value);
+            command.Parameters.AddWithValue("@BackupPath", DBNull.Value);
             command.Parameters.AddWithValue("@Timestamp", DateTime.UtcNow.ToString("O", CultureInfo.InvariantCulture));
             command.Parameters.AddWithValue("@Size", (object?)operation.OriginalFile?.Size ?? DBNull.Value);
-            command.Parameters.AddWithValue("@LastAccess", (object?)operation.OriginalFile?.LastAccessTime.ToString("O", CultureInfo.InvariantCulture) ?? DBNull.Value);
+            command.Parameters.AddWithValue("@LastAccess", DBNull.Value);
             command.Parameters.AddWithValue("@Hash", (object?)operation.OriginalFile?.ContentHash ?? DBNull.Value);
             command.Parameters.AddWithValue("@Items", (object?)operation.ItemsProcessed ?? DBNull.Value);
             command.Parameters.AddWithValue("@Bytes", (object?)operation.BytesRecovered ?? DBNull.Value);
+            command.Parameters.AddWithValue("@BackupId", (object?)backupId ?? DBNull.Value);
             command.ExecuteNonQuery();
-            transaction.Operations.Add(operation with { TransactionId = transactionId });
+            FileEntry? original = operation.OriginalFile is null ? null : operation.OriginalFile with
+            {
+                Path = string.Empty,
+                LastAccessTime = default
+            };
+            transaction.Operations.Add(operation with
+            {
+                TransactionId = transactionId,
+                Message = operation.Success ? "success" : "failure",
+                OriginalFile = original,
+                BackupPath = null,
+                BackupId = backupId
+            });
         }
         finally { gate.Release(); }
     }
@@ -146,6 +190,18 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
         finally { gate.Release(); }
     }
 
+    public Task<int> PurgeOldTransactionsAsync(TimeSpan maxAge, CancellationToken ct = default)
+    {
+        if (maxAge <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(maxAge));
+        ct.ThrowIfCancellationRequested();
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "DELETE FROM Transactions WHERE CreatedAt < @Cutoff;";
+        command.Parameters.AddWithValue("@Cutoff",
+            (DateTime.UtcNow - maxAge).ToString("O", CultureInfo.InvariantCulture));
+        return Task.FromResult(command.ExecuteNonQuery());
+    }
+
     public async Task RollbackAsync(Guid transactionId, CancellationToken ct = default)
     {
         var gate = GetLock(transactionId);
@@ -165,10 +221,10 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
             foreach (OperationResult operation in transaction.Operations.Where(o => o.Success).Reverse())
             {
                 ct.ThrowIfCancellationRequested();
-                string? id = ExtractBackupId(operation.BackupPath);
+                string? id = ExtractBackupId(operation);
                 if (id == null)
                 {
-                    failures.Add(operation.OriginalFile?.Path ?? operation.Message);
+                    failures.Add(operation.BackupId ?? operation.Message);
                     continue;
                 }
                 try
@@ -226,6 +282,8 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
         finally { gate.Release(); }
     }
 
+
+
     private Transaction GetTransaction(Guid id)
     {
         if (_transactions.TryGetValue(id, out var transaction)) return transaction;
@@ -240,19 +298,21 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
                 DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
         }
         command.CommandText = """
-            SELECT Success, Message, OriginalPath, BackupPath, OriginalSize, OriginalLastAccess, OriginalHash, ItemsProcessed, BytesRecovered
+            SELECT Success, Message, OriginalPath, BackupPath, OriginalSize, OriginalLastAccess, OriginalHash,
+                ItemsProcessed, BytesRecovered, BackupId
             FROM Operations WHERE TransactionId = @Id ORDER BY rowid;
             """;
         using (var reader = command.ExecuteReader())
         {
             while (reader.Read())
             {
-                FileEntry? original = reader.IsDBNull(2) ? null : new(reader.GetString(2), reader.IsDBNull(4) ? 0 : reader.GetInt64(4),
-                    reader.IsDBNull(5) ? DateTime.MinValue : DateTime.Parse(reader.GetString(5), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind),
-                    reader.IsDBNull(6) ? "" : reader.GetString(6));
+                FileEntry? original = reader.IsDBNull(6) ? null :
+                    new(string.Empty, reader.IsDBNull(4) ? 0 : reader.GetInt64(4), DateTime.MinValue,
+                        reader.GetString(6));
                 transaction.Operations.Add(new(reader.GetInt32(0) == 1, reader.GetString(1), id, original,
                     reader.IsDBNull(3) ? null : reader.GetString(3), reader.IsDBNull(7) ? null : reader.GetInt32(7),
-                    reader.IsDBNull(8) ? null : reader.GetInt64(8)));
+                    reader.IsDBNull(8) ? null : reader.GetInt64(8),
+                    reader.IsDBNull(9) ? null : reader.GetString(9)));
             }
         }
         _transactions[id] = transaction;
@@ -260,6 +320,13 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
     }
 
     private SemaphoreSlim GetLock(Guid id) => _locks.GetOrAdd(id, _ => new(1, 1));
+    private static string? ExtractBackupId(OperationResult operation)
+    {
+        if (!string.IsNullOrEmpty(operation.BackupId) && Guid.TryParseExact(operation.BackupId, "N", out _))
+            return operation.BackupId;
+        return ExtractBackupId(operation.BackupPath);
+    }
+
     private static string? ExtractBackupId(string? path)
     {
         if (string.IsNullOrEmpty(path)) return null;

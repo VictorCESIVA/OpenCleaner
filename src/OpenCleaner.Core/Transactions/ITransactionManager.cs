@@ -11,6 +11,7 @@ public interface ITransactionManager
     Task RollbackAsync(Guid transactionId, CancellationToken ct = default);
     Task<TransactionState> GetTransactionStateAsync(Guid transactionId);
     Task<IReadOnlyList<OperationResult>> GetTransactionHistoryAsync(Guid transactionId);
+    Task<int> PurgeOldTransactionsAsync(TimeSpan maxAge, CancellationToken ct = default);
 }
 
 public enum TransactionState { Pending, Committed, RolledBack, Failed }

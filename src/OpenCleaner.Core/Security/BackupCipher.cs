@@ -15,42 +15,78 @@ internal static class BackupCipher
     private static readonly byte[] PayloadMagic = "OCBK0001"u8.ToArray();
     private static readonly byte[] Entropy = "OpenCleaner.BackupKey.v1"u8.ToArray();
 
-    public static byte[] LoadOrCreateKey(string keyPath)
+    public static byte[] ProtectKey(byte[] key)
     {
-        string path = PathSafety.Normalize(keyPath);
-        string directory = Path.GetDirectoryName(path)!;
-        Directory.CreateDirectory(directory);
-        if (PathSafety.HasReparsePoint(directory))
-            throw new IOException("Backup key directory contains a reparse point");
-
-        if (File.Exists(path))
-        {
-            if (PathSafety.HasReparsePoint(path))
-                throw new IOException("Backup key file contains a reparse point");
-            return Unprotect(File.ReadAllBytes(path));
-        }
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("DPAPI requires Windows");
+        if (key.Length != KeySize) throw new CryptographicException("Invalid backup key length");
+        return ProtectedData.Protect(key, Entropy, DataProtectionScope.CurrentUser);
+    }
 
-        byte[] key = RandomNumberGenerator.GetBytes(KeySize);
-        byte[] protectedKey = ProtectedData.Protect(key, Entropy, DataProtectionScope.CurrentUser);
-        string temporaryPath = path + "." + Guid.NewGuid().ToString("N") + ".tmp";
+    public static byte[] UnprotectKey(byte[] protectedKey)
+    {
+        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("DPAPI requires Windows");
+        byte[] key = ProtectedData.Unprotect(protectedKey, Entropy, DataProtectionScope.CurrentUser);
+        if (key.Length != KeySize)
+        {
+            CryptographicOperations.ZeroMemory(key);
+            throw new CryptographicException("Invalid backup key length");
+        }
+        return key;
+    }
+
+    public static RecoveryEnvelope CreateRecoveryEnvelope(byte[] key, string code)
+    {
+        if (key.Length != KeySize) throw new CryptographicException("Invalid backup key length");
+        string normalized = RecoveryCode.Normalize(code);
+        byte[] salt = RandomNumberGenerator.GetBytes(16);
+        const int iterations = 600_000;
+        byte[] derived = Rfc2898DeriveBytes.Pbkdf2(normalized, salt, iterations, HashAlgorithmName.SHA256, 32);
+        byte[] nonce = RandomNumberGenerator.GetBytes(12);
+        byte[] ciphertext = new byte[KeySize];
+        byte[] tag = new byte[TagSize];
         try
         {
-            File.WriteAllBytes(temporaryPath, protectedKey);
-            try
-            {
-                File.Move(temporaryPath, path);
-                return key;
-            }
-            catch (IOException) when (File.Exists(path))
-            {
-                CryptographicOperations.ZeroMemory(key);
-                return Unprotect(File.ReadAllBytes(path));
-            }
+            using var aes = new AesGcm(derived, TagSize);
+            aes.Encrypt(nonce, key, ciphertext, tag);
+            return new RecoveryEnvelope(1, Convert.ToBase64String(salt), iterations,
+                Convert.ToBase64String(nonce), Convert.ToBase64String(ciphertext), Convert.ToBase64String(tag));
         }
         finally
         {
-            if (File.Exists(temporaryPath)) File.Delete(temporaryPath);
+            CryptographicOperations.ZeroMemory(derived);
+        }
+    }
+
+    public static byte[] OpenRecoveryEnvelope(RecoveryEnvelope envelope, string code)
+    {
+        ArgumentNullException.ThrowIfNull(envelope);
+        if (envelope.Version != 1 || envelope.Iterations is < 100_000 or > 5_000_000)
+            throw new CryptographicException("Invalid recovery envelope");
+        byte[] salt = Convert.FromBase64String(envelope.Salt);
+        byte[] nonce = Convert.FromBase64String(envelope.Nonce);
+        byte[] ciphertext = Convert.FromBase64String(envelope.Ciphertext);
+        byte[] tag = Convert.FromBase64String(envelope.Tag);
+        if (salt.Length != 16 || nonce.Length != 12 || ciphertext.Length != KeySize || tag.Length != TagSize)
+            throw new CryptographicException("Invalid recovery envelope");
+
+        string normalized = RecoveryCode.Normalize(code);
+        byte[] derived = Rfc2898DeriveBytes.Pbkdf2(normalized, salt, envelope.Iterations,
+            HashAlgorithmName.SHA256, 32);
+        byte[] key = new byte[KeySize];
+        try
+        {
+            using var aes = new AesGcm(derived, TagSize);
+            aes.Decrypt(nonce, ciphertext, tag, key);
+            return key;
+        }
+        catch (CryptographicException)
+        {
+            CryptographicOperations.ZeroMemory(key);
+            throw;
+        }
+        finally
+        {
+            CryptographicOperations.ZeroMemory(derived);
         }
     }
 
@@ -165,15 +201,12 @@ internal static class BackupCipher
         }
     }
 
-    private static byte[] Unprotect(byte[] protectedKey)
-    {
-        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException("DPAPI requires Windows");
-        byte[] key = ProtectedData.Unprotect(protectedKey, Entropy, DataProtectionScope.CurrentUser);
-        if (key.Length != KeySize)
-        {
-            CryptographicOperations.ZeroMemory(key);
-            throw new CryptographicException("Invalid backup key length");
-        }
-        return key;
-    }
 }
+
+internal sealed record RecoveryEnvelope(
+    int Version,
+    string Salt,
+    int Iterations,
+    string Nonce,
+    string Ciphertext,
+    string Tag);

@@ -7,4 +7,5 @@ public sealed record OperationResult(
     FileEntry? OriginalFile = null,
     string? BackupPath = null,
     int? ItemsProcessed = null,
-    long? BytesRecovered = null);
+    long? BytesRecovered = null,
+    string? BackupId = null);

@@ -1,0 +1,33 @@
+<Window Style="{StaticResource {x:Type Window}}" x:Class="OpenCleaner.UI.RecoveryKeyWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Code de récupération" Height="340" Width="560"
+        MinHeight="300" MinWidth="460"
+        WindowStartupLocation="CenterOwner">
+    <Border Background="{DynamicResource BgMain}" Padding="24">
+        <StackPanel>
+            <TextBlock x:Name="HeaderText" FontSize="22" FontWeight="SemiBold"
+                       Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
+            <TextBlock x:Name="HelpText" Margin="0,10,0,0" FontSize="12"
+                       Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap"/>
+            <TextBox x:Name="CodeBox" Margin="0,18,0,18" Height="72"
+                     Background="{DynamicResource BgCard}"
+                     Foreground="{DynamicResource TextPrimary}"
+                     BorderBrush="{DynamicResource Border}" BorderThickness="1"
+                     Padding="12,10" FontFamily="Consolas" FontSize="14"
+                     TextWrapping="Wrap" AcceptsReturn="True"
+                     AutomationProperties.Name="Code de récupération"/>
+            <WrapPanel HorizontalAlignment="Right">
+                <Button x:Name="CopyBtn" Content="Copier le code"
+                        Style="{StaticResource SecondBtnStyle}"
+                        Click="Copy_Click" Margin="0,0,10,0"/>
+                <Button x:Name="OkBtn" Content="Valider"
+                        Style="{StaticResource AccentBtn}"
+                        Click="Ok_Click" Margin="0,0,10,0"/>
+                <Button Content="Fermer"
+                        Style="{StaticResource SecondBtnStyle}"
+                        Click="Cancel_Click"/>
+            </WrapPanel>
+        </StackPanel>
+    </Border>
+</Window>

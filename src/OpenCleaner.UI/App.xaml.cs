@@ -30,6 +30,7 @@ public partial class App : System.Windows.Application
         };
 
         BuildServices();
+        _ = PurgeTransactionJournalAsync();
 
         // ── Mode background (lancé par le planificateur Windows) ──────────
         if (e.Args.Contains("--background"))
@@ -80,10 +81,50 @@ public partial class App : System.Windows.Application
     //  MODE BACKGROUND (planificateur)
     // ─────────────────────────────────────────────────────────────────────
 
+    private static async Task PurgeTransactionJournalAsync()
+    {
+        try
+        {
+            ITransactionManager transactions = Services.GetRequiredService<ITransactionManager>();
+            await transactions.PurgeOldTransactionsAsync(TimeSpan.FromDays(30));
+        }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Transaction purge failed: {ex}"); }
+    }
+
     private static async Task UpgradeBackupStorageAsync()
     {
-        try { await Services.GetRequiredService<IBackupManager>().UpgradeLegacyBackupsAsync(); }
+        try
+        {
+            IBackupManager manager = Services.GetRequiredService<IBackupManager>();
+            BackupUpgradeResult upgrade = await manager.UpgradeLegacyBackupsAsync();
+            if (upgrade.Quarantined > 0)
+            {
+                MessageBox.Show(
+                    $"{upgrade.Quarantined} sauvegarde(s) historique(s) corrompue(s) ont été isolées dans :\n\n{manager.QuarantineRoot}",
+                    "Sauvegardes corrompues", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            string? recoveryCode;
+            try { recoveryCode = await manager.EnsureRecoveryCodeAsync(); }
+            catch (BackupKeyUnavailableException)
+            {
+                MessageBox.Show(
+                    manager.HasRecoveryCode
+                        ? "Les sauvegardes chiffrées sont verrouillées. Ouvrez Restauration puis « Code de récupération » pour saisir votre code."
+                        : "La clé de chiffrement est absente et aucun code de récupération n'a été configuré. Les sauvegardes existantes ne peuvent pas être déverrouillées.",
+                    "Sauvegardes verrouillées", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            if (recoveryCode != null) ShowRecoveryCode(recoveryCode);
+        }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Backup upgrade failed: {ex}"); }
+    }
+
+    private static void ShowRecoveryCode(string code)
+    {
+        try { Clipboard.SetText(code); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Clipboard unavailable: {ex}"); }
+        var window = new RecoveryKeyWindow(code, enterMode: false) { Owner = Current.MainWindow };
+        window.ShowDialog();
     }
 
     private static async void RunBackgroundMode(string[] args)
@@ -101,7 +142,13 @@ public partial class App : System.Windows.Application
         int cleaned = 0;
         long freed  = 0;
 
-        try { await backupManager.UpgradeLegacyBackupsAsync(); }
+        try
+        {
+            BackupUpgradeResult upgrade = await backupManager.UpgradeLegacyBackupsAsync();
+            if (upgrade.Quarantined > 0)
+                logger.LogWarning("{Count} sauvegarde(s) corrompue(s) isolée(s) dans {Path}",
+                    upgrade.Quarantined, backupManager.QuarantineRoot);
+        }
         catch (Exception ex) { logger.LogWarning(ex, "Impossible de migrer les anciennes sauvegardes"); }
 
         var failures = 0;

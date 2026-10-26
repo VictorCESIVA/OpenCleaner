@@ -32,7 +32,7 @@ public sealed class TransactionRegressionTests : IDisposable
         using (var restarted = Manager(backups))
         {
             var operation = Assert.Single(await restarted.GetTransactionHistoryAsync(id));
-            Assert.Equal(source, operation.OriginalFile!.Path);
+            Assert.Equal(string.Empty, operation.OriginalFile!.Path);
             Assert.Equal(deletion.OriginalFile!.ContentHash, operation.OriginalFile.ContentHash);
             Assert.Equal(deletion.OriginalFile.Size, operation.OriginalFile.Size);
             await restarted.RollbackAsync(id);
@@ -82,6 +82,56 @@ public sealed class TransactionRegressionTests : IDisposable
 
         Assert.Equal(TransactionState.RolledBack, await transactions.GetTransactionStateAsync(transactionId));
         Assert.Equal("restore this", await File.ReadAllTextAsync(source));
+    }
+
+    [Fact]
+    public async Task JournalStoresOnlyBackupIdentifier()
+    {
+        string source = Path.Combine(_root, "journal.txt");
+        await File.WriteAllTextAsync(source, "journal");
+        using var backups = new BackupManager(NullLogger<BackupManager>.Instance, Path.Combine(_root, "backups"));
+        using var transactions = new TransactionManager(backups, NullLogger<TransactionManager>.Instance, Database);
+        var guardian = new FileGuardian(backups, NullLogger<FileGuardian>.Instance, transactions);
+        Guid transactionId;
+        await using (var scope = new CleanupTransactionScope(transactions))
+        {
+            transactionId = scope.TransactionId;
+            Assert.True((await guardian.SafeDeleteAsync(source)).Success);
+            await scope.CommitAsync();
+        }
+
+        using var connection = new SqliteConnection($"Data Source={Database}");
+        connection.Open();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT OriginalPath, BackupPath, OriginalLastAccess, BackupId FROM Operations WHERE TransactionId = @Id;";
+        command.Parameters.AddWithValue("@Id", transactionId.ToString());
+        using var reader = command.ExecuteReader();
+        Assert.True(reader.Read());
+        Assert.True(reader.IsDBNull(0));
+        Assert.True(reader.IsDBNull(1));
+        Assert.True(reader.IsDBNull(2));
+        Assert.False(reader.IsDBNull(3));
+        Assert.Equal(32, reader.GetString(3).Length);
+        Assert.False(reader.Read());
+    }
+
+    [Fact]
+    public async Task PurgeRemovesOldTransactions()
+    {
+        using var manager = Manager(Mock.Of<IBackupManager>());
+        Guid id = manager.BeginTransaction();
+        using (var connection = new SqliteConnection($"Data Source={Database}"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "UPDATE Transactions SET CreatedAt = @CreatedAt WHERE Id = @Id;";
+            command.Parameters.AddWithValue("@CreatedAt", DateTime.UtcNow.AddDays(-90).ToString("O"));
+            command.Parameters.AddWithValue("@Id", id.ToString());
+            command.ExecuteNonQuery();
+        }
+        Assert.Equal(1, await manager.PurgeOldTransactionsAsync(TimeSpan.FromDays(30)));
+        using var restarted = Manager(Mock.Of<IBackupManager>());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => restarted.GetTransactionStateAsync(id));
     }
 
     [Fact]

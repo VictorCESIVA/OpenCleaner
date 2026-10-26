@@ -140,6 +140,11 @@
                         Style="{StaticResource SecondBtnStyle}"
                         Click="SelectAll_Click"
                         Margin="0,4,10,4"/>
+                    <Button x:Name="UnlockBtn"
+                            Content="Code de récupération"
+                            Style="{StaticResource SecondBtnStyle}"
+                            Click="Unlock_Click"
+                            Margin="0,4,10,4"/>
                     <Button x:Name="RefreshBtn"
                             Content="Actualiser"
                             Style="{StaticResource SecondBtnStyle}"

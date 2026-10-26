@@ -1,5 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using OpenCleaner.Contracts;
+using OpenCleaner.Core.Security;
+using System.IO;
+using System.Security.Cryptography;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -20,11 +23,22 @@ public partial class RestoreWindow : Window
     {
         try
         {
-            _allBackups = await App.Services.GetRequiredService<IBackupManager>().GetAllBackupsAsync();
+            IBackupManager manager = App.Services.GetRequiredService<IBackupManager>();
+            _allBackups = await manager.GetAllBackupsAsync();
             var totalBytes = _allBackups.Sum(b => b.Size);
             BackupSummaryText.Text = _allBackups.Count == 0
                 ? "0 sauvegarde (0 o)"
                 : $"{_allBackups.Count:N0} sauvegarde(s) • {SizeFormatter.Format(totalBytes)}";
+            int quarantined = 0;
+            try
+            {
+                if (Directory.Exists(manager.QuarantineRoot))
+                    quarantined = Directory.EnumerateDirectories(manager.QuarantineRoot).Count();
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { System.Diagnostics.Debug.WriteLine($"Quarantine listing failed: {ex}"); }
+            if (quarantined > 0)
+                BackupSummaryText.Text += $" • {quarantined:N0} corrompue(s) isolée(s)";
             ApplyFilter();
         }
         catch (ObjectDisposedException)
@@ -56,7 +70,8 @@ public partial class RestoreWindow : Window
     private void SetBusy(bool busy)
     {
         _isBusy = busy;
-        BackupsListView.IsEnabled = SelectAllBtn.IsEnabled = RefreshBtn.IsEnabled = DeleteOldBtn.IsEnabled = SearchBox.IsEnabled = !busy;
+        BackupsListView.IsEnabled = SelectAllBtn.IsEnabled = RefreshBtn.IsEnabled = DeleteOldBtn.IsEnabled =
+            SearchBox.IsEnabled = UnlockBtn.IsEnabled = !busy;
         RestoreBtn.IsEnabled = !busy && BackupsListView.SelectedItems.Count > 0;
         DeleteSelectedBtn.IsEnabled = !busy && BackupsListView.SelectedItems.Count > 0;
         OpenFolderBtn.IsEnabled = !busy && BackupsListView.SelectedItem is BackupInfo;
@@ -106,6 +121,39 @@ public partial class RestoreWindow : Window
             catch (Exception ex) { ShowError(ex); }
             finally { SetBusy(false); }
         }
+    }
+
+    private async void Unlock_Click(object sender, RoutedEventArgs e)
+    {
+        if (_isBusy) return;
+        var dialog = new RecoveryKeyWindow(null, enterMode: true) { Owner = this };
+        if (dialog.ShowDialog() != true) return;
+        SetBusy(true);
+        try
+        {
+            IBackupManager manager = App.Services.GetRequiredService<IBackupManager>();
+            if (!await manager.RecoverKeyAsync(dialog.Code))
+            {
+                MessageBox.Show(this, "Code de récupération invalide.", "Sauvegardes",
+                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+            await LoadBackupsAsync();
+            MessageBox.Show(this, "Sauvegardes déverrouillées.", "Sauvegardes",
+                MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (BackupKeyUnavailableException)
+        {
+            MessageBox.Show(this, "Aucun code de récupération n'a encore été configuré.",
+                "Sauvegardes", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex) when (ex is CryptographicException or FormatException)
+        {
+            MessageBox.Show(this, "Code de récupération invalide.", "Sauvegardes",
+                MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex) { ShowError(ex); }
+        finally { SetBusy(false); }
     }
 
     private async void Refresh_Click(object sender, RoutedEventArgs e)

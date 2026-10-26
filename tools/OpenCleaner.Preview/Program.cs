@@ -17,7 +17,7 @@ internal class Program
         var app=new App();app.InitializeComponent();app.ShutdownMode=ShutdownMode.OnExplicitShutdown;
         typeof(App).GetMethod("BuildServices",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,null);
         var main=new MainWindow();
-        var windows=new Window[]{main,new SettingsWindow(),new RestoreWindow(),new PrivacyWindow(),new DuplicateWindow(),new DiskSpaceWindow(),new DevCleanerWindow()};
+        var windows=new Window[]{main,new SettingsWindow(),new RestoreWindow(),new PrivacyWindow(),new DuplicateWindow(),new DiskSpaceWindow(),new DevCleanerWindow(),new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION",false)};
         foreach(var window in windows)
         {
             var name=window.GetType().Name;

@@ -12,8 +12,9 @@ public sealed class BackupManager : IBackupManager, IDisposable
     private readonly ILogger<BackupManager> _logger;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly string _backupsRoot;
-    private readonly Lazy<byte[]> _key;
+    private readonly BackupKeyStore _keys;
     public string BackupsRoot => _backupsRoot;
+    public string QuarantineRoot => Path.Combine(_backupsRoot, "Quarantine");
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     public BackupManager(ILogger<BackupManager> logger) : this(logger, null, null) { }
@@ -28,12 +29,76 @@ public sealed class BackupManager : IBackupManager, IDisposable
             Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenCleaner", "Backups"));
         string defaultKeyPath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),
             "OpenCleaner", "keys", "backup.key");
-        _key = new Lazy<byte[]>(() => BackupCipher.LoadOrCreateKey(
-            keyPathOverride ?? (backupsRootOverride == null ? defaultKeyPath : Path.Combine(_backupsRoot, ".key", "backup.key"))),
-            LazyThreadSafetyMode.ExecutionAndPublication);
+        _keys = new BackupKeyStore(
+            keyPathOverride ?? (backupsRootOverride == null ? defaultKeyPath : Path.Combine(_backupsRoot, ".key", "backup.key")));
     }
 
-    private byte[] Key => _key.Value;
+    private byte[] Key
+    {
+        get
+        {
+            if (_keys.IsKeyAvailable) return _keys.GetKey(allowCreate: false);
+            if (_keys.HasRecoveryEnvelope || HasEncryptedBackups())
+                throw new BackupKeyUnavailableException("The backup key is missing; use the recovery code");
+            return _keys.GetKey(allowCreate: true);
+        }
+    }
+
+    public bool IsBackupKeyAvailable => _keys.IsKeyAvailable;
+    public bool HasRecoveryCode => _keys.HasRecoveryEnvelope;
+
+    public Task<string?> EnsureRecoveryCodeAsync(CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (!_keys.IsKeyAvailable && (_keys.HasRecoveryEnvelope || HasEncryptedBackups()))
+            throw new BackupKeyUnavailableException("The backup key is missing; use the recovery code");
+        return Task.Run(() => _keys.EnsureRecoveryCode(createKeyIfMissing: true), ct);
+    }
+
+    public Task<string> RegenerateRecoveryCodeAsync(CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (!_keys.IsKeyAvailable)
+            throw new BackupKeyUnavailableException("The backup key is missing; use the recovery code");
+        return Task.Run(_keys.RegenerateRecoveryCode, ct);
+    }
+
+    public async Task<bool> RecoverKeyAsync(string recoveryCode, CancellationToken ct = default)
+    {
+        if (string.IsNullOrWhiteSpace(recoveryCode)) return false;
+        await _gate.WaitAsync(ct);
+        try
+        {
+            ct.ThrowIfCancellationRequested();
+            return await Task.Run(() => _keys.RecoverKey(recoveryCode), ct);
+        }
+        finally { _gate.Release(); }
+    }
+
+    private bool HasEncryptedBackups()
+    {
+        try
+        {
+            foreach (string directory in EnumerateBackupDirectories())
+            {
+                string data = Path.Combine(directory, "data");
+                if (Directory.Exists(data) &&
+                    Directory.EnumerateFiles(data, "*.ocb", SearchOption.TopDirectoryOnly).Any())
+                    return true;
+                string metadataPath = Path.Combine(directory, "metadata.json");
+                if (File.Exists(metadataPath))
+                {
+                    using var document = JsonDocument.Parse(File.ReadAllText(metadataPath));
+                    if (document.RootElement.TryGetProperty("Encrypted", out var encrypted) &&
+                        encrypted.ValueKind == JsonValueKind.True)
+                        return true;
+                }
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException)
+        { return true; }
+        return false;
+    }
 
     public async Task<BackupInfo> CreateBackupAsync(string originalPath, CancellationToken ct = default)
     {
@@ -48,6 +113,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
         if (PathSafety.HasReparsePoint(originalPath) || PathSafety.HasReparsePoint(_backupsRoot))
             throw new IOException("Backup paths cannot contain symbolic links or junctions");
         ct.ThrowIfCancellationRequested();
+        byte[] key = Key;
 
         string backupId = Guid.NewGuid().ToString("N");
         string backupDirectory = Path.Combine(_backupsRoot, DateTime.UtcNow.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture), backupId);
@@ -64,7 +130,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 FileShare.Read, CopyBufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
             await using var destination = new FileStream(backupFilePath, FileMode.CreateNew, FileAccess.Write,
                 FileShare.None, CopyBufferSize, FileOptions.Asynchronous);
-            (long fileSize, string contentHash) = await BackupCipher.EncryptAsync(Key, source, destination, ct);
+            (long fileSize, string contentHash) = await BackupCipher.EncryptAsync(key, source, destination, ct);
 
             var metadata = new BackupMetadata
             {
@@ -77,7 +143,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
             };
             metadata = metadata with
             {
-                Signature = BackupCipher.ComputeMetadataSignature(Key, metadata.OriginalPath, metadata.OriginalHash,
+                Signature = BackupCipher.ComputeMetadataSignature(key, metadata.OriginalPath, metadata.OriginalHash,
                     metadata.CreationDate, metadata.FileSize, metadata.FileName, metadata.Encrypted)
             };
             await WriteMetadataAsync(backupDirectory, metadata, ct);
@@ -278,13 +344,14 @@ public sealed class BackupManager : IBackupManager, IDisposable
         finally { _gate.Release(); }
     }
 
-    public async Task<int> UpgradeLegacyBackupsAsync(CancellationToken ct = default)
+    public async Task<BackupUpgradeResult> UpgradeLegacyBackupsAsync(CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
         int migrated = 0;
+        int quarantined = 0;
         try
         {
-            foreach (string directory in EnumerateBackupDirectories())
+            foreach (string directory in EnumerateBackupDirectories().ToList())
             {
                 ct.ThrowIfCancellationRequested();
                 string? encryptedPayload = null;
@@ -296,23 +363,35 @@ public sealed class BackupManager : IBackupManager, IDisposable
                     if (metadata.Encrypted)
                     {
                         string currentPayload = GetBackupFilePath(directory, metadata, encrypted: true);
+                        if (!File.Exists(currentPayload) || PathSafety.HasReparsePoint(currentPayload))
+                        {
+                            if (Quarantine(directory, "Missing or linked encrypted payload")) quarantined++;
+                            continue;
+                        }
                         if (PathSafety.HasReparsePoint(legacyPayload)) continue;
-                        if (File.Exists(currentPayload) && PathSafety.HasReparsePoint(currentPayload)) continue;
-                        if (File.Exists(currentPayload) && File.Exists(legacyPayload)) File.Delete(legacyPayload);
+                        if (File.Exists(legacyPayload)) File.Delete(legacyPayload);
                         continue;
                     }
 
-                    if (!File.Exists(legacyPayload) || PathSafety.HasReparsePoint(legacyPayload)) continue;
+                    if (!File.Exists(legacyPayload) || PathSafety.HasReparsePoint(legacyPayload))
+                    {
+                        if (Quarantine(directory, "Missing or linked legacy payload")) quarantined++;
+                        continue;
+                    }
                     string hash = await HashHelper.ComputeHashAsync(legacyPayload, ct);
                     if (new FileInfo(legacyPayload).Length != metadata.FileSize ||
                         !hash.Equals(metadata.OriginalHash, StringComparison.OrdinalIgnoreCase))
                     {
-                        _logger.LogWarning("Legacy backup {Directory} failed verification and was not migrated", directory);
+                        if (Quarantine(directory, "Legacy backup failed integrity verification")) quarantined++;
                         continue;
                     }
 
                     string encryptedPath = GetBackupFilePath(directory, metadata, encrypted: true);
-                    if (File.Exists(encryptedPath) && PathSafety.HasReparsePoint(encryptedPath)) continue;
+                    if (File.Exists(encryptedPath) && PathSafety.HasReparsePoint(encryptedPath))
+                    {
+                        if (Quarantine(directory, "Linked encrypted payload")) quarantined++;
+                        continue;
+                    }
                     encryptedPayload = encryptedPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
                     await using (var source = new FileStream(legacyPayload, FileMode.Open, FileAccess.Read,
                                      FileShare.Read, CopyBufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
@@ -323,7 +402,9 @@ public sealed class BackupManager : IBackupManager, IDisposable
                         if (size != metadata.FileSize ||
                             !encryptedHash.Equals(metadata.OriginalHash, StringComparison.OrdinalIgnoreCase))
                         {
-                            _logger.LogWarning("Legacy backup {Directory} changed during migration", directory);
+                            File.Delete(encryptedPayload);
+                            encryptedPayload = null;
+                            if (Quarantine(directory, "Legacy backup changed during migration")) quarantined++;
                             continue;
                         }
                     }
@@ -344,8 +425,17 @@ public sealed class BackupManager : IBackupManager, IDisposable
                     File.Delete(legacyPayload);
                     migrated++;
                 }
-                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or JsonException or
-                    ArgumentException or CryptographicException or InvalidDataException)
+                catch (BackupKeyUnavailableException ex)
+                {
+                    _logger.LogWarning(ex, "Backup migration requires the recovery code for {Directory}", directory);
+                }
+                catch (Exception ex) when (ex is JsonException or CryptographicException or InvalidDataException or
+                    ArgumentException)
+                {
+                    if (Quarantine(directory, $"Invalid legacy backup metadata: {ex.Message}")) quarantined++;
+                    else _logger.LogWarning(ex, "Could not quarantine invalid backup {Directory}", directory);
+                }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
                 {
                     _logger.LogWarning(ex, "Could not migrate legacy backup {Directory}", directory);
                 }
@@ -357,7 +447,40 @@ public sealed class BackupManager : IBackupManager, IDisposable
             }
         }
         finally { _gate.Release(); }
-        return migrated;
+        return new BackupUpgradeResult(migrated, quarantined);
+    }
+
+    private bool Quarantine(string directory, string reason)
+    {
+        try
+        {
+            string source = PathSafety.Normalize(directory);
+            if (!PathSafety.IsWithin(source, _backupsRoot) ||
+                source.Equals(_backupsRoot, StringComparison.OrdinalIgnoreCase) ||
+                PathSafety.HasReparsePoint(source)) return false;
+            string root = QuarantineRoot;
+            Directory.CreateDirectory(root);
+            if (PathSafety.HasReparsePoint(root)) return false;
+            string destination = Path.Combine(root, Path.GetFileName(source));
+            if (Directory.Exists(destination))
+                destination += "-" + DateTime.UtcNow.ToString("yyyyMMddHHmmss", CultureInfo.InvariantCulture);
+            Directory.Move(source, destination);
+            try
+            {
+                var marker = new { Reason = reason, QuarantinedAt = DateTime.UtcNow };
+                File.WriteAllText(Path.Combine(destination, "quarantine.json"),
+                    JsonSerializer.Serialize(marker, JsonOptions));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            { _logger.LogWarning(ex, "Could not write quarantine marker for {Directory}", destination); }
+            _logger.LogWarning("Backup {Directory} quarantined: {Reason}", source, reason);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
+        {
+            _logger.LogWarning(ex, "Could not quarantine backup {Directory}", directory);
+            return false;
+        }
     }
 
     public async Task<IReadOnlyList<BackupInfo>> GetAllBackupsAsync()

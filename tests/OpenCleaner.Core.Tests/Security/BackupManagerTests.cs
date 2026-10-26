@@ -143,7 +143,9 @@ public sealed class BackupManagerTests : IDisposable
         var manager = Manager();
         var legacy = await CreateLegacyBackupAsync("legacy.txt", "legacy-content");
 
-        Assert.Equal(1, await manager.UpgradeLegacyBackupsAsync());
+        var upgraded = await manager.UpgradeLegacyBackupsAsync();
+        Assert.Equal(1, upgraded.Migrated);
+        Assert.Equal(0, upgraded.Quarantined);
         Assert.False(File.Exists(legacy.PayloadPath));
         string encryptedPath = legacy.PayloadPath + ".ocb";
         Assert.True(File.Exists(encryptedPath));
@@ -152,13 +154,52 @@ public sealed class BackupManagerTests : IDisposable
         var metadata = JsonNode.Parse(await File.ReadAllTextAsync(legacy.MetadataPath))!;
         Assert.True(metadata["Encrypted"]!.GetValue<bool>());
         Assert.False(string.IsNullOrWhiteSpace(metadata["Signature"]!.GetValue<string>()));
-        Assert.Equal(0, await manager.UpgradeLegacyBackupsAsync());
+        Assert.Equal(0, (await manager.UpgradeLegacyBackupsAsync()).Migrated);
         Assert.True(await manager.RestoreAsync(legacy.Id));
         Assert.Equal("legacy-content", await File.ReadAllTextAsync(Path.Combine(_root, "legacy.txt")));
     }
 
+    [Fact]
+    public async Task RecoveryCodeRestoresAccessAfterDpapiKeyLoss()
+    {
+        var manager = Manager();
+        string? code = await manager.EnsureRecoveryCodeAsync();
+        Assert.NotNull(code);
+        Assert.Null(await manager.EnsureRecoveryCodeAsync());
+
+        string source = Path.Combine(_root, "recover.txt");
+        await File.WriteAllTextAsync(source, "recover me");
+        var backup = await manager.CreateBackupAsync(source);
+        string keyPath = Path.Combine(Backups, ".key", "backup.key");
+        Assert.True(File.Exists(keyPath));
+        File.Delete(keyPath);
+
+        using var restarted = Manager();
+        Assert.False(restarted.IsBackupKeyAvailable);
+        await Assert.ThrowsAsync<BackupKeyUnavailableException>(() => restarted.CreateBackupAsync(source));
+        Assert.True(await restarted.RecoverKeyAsync(code!));
+        Assert.True(restarted.IsBackupKeyAvailable);
+        Assert.True(await restarted.RestoreAsync(backup.BackupId));
+        Assert.Equal("recover me", await File.ReadAllTextAsync(source));
+    }
+
+    [Fact]
+    public async Task CorruptedLegacyBackupIsQuarantined()
+    {
+        var manager = Manager();
+        var legacy = await CreateLegacyBackupAsync("corrupt.txt", "content", corrupt: true);
+
+        var result = await manager.UpgradeLegacyBackupsAsync();
+
+        Assert.Equal(0, result.Migrated);
+        Assert.Equal(1, result.Quarantined);
+        Assert.False(Directory.Exists(Path.GetDirectoryName(legacy.MetadataPath)));
+        string quarantined = Path.Combine(manager.QuarantineRoot, legacy.Id);
+        Assert.True(File.Exists(Path.Combine(quarantined, "quarantine.json")));
+    }
+
     private async Task<(string Id, string MetadataPath, string PayloadPath)> CreateLegacyBackupAsync(
-        string fileName, string content)
+        string fileName, string content, bool corrupt = false)
     {
         string id = Guid.NewGuid().ToString("N");
         string directory = Path.Combine(Backups, "2020-01-01", id);
@@ -167,7 +208,7 @@ public sealed class BackupManagerTests : IDisposable
         string payload = Path.Combine(dataDirectory, fileName);
         await File.WriteAllTextAsync(payload, content);
         byte[] contentBytes = Encoding.UTF8.GetBytes(content);
-        string hash = Convert.ToHexString(SHA256.HashData(contentBytes));
+        string hash = Convert.ToHexString(SHA256.HashData(corrupt ? [0] : contentBytes));
         var metadata = new
         {
             OriginalPath = Path.Combine(_root, fileName),

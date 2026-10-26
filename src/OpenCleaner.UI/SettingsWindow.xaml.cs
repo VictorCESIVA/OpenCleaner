@@ -1,6 +1,8 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using OpenCleaner.Contracts;
 using OpenCleaner.Core.Scheduler;
+using OpenCleaner.Core.Security;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -19,6 +21,8 @@ public partial class SettingsWindow : Window
         _scheduler = new SchedulerService(
             App.Services.GetRequiredService<ILogger<SchedulerService>>());
         LoadConfig();
+        RegenerateRecoveryBtn.IsEnabled =
+            App.Services.GetRequiredService<IBackupManager>().IsBackupKeyAvailable;
     }
 
     // ─── CHARGEMENT ─────────────────────────────────────────────────────
@@ -129,6 +133,75 @@ public partial class SettingsWindow : Window
                 "Impossible de mettre à jour la tâche Windows :\n" + ex.Message,
                 "Erreur planificateur", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    // ─── CODE DE RÉCUPÉRATION ────────────────────────────────────────────
+
+    private async void CreateRecovery_Click(object sender, RoutedEventArgs e)
+    {
+        CreateRecoveryBtn.IsEnabled = RegenerateRecoveryBtn.IsEnabled = false;
+        try
+        {
+            IBackupManager manager = App.Services.GetRequiredService<IBackupManager>();
+            string? code = await manager.EnsureRecoveryCodeAsync();
+            if (code == null)
+            {
+                RecoveryStatus.Text = "Un code existe déjà. Utilisez « Régénérer » pour le remplacer.";
+                return;
+            }
+            ShowRecoveryCode(code);
+            RecoveryStatus.Text = "Code de récupération copié dans le presse-papiers. Conservez-le hors de cet ordinateur.";
+        }
+        catch (BackupKeyUnavailableException)
+        {
+            IBackupManager manager = App.Services.GetRequiredService<IBackupManager>();
+            MessageBox.Show(this,
+                manager.HasRecoveryCode
+                    ? "La clé de chiffrement est absente. Utilisez Restauration > Code de récupération pour saisir votre code."
+                    : "La clé et le code de récupération sont absents. Il n'est pas possible de déverrouiller les sauvegardes existantes.",
+                "Sauvegardes verrouillées", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Code de récupération", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            CreateRecoveryBtn.IsEnabled = true;
+            RegenerateRecoveryBtn.IsEnabled = App.Services.GetRequiredService<IBackupManager>().IsBackupKeyAvailable;
+        }
+    }
+
+    private async void RegenerateRecovery_Click(object sender, RoutedEventArgs e)
+    {
+        if (MessageBox.Show(this,
+                "Régénérer le code invalide le précédent. Les sauvegardes restent accessibles avec la clé actuelle. Continuer ?",
+                "Régénérer le code", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        CreateRecoveryBtn.IsEnabled = RegenerateRecoveryBtn.IsEnabled = false;
+        try
+        {
+            IBackupManager manager = App.Services.GetRequiredService<IBackupManager>();
+            string code = await manager.RegenerateRecoveryCodeAsync();
+            ShowRecoveryCode(code);
+            RecoveryStatus.Text = "Nouveau code copié dans le presse-papiers. L'ancien code est invalide.";
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show(this, ex.Message, "Code de récupération", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+        finally
+        {
+            CreateRecoveryBtn.IsEnabled = true;
+            RegenerateRecoveryBtn.IsEnabled = App.Services.GetRequiredService<IBackupManager>().IsBackupKeyAvailable;
+        }
+    }
+
+    private void ShowRecoveryCode(string code)
+    {
+        try { Clipboard.SetText(code); }
+        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Clipboard unavailable: {ex}"); }
+        new RecoveryKeyWindow(code, enterMode: false) { Owner = this }.ShowDialog();
     }
 
     // ─── MISES À JOUR ────────────────────────────────────────────────────
