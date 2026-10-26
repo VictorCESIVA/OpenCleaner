@@ -21,6 +21,15 @@ public sealed class FileGuardian : IFileGuardian
     public bool IsSystemCriticalPath(string path) => PathSafety.IsCritical(path) ||
         (_backupManager is BackupManager manager && PathSafety.IsWithin(PathSafety.Normalize(path), manager.BackupsRoot));
 
+    public bool IsSystemCriticalPathForScan(string path)
+    {
+        if (PathSafety.IsCritical(path, checkReparse: false)) return true;
+        if (_backupManager is not BackupManager manager) return false;
+        try { return PathSafety.IsWithin(PathSafety.Normalize(path), manager.BackupsRoot); }
+        catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException)
+        { return true; }
+    }
+
     public bool IsFileLocked(string path)
     {
         try

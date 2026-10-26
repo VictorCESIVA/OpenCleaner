@@ -168,7 +168,9 @@ internal static class PathSafety
         return false;
     }
 
-    public static bool IsCritical(string path)
+    public static bool IsCritical(string path) => IsCritical(path, checkReparse: true);
+
+    internal static bool IsCritical(string path, bool checkReparse)
     {
         string normalized;
         try { normalized = Normalize(path); }
@@ -179,7 +181,8 @@ internal static class PathSafety
         ReadOnlySpan<char> rootTrimmed = root.AsSpan().TrimEnd("\\/");
         if (normalized.Length == 0 || normalized.AsSpan().Equals(rootTrimmed, StringComparison.OrdinalIgnoreCase))
             return true;
-        if (CriticalFileNames.Contains(Path.GetFileName(normalized)) || HasReparsePoint(normalized))
+        if (CriticalFileNames.Contains(Path.GetFileName(normalized)) ||
+            (checkReparse && HasReparsePoint(normalized)))
             return true;
 
         if (!string.IsNullOrEmpty(WindowsDirectory) && IsWithin(normalized, WindowsDirectory) &&
@@ -206,7 +209,10 @@ internal static class PathSafety
 
         try
         {
-            return (File.GetAttributes(normalized) & FileAttributes.System) != 0;
+            FileAttributes blocked = checkReparse
+                ? FileAttributes.System
+                : FileAttributes.System | FileAttributes.ReparsePoint;
+            return (File.GetAttributes(normalized) & blocked) != 0;
         }
         catch (FileNotFoundException) { return false; }
         catch (DirectoryNotFoundException) { return false; }

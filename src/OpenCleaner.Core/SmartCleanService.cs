@@ -35,15 +35,21 @@ public sealed class SmartCleanService
         var tasks = plugins.Where(p => p.IsAvailable)
             .DistinctBy(p => p.Id).Select(async p =>
         {
+            var analysis = p.AnalyzeAsync(ct: ct);
             try
             {
-                var items = await p.AnalyzeAsync(ct: ct).WaitAsync(ct);
+                var items = await analysis.WaitAsync(ct);
                 var safeItems = items.Where(i => IsAutomaticItem(i, p.Id)).ToList();
                 return new SmartScanResult(p, safeItems, SumSizes(safeItems));
             }
-            catch (OperationCanceledException) when (externalCt.IsCancellationRequested) { throw; }
+            catch (OperationCanceledException) when (externalCt.IsCancellationRequested)
+            {
+                await Task.WhenAny(analysis, Task.Delay(TimeSpan.FromMilliseconds(250), CancellationToken.None));
+                throw;
+            }
             catch (OperationCanceledException)
             {
+                await Task.WhenAny(analysis, Task.Delay(TimeSpan.FromMilliseconds(250), CancellationToken.None));
                 return new SmartScanResult(p, [], 0, timeout.IsCancellationRequested
                     ? "Délai d'analyse de 5 secondes dépassé" : "Analyse annulée par le module");
             }

@@ -67,6 +67,15 @@ public sealed class FileGuardianTests
         Assert.True(_guardian.IsSystemCriticalPath(path));
 
     [Fact]
+    public void ScanPathCheckKeepsCriticalProtections()
+    {
+        Assert.True(_guardian.IsSystemCriticalPathForScan(@"C:\Windows\notepad.exe"));
+        Assert.True(_guardian.IsSystemCriticalPathForScan(Path.Combine(
+            Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Vendor", "config.json")));
+        Assert.False(_guardian.IsSystemCriticalPathForScan(Path.Combine(Path.GetTempPath(), "test.txt")));
+    }
+
+    [Fact]
     public async Task SafeDeleteAsync_System32File_ReturnsFailureWithoutDeleting()
     {
         var result = await _guardian.SafeDeleteAsync(@"C:\Windows\System32\kernel32.dll");

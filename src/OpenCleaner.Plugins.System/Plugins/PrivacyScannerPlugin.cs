@@ -74,7 +74,7 @@ public sealed class PrivacyScannerPlugin : ICleanerPlugin
                         (TextExtensions.Contains(info.Extension) || name.StartsWith(".env", StringComparison.OrdinalIgnoreCase));
 
                     if (suspect == null && !canInspectContent) continue;
-                    if (_fileGuardian.IsSystemCriticalPath(file)) continue;
+                    if (_fileGuardian.IsSystemCriticalPathForScan(file)) continue;
 
                     string? description = suspect != null ? $"Nom à vérifier — « {suspect} »" : null;
                     if (description == null && canInspectContent)

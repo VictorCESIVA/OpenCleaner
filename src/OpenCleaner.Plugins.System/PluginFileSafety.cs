@@ -250,7 +250,7 @@ public abstract class SafeFileCleanerPlugin : ICleanerPlugin
                         // Last-access updates can be disabled on NTFS; require both write/access to be old.
                         var lastUse = info.LastWriteTimeUtc > info.LastAccessTimeUtc ? info.LastWriteTimeUtc : info.LastAccessTimeUtc;
                         if (target.MinAge != null && nowUtc - lastUse < target.MinAge) continue;
-                        if (FileGuardian.IsSystemCriticalPath(file) || FileGuardian.IsFileLocked(file)) continue;
+                        if (FileGuardian.IsSystemCriticalPathForScan(file) || FileGuardian.IsFileLocked(file)) continue;
                         var item = new CleanableItem(Guid.NewGuid().ToString(), file, info.Length,
                             $"{target.Description} — {info.Name}", target.Risk, ItemType.File, info.LastAccessTime, Id);
                         items.Add(item);
