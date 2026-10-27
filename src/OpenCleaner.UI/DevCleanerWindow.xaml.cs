@@ -56,7 +56,7 @@ public partial class DevCleanerWindow : System.Windows.Window
         }
     }
 
-    private System.Windows.Controls.CheckBox[] Options => [CbNpm, CbYarn, CbNuGet, CbPip, CbGradle, CbVsCode, CbDiscord, CbSpotify, CbTeams, CbJetBrains];
+    private System.Windows.Controls.CheckBox[] Options => [CbNpm, CbYarn, CbNuGet, CbPip, CbGradle, CbVsCode, CbDiscord, CbSpotify, CbTeams, CbJetBrains, CbAi];
 
     private void OptionsChanged(object sender, RoutedEventArgs e)
     {
@@ -102,6 +102,7 @@ public partial class DevCleanerWindow : System.Windows.Window
                 ScanSpotify     = CbSpotify.IsChecked == true,
                 ScanTeams       = CbTeams.IsChecked   == true,
                 ScanJetBrains   = CbJetBrains.IsChecked == true,
+                ScanAiTools     = CbAi.IsChecked      == true,
                 ScanDocker      = CbDocker.IsChecked  == true,
             };
 

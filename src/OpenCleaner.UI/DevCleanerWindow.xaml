@@ -47,6 +47,7 @@
                             <CheckBox x:Name="CbSpotify" Content="Spotify"                IsChecked="True" Margin="0,5,24,5"/>
                             <CheckBox x:Name="CbTeams"   Content="Microsoft Teams"        IsChecked="True" Margin="0,5,24,5"/>
                             <CheckBox x:Name="CbJetBrains" Content="JetBrains"            IsChecked="True" Margin="0,5,24,5"/>
+                            <CheckBox x:Name="CbAi" Content="Outils IA"             IsChecked="True" Margin="0,5,24,5" ToolTip="Caches et journaux de Cursor, Claude et ChatGPT."/>
                             <CheckBox x:Name="CbDocker" Content="Docker" IsChecked="False" IsEnabled="False" ToolTipService.ShowOnDisabled="True" ToolTip="Les contextes Docker sont des configurations actives et sont conservés." Margin="0,5,24,5"/>
                         </WrapPanel>
                     </StackPanel>

@@ -14,15 +14,20 @@ Les sauvegardes sont conservées localement : elles occupent de l'espace. Un net
 ## Fonctions disponibles
 
 - **Nettoyage rapide** : analyse des caches à faible risque, puis confirmation avant suppression.
-- **Système et navigateurs** : temporaires anciens, rapports d'erreurs Windows (WER), vidages mémoire d'applications, shaders DirectX, miniatures, caches de Chrome, Edge, Brave, Firefox, Opera et Vivaldi sur plusieurs profils. Cookies et historique restent des options explicites ; les navigateurs doivent être fermés pour nettoyer.
-- **Applications** : certains caches Steam, journaux Office et caches npm, Yarn, NuGet, pip, Gradle, VS Code, Teams, Discord, Spotify et JetBrains.
+- **Système et navigateurs** : temporaires anciens, rapports d'erreurs Windows (WER), vidages mémoire d'applications, shaders DirectX, miniatures, caches de Chrome, Edge, Brave, Firefox, Opera et Vivaldi sur plusieurs profils. Cookies et historique restent des options explicites ; les navigateurs doivent être fermés pour nettoyer. Prefetch Windows est proposé en mode expert (fichiers de plus de 30 jours).
+- **Applications** : certains caches Steam, journaux Office, caches Thunderbird, caches npm, Yarn, NuGet, pip, Gradle, VS Code, Teams, Discord, Spotify, JetBrains et outils IA (Cursor, Claude, ChatGPT).
 - **Doublons** : comparaison SHA-256 (avec seuil de taille configurable et pré-empreinte rapide) dans les dossiers personnels courants. L'original conservé est identifié et revérifié avant la suppression des copies.
 - **Confidentialité** : repérage de certaines traces locales et fichiers contenant potentiellement des secrets. Ces résultats exigent une vérification manuelle ; cet outil n'est pas un antivirus.
 - **Espace disque** : classement des enfants d'un dossier selon leur taille accessible. Les dossiers inaccessibles, liés et certains dossiers système sont exclus ; les totaux sont donc partiels.
+- **Santé du PC** : informations système, mémoire, disques, durée de fonctionnement, corbeille et vidage du cache DNS.
+- **Désinstallation** : liste des applications installées et lancement du désinstalleur officiel après confirmation.
+- **Démarrage Windows** : consultation et activation/désactivation des éléments HKCU et du dossier Démarrage, avec sauvegarde OpenCleaner ; les éléments machine restent en lecture seule sans élévation.
+- **Mises à jour logicielles** : vérification et mise à jour groupée via Windows Package Manager (`winget`), avec sortie visible et annulation.
+- **Effacement sécurisé** : écriture de trois passes aléatoires avant suppression de fichiers sélectionnés, sans sauvegarde OpenCleaner.
 - **Planification** : tâche Windows dans le contexte utilisateur, limitée aux fichiers à faible risque des catégories autorisées.
 - **Registre** : analyse conservatrice de traces d'historique utilisateur, en mode expert, avec exportation avant modification.
 
-Le nettoyage direct de Windows Update est suspendu. Les fichiers Office de récupération ou de synchronisation, Prefetch, node_modules et les contextes Docker sont conservés. La corbeille, les extensions DLL externes et la suppression d'artefacts bin/obj ne sont pas implémentés.
+Le nettoyage direct de Windows Update reste suspendu. Les fichiers Office de récupération ou de synchronisation, node_modules et les contextes Docker sont conservés. Les extensions DLL externes et la suppression d'artefacts bin/obj ne sont pas implémentés. Le pilote de périphériques (Driver Updater), la mise en veille forcée d'applications, les APIs cloud et la récupération de fichiers supprimés restent hors périmètre.
 
 ## Compiler et tester
 
@@ -66,7 +71,7 @@ L'application ne force plus la fermeture des navigateurs et ne redémarre plus a
 - **Plugins.System** : analyseurs et nettoyeurs intégrés.
 - **UI** : fenêtres WPF et coordination des opérations.
 - **Tests** : régressions du moteur et des plugins, sur des fixtures temporaires.
-- **docs** : site statique de présentation ; rapports d'audit du [14 octobre 2026](docs/AUDIT-2026-10-14.md) et du [26 octobre 2026](docs/AUDIT-2026-10-26.md).
+- **docs** : site statique de présentation ; rapports d'audit du [14 octobre 2026](docs/AUDIT-2026-10-14.md) et du [26 octobre 2026](docs/AUDIT-2026-10-26.md), et [comparaison avec CCleaner](docs/CCLEANER-COMPARAISON.md).
 
 La CI compile et teste la solution sur Windows et refuse les vulnérabilités NuGet connues. Le workflow de release valide le tag, exécute ces vérifications, construit un package Velopack et le signe si le certificat est fourni via les secrets GitHub.
 

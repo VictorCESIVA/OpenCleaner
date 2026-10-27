@@ -1,0 +1,87 @@
+<Window Style="{StaticResource {x:Type Window}}" x:Class="OpenCleaner.UI.ShredderWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="OpenCleaner · Effacement sécurisé" Height="620" Width="840"
+        MinHeight="480" MinWidth="680"
+        WindowStartupLocation="CenterOwner">
+    <Border Background="{DynamicResource BgMain}" Padding="28,26">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Margin="0,0,0,12">
+                <TextBlock Text="Effacement sécurisé" FontSize="26" FontWeight="SemiBold"
+                           Foreground="{DynamicResource TextPrimary}"/>
+                <TextBlock Text="Écrit plusieurs passes aléatoires avant suppression. Aucune sauvegarde OpenCleaner n'est créée ; l'opération est irréversible. Sur SSD, le résultat dépend du firmware et du wear leveling."
+                           FontSize="12" Foreground="{DynamicResource Warning}" Margin="0,4,0,0" TextWrapping="Wrap"/>
+            </StackPanel>
+
+            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="8">
+                <Grid>
+                <ListBox x:Name="FileList" Background="Transparent" BorderThickness="0"
+                         Foreground="{DynamicResource TextPrimary}" FontSize="12"
+                         SelectionMode="Extended"
+                         VirtualizingPanel.IsVirtualizing="True"
+                         VirtualizingPanel.VirtualizationMode="Recycling">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel Margin="0,4">
+                                <TextBlock Text="{Binding Path}" TextTrimming="CharacterEllipsis"/>
+                                <TextBlock Text="{Binding SizeLabel}" FontSize="10"
+                                           Foreground="{DynamicResource TextSecond}"/>
+                            </StackPanel>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
+                            Margin="24,44,24,0" IsHitTestVisible="False">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding HasItems, ElementName=FileList}" Value="False">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <TextBlock Text="&#xE74D;" FontFamily="Segoe MDL2 Assets" FontSize="26"
+                               Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"
+                               Margin="0,0,0,16"/>
+                    <TextBlock Text="Aucun fichier sélectionné." FontSize="15"
+                               FontWeight="SemiBold" TextAlignment="Center"/>
+                    <TextBlock Text="Ajoutez des fichiers pour les effacer définitivement."
+                               FontSize="12" Foreground="{DynamicResource TextSecond}"
+                               TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"/>
+                </StackPanel>
+                </Grid>
+            </Border>
+
+            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="16,12" Margin="0,12,0,0">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0">
+                        <TextBlock x:Name="CountText" FontSize="12" FontWeight="SemiBold"
+                                   Foreground="{DynamicResource TextPrimary}" Text="Aucun fichier"/>
+                        <TextBlock x:Name="StatusText" FontSize="11" Foreground="{DynamicResource TextSecond}"
+                                   TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
+                        <Button x:Name="AddBtn" Content="Ajouter des fichiers"
+                                Style="{StaticResource AccentBtnStyle}" Click="Add_Click" Margin="0,0,8,0"/>
+                        <Button x:Name="RemoveBtn" Content="Retirer"
+                                Style="{StaticResource SecondBtnStyle}" Click="Remove_Click" Margin="0,0,8,0" IsEnabled="False"/>
+                        <Button x:Name="ShredBtn" Content="Effacer définitivement"
+                                Style="{StaticResource DangerBtnStyle}" Click="Shred_Click" IsEnabled="False"/>
+                    </WrapPanel>
+                </Grid>
+            </Border>
+        </Grid>
+    </Border>
+</Window>

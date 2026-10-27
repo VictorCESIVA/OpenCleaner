@@ -25,6 +25,7 @@ public sealed class DevCleanerPlugin : SafeFileCleanerPlugin
     public bool ScanSpotify { get; set; } = true;
     public bool ScanTeams { get; set; } = true;
     public bool ScanJetBrains { get; set; } = true;
+    public bool ScanAiTools { get; set; } = true;
     protected override bool CanClean() =>
         (!ScanVsCode || !SteamCleanerPlugin.IsRunning("Code")) &&
         (!ScanDiscord || !SteamCleanerPlugin.IsRunning("Discord")) &&
@@ -72,5 +73,28 @@ public sealed class DevCleanerPlugin : SafeFileCleanerPlugin
         if (ScanJetBrains)
             foreach (var ide in PluginFileSafety.GetEntries(Path.Combine(local, "JetBrains"), "*", directories: true))
                 yield return new ScanTarget(Path.Combine(ide, "log"), "Journaux JetBrains", MinAge: TimeSpan.FromDays(30));
+        if (ScanAiTools)
+        {
+            foreach (var app in new[]
+                     {
+                         (Root: Path.Combine(roaming, "Cursor"), Name: "Cursor"),
+                         (Root: Path.Combine(roaming, "Claude"), Name: "Claude"),
+                         (Root: Path.Combine(roaming, "ChatGPT"), Name: "ChatGPT")
+                     })
+            {
+                foreach (string directory in new[] { "Cache", "Code Cache", "GPUCache", "logs" })
+                    yield return new ScanTarget(Path.Combine(app.Root, directory), $"Cache {app.Name}", MinAge: age);
+            }
+
+            foreach (string package in PluginFileSafety.GetEntries(Path.Combine(local, "Packages"),
+                         "OpenAI.ChatGPT*", directories: true))
+            {
+                foreach (string directory in new[] { "Cache", "Code Cache", "GPUCache", "logs" })
+                    yield return new ScanTarget(Path.Combine(package, "LocalCache", "Roaming", "ChatGPT", directory),
+                        "Cache ChatGPT", MinAge: age);
+            }
+            foreach (string directory in new[] { "Cache", "Code Cache", "GPUCache", "logs" })
+                yield return new ScanTarget(Path.Combine(local, "Cursor", directory), "Cache Cursor", MinAge: age);
+        }
     }
 }

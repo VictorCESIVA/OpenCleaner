@@ -46,6 +46,12 @@
                         <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenPrivacy_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE72E;" Style="{StaticResource NavIcon}"/><TextBlock Text="Confidentialité" Style="{StaticResource NavLabel}"/></StackPanel></Button>
                         <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenDevCleaner_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE943;" Style="{StaticResource NavIcon}"/><TextBlock Text="Caches développeur" Style="{StaticResource NavLabel}"/></StackPanel></Button>
                         <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenRestore_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE81C;" Style="{StaticResource NavIcon}"/><TextBlock Text="Restauration" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <TextBlock Text="OUTILS SYSTÈME" Style="{StaticResource Eyebrow}" Margin="12,24,0,10"/>
+                        <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenHealth_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE95E;" Style="{StaticResource NavIcon}"/><TextBlock Text="Santé du PC" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenUninstaller_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE71D;" Style="{StaticResource NavIcon}"/><TextBlock Text="Désinstaller" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenStartup_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE768;" Style="{StaticResource NavIcon}"/><TextBlock Text="Démarrage" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenUpdates_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE895;" Style="{StaticResource NavIcon}"/><TextBlock Text="Mises à jour" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenShredder_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE74D;" Style="{StaticResource NavIcon}"/><TextBlock Text="Effacement sécurisé" Style="{StaticResource NavLabel}"/></StackPanel></Button>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>

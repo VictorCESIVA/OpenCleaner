@@ -186,7 +186,8 @@ internal static class PathSafety
             return true;
 
         if (!string.IsNullOrEmpty(WindowsDirectory) && IsWithin(normalized, WindowsDirectory) &&
-            !IsWithin(normalized, Path.Combine(WindowsDirectory, "Temp")))
+            !IsWithin(normalized, Path.Combine(WindowsDirectory, "Temp")) &&
+            !IsWithin(normalized, Path.Combine(WindowsDirectory, "Prefetch")))
             return true;
 
         if (normalized.Length > root.Length)

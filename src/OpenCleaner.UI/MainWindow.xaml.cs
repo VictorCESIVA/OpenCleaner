@@ -34,7 +34,7 @@ public partial class MainWindow : Window
         ["thumbnails"] = ("Miniatures Windows", "Cache des aperçus de l'Explorateur de fichiers"),
         ["browser"] = ("Navigateurs", "Choisissez les données à analyser dans Chrome, Edge, Brave, Firefox, Opera et Vivaldi"),
         ["steam"] = ("Steam", "Caches de téléchargement — vos jeux sont conservés"),
-        ["office"] = ("Microsoft Office", "Fichiers temporaires — les documents de récupération sont conservés"),
+        ["office"] = ("Office et Thunderbird", "Journaux Office et caches Thunderbird — les documents de récupération sont conservés"),
         ["registry"] = ("Registre Windows", "Analyse experte — vérifiez chaque résultat avant toute modification"),
     };
 
@@ -484,6 +484,11 @@ public partial class MainWindow : Window
     private void OpenDiskAnalyzer_Click(object sender, RoutedEventArgs e) => new DiskSpaceWindow { Owner = this }.Show();
     private void OpenPrivacy_Click(object sender, RoutedEventArgs e) => new PrivacyWindow { Owner = this }.Show();
     private void OpenDevCleaner_Click(object sender, RoutedEventArgs e) => new DevCleanerWindow { Owner = this }.Show();
+    private void OpenHealth_Click(object sender, RoutedEventArgs e) => new HealthWindow { Owner = this }.Show();
+    private void OpenUninstaller_Click(object sender, RoutedEventArgs e) => new UninstallerWindow { Owner = this }.Show();
+    private void OpenStartup_Click(object sender, RoutedEventArgs e) => new StartupWindow { Owner = this }.Show();
+    private void OpenUpdates_Click(object sender, RoutedEventArgs e) => new UpdatesWindow { Owner = this }.Show();
+    private void OpenShredder_Click(object sender, RoutedEventArgs e) => new ShredderWindow { Owner = this }.Show();
 
     private async void SmartScan_Click(object sender, RoutedEventArgs e)
     {

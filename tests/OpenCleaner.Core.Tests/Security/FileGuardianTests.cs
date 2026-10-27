@@ -37,6 +37,10 @@ public sealed class FileGuardianTests
         Assert.False(_guardian.IsSystemCriticalPath(@"C:\Windows\Temp\opencleaner-test.txt"));
 
     [Fact]
+    public void IsSystemCriticalPath_WindowsPrefetch_ReturnsFalse() =>
+        Assert.False(_guardian.IsSystemCriticalPath(@"C:\Windows\Prefetch\opencleaner-test.pf"));
+
+    [Fact]
     public void IsSystemCriticalPath_UserTemp_ReturnsFalse() =>
         Assert.False(_guardian.IsSystemCriticalPath(Path.Combine(Path.GetTempPath(), "test.txt")));
 

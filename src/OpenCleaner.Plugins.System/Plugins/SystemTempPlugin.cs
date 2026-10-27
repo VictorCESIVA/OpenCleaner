@@ -11,7 +11,7 @@ public sealed class SystemTempPlugin : SafeFileCleanerPlugin
     public override string Name => "Fichiers temporaires";
     public override string Description => "Fichiers temporaires anciens, hors Prefetch";
     public override PluginCategory Category => PluginCategory.System;
-    public override RiskLevel MaxRiskLevel => RiskLevel.Recommended;
+    public override RiskLevel MaxRiskLevel => RiskLevel.ExpertOnly;
 
     protected override IEnumerable<ScanTarget> GetTargets()
     {
@@ -34,7 +34,11 @@ public sealed class SystemTempPlugin : SafeFileCleanerPlugin
 
         var windows = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
         if (!string.IsNullOrWhiteSpace(windows))
+        {
             yield return new ScanTarget(Path.Combine(windows, "Temp"), "Temporaire Windows",
                 RiskLevel.Recommended, MinAge: TimeSpan.FromDays(7));
+            yield return new ScanTarget(Path.Combine(windows, "Prefetch"), "Prefetch Windows",
+                RiskLevel.ExpertOnly, Pattern: "*.pf", Recursive: false, MinAge: TimeSpan.FromDays(30));
+        }
     }
 }
