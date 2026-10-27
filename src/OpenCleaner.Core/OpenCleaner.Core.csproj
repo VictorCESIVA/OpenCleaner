@@ -10,6 +10,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="OpenCleaner.Core.Tests" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\OpenCleaner.Contracts\OpenCleaner.Contracts.csproj" />
   </ItemGroup>
 

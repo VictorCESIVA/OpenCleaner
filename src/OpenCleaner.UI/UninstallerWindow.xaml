@@ -21,11 +21,15 @@
             </StackPanel>
 
             <Grid Grid.Row="1" Margin="0,0,0,12">
-                <TextBox x:Name="FilterBox" Height="34"
+                <TextBox x:Name="FilterBox" Height="38"
                          Background="{DynamicResource BgCard}" Foreground="{DynamicResource TextPrimary}"
-                         BorderBrush="{DynamicResource Border}" BorderThickness="1" Padding="10,6"
+                         BorderBrush="{DynamicResource Border}" BorderThickness="1" Padding="36,7,12,7"
+                         VerticalContentAlignment="Center"
                          TextChanged="Filter_Changed" AutomationProperties.Name="Filtrer les applications"/>
-                <TextBlock Text="Rechercher une application…" Margin="12,0,0,0"
+                <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="14"
+                           Foreground="{DynamicResource TextSecond}" Margin="12,0,0,0"
+                           HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False"/>
+                <TextBlock Text="Rechercher une application…" Margin="38,0,0,0"
                            FontSize="12" Foreground="{DynamicResource TextSecond}"
                            VerticalAlignment="Center" IsHitTestVisible="False">
                     <TextBlock.Style>
@@ -41,64 +45,94 @@
                 </TextBlock>
             </Grid>
 
-            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8">
-                <Grid>
-                <ListView x:Name="ProgramsList" Background="Transparent" BorderThickness="0"
-                          Foreground="{DynamicResource TextPrimary}" FontSize="12"
-                          VirtualizingPanel.IsVirtualizing="True"
-                          VirtualizingPanel.VirtualizationMode="Recycling"
-                          SelectionMode="Single" SelectionChanged="ProgramsList_SelectionChanged">
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Header="Application" Width="330">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate><TextBlock Text="{Binding Name}" TextTrimming="CharacterEllipsis"/></DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Version" Width="130">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate><TextBlock Text="{Binding Version}" Foreground="{DynamicResource TextSecond}"/></DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Éditeur" Width="220">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate><TextBlock Text="{Binding Publisher}" Foreground="{DynamicResource TextSecond}" TextTrimming="CharacterEllipsis"/></DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Portée" Width="100">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate><TextBlock Text="{Binding SourceLabel}" Foreground="{DynamicResource TextSecond}"/></DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                            <GridViewColumn Header="Taille" Width="100">
-                                <GridViewColumn.CellTemplate>
-                                    <DataTemplate><TextBlock Text="{Binding SizeLabel}" Foreground="{DynamicResource TextSecond}"/></DataTemplate>
-                                </GridViewColumn.CellTemplate>
-                            </GridViewColumn>
-                        </GridView>
-                    </ListView.View>
-                </ListView>
-                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center"
-                            Margin="24,44,24,0" IsHitTestVisible="False">
-                    <StackPanel.Style>
-                        <Style TargetType="StackPanel">
-                            <Setter Property="Visibility" Value="Collapsed"/>
-                            <Style.Triggers>
-                                <DataTrigger Binding="{Binding HasItems, ElementName=ProgramsList}" Value="False">
-                                    <Setter Property="Visibility" Value="Visible"/>
-                                </DataTrigger>
-                            </Style.Triggers>
-                        </Style>
-                    </StackPanel.Style>
-                    <TextBlock Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="26"
-                               Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"
-                               Margin="0,0,0,16"/>
-                    <TextBlock Text="Aucune application détectée." FontSize="15"
-                               FontWeight="SemiBold" TextAlignment="Center"/>
-                    <TextBlock Text="La liste des programmes installés apparaîtra ici."
-                               FontSize="12" Foreground="{DynamicResource TextSecond}"
-                               TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"/>
-                </StackPanel>
+            <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8" ClipToBounds="True">
+                <Grid ClipToBounds="True">
+                    <ListBox x:Name="ProgramsList" Style="{StaticResource ToolListBoxStyle}"
+                             Foreground="{DynamicResource TextPrimary}" FontSize="12"
+                             ClipToBounds="True"
+                             ItemContainerStyle="{StaticResource ToolListItemStyle}"
+                             VirtualizingPanel.IsVirtualizing="True"
+                             VirtualizingPanel.VirtualizationMode="Recycling"
+                             SelectionMode="Single" SelectionChanged="ProgramsList_SelectionChanged"
+                             AutomationProperties.Name="Applications installées">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Height="66" Margin="12,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="Auto"/>
+                                    </Grid.ColumnDefinitions>
+
+                                    <Border Grid.Column="0" Style="{StaticResource AppIconTileStyle}"
+                                            VerticalAlignment="Center">
+                                        <Grid>
+                                            <TextBlock Text="{Binding Initials}" FontSize="16" FontWeight="SemiBold"
+                                                       Foreground="{DynamicResource Accent}"
+                                                       HorizontalAlignment="Center" VerticalAlignment="Center">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Setter Property="Visibility" Value="Collapsed"/>
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Icon}" Value="{x:Null}">
+                                                                <Setter Property="Visibility" Value="Visible"/>
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <Image Source="{Binding Icon}" Width="28" Height="28"
+                                                   Stretch="Uniform" HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center"
+                                                   RenderOptions.BitmapScalingMode="HighQuality"/>
+                                        </Grid>
+                                    </Border>
+
+                                    <StackPanel Grid.Column="1" Margin="12,0,16,0" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding Name}" FontSize="13" FontWeight="SemiBold"
+                                                   TextTrimming="CharacterEllipsis" ToolTip="{Binding Name}"/>
+                                        <TextBlock Text="{Binding Meta}" FontSize="11"
+                                                   Foreground="{DynamicResource TextSecond}"
+                                                   TextTrimming="CharacterEllipsis" Margin="0,4,0,0"
+                                                   ToolTip="{Binding Meta}"/>
+                                    </StackPanel>
+
+                                    <StackPanel Grid.Column="2" MinWidth="110" VerticalAlignment="Center">
+                                        <TextBlock Text="{Binding SizeLabel}" FontSize="12" FontWeight="SemiBold"
+                                                   HorizontalAlignment="Right"/>
+                                        <TextBlock Text="{Binding SourceLabel}" FontSize="10"
+                                                   Foreground="{DynamicResource TextSecond}"
+                                                   HorizontalAlignment="Right" Margin="0,4,0,0"/>
+                                    </StackPanel>
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <StackPanel x:Name="LoadingState" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                IsHitTestVisible="False" Visibility="Collapsed">
+                        <TextBlock Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="26"
+                                   Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"
+                                   Margin="0,0,0,16"/>
+                        <TextBlock Text="Lecture des applications…" FontSize="15" FontWeight="SemiBold"
+                                   TextAlignment="Center"/>
+                        <ProgressBar IsIndeterminate="True" Width="180" Height="4"
+                                     Foreground="{DynamicResource Accent}" Background="{DynamicResource BgMain}"
+                                     Margin="0,14,0,0"/>
+                    </StackPanel>
+
+                    <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
+                                IsHitTestVisible="False" Visibility="Collapsed">
+                        <TextBlock x:Name="EmptyIcon" Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="26"
+                                   Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"
+                                   Margin="0,0,0,16"/>
+                        <TextBlock x:Name="EmptyTitle" Text="Aucune application détectée." FontSize="15"
+                                   FontWeight="SemiBold" TextAlignment="Center"/>
+                        <TextBlock x:Name="EmptyDescription" Text="La liste des programmes installés apparaîtra ici."
+                                   FontSize="12" Foreground="{DynamicResource TextSecond}"
+                                   TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"
+                                   MaxWidth="360"/>
+                    </StackPanel>
                 </Grid>
             </Border>
 
@@ -108,7 +142,7 @@
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
-                    <StackPanel Grid.Column="0">
+                    <StackPanel Grid.Column="0" Margin="0,0,16,0">
                         <TextBlock x:Name="CountText" FontSize="12" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextPrimary}" Text="—"/>
                         <TextBlock x:Name="StatusText" FontSize="11" Foreground="{DynamicResource TextSecond}"

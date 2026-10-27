@@ -24,7 +24,8 @@ public sealed record StartupItem(
     bool CanToggle,
     string? RegistryPath = null,
     string? ValueName = null,
-    string? FilePath = null)
+    string? FilePath = null,
+    string? IconPath = null)
 {
     public string StatusLabel => IsEnabled ? "Activé" : "Désactivé";
     public string LocationLabel => Location switch
@@ -96,7 +97,8 @@ public static class StartupItemService
                 string? command = key.GetValue(name)?.ToString();
                 if (string.IsNullOrWhiteSpace(command)) continue;
                 items.Add(new StartupItem($"{location}|{name}", name, command, location, true, canToggle,
-                    path, name));
+                    path, name, IconPath: IconPathResolver.ExtractExecutable(command) ??
+                                    IconPathResolver.FromStartMenuShortcut(name)));
             }
         }
         catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)
@@ -112,9 +114,10 @@ public static class StartupItemService
             foreach (string file in Directory.EnumerateFiles(folder))
             {
                 string name = Path.GetFileName(file);
-                if (name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase)) continue;
+                if (name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase) ||
+                    name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) continue;
                 items.Add(new StartupItem($"{location}|{file}", name, file, location, true, canToggle,
-                    FilePath: file));
+                    FilePath: file, IconPath: IconPathResolver.FromFilePath(file)));
             }
         }
         catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)
@@ -138,7 +141,9 @@ public static class StartupItemService
                         string? command = key.GetValue(name)?.ToString();
                         if (string.IsNullOrWhiteSpace(command)) continue;
                         items.Add(new StartupItem($"disabled|{subKey}|{name}", name, command,
-                            StartupItemLocation.DisabledByOpenCleaner, false, true, originalPath, name));
+                            StartupItemLocation.DisabledByOpenCleaner, false, true, originalPath, name,
+                            IconPath: IconPathResolver.ExtractExecutable(command) ??
+                                      IconPathResolver.FromStartMenuShortcut(name)));
                     }
                 }
             }
@@ -159,8 +164,11 @@ public static class StartupItemService
                 {
                     string name = Path.GetFileName(file);
                     name = name[..^".disabled".Length];
+                    if (name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) continue;
                     items.Add(new StartupItem($"disabled|{file}", name, file,
-                        StartupItemLocation.DisabledByOpenCleaner, false, canToggle, FilePath: file));
+                        StartupItemLocation.DisabledByOpenCleaner, false, canToggle, FilePath: file,
+                        IconPath: IconPathResolver.FromFilePath(file) ??
+                                  IconPathResolver.FromStartMenuShortcut(Path.GetFileNameWithoutExtension(name))));
                 }
             }
             catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)

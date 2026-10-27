@@ -11,6 +11,8 @@
         <SolidColorBrush x:Key="Accent" Color="#85E0B4"/>
         <SolidColorBrush x:Key="AccentHover" Color="#A5EDC9"/>
         <SolidColorBrush x:Key="AccentForeground" Color="#0D211A"/>
+        <SolidColorBrush x:Key="AccentSoft" Color="#2485E0B4"/>
+        <SolidColorBrush x:Key="WarnSoft" Color="#24F4C27A"/>
         <SolidColorBrush x:Key="TextPrimary" Color="#F0F5F7"/>
         <SolidColorBrush x:Key="TextSecond" Color="#A7B5C6"/>
         <SolidColorBrush x:Key="Border" Color="#2A3849"/>
@@ -195,6 +197,63 @@
         </Style>
         <Style x:Key="RestoreItemStyle" TargetType="ListViewItem" BasedOn="{StaticResource FileListItemStyle}"/>
         <Style TargetType="ListViewItem" BasedOn="{StaticResource FileListItemStyle}"/>
+        <Style x:Key="ToolListBoxStyle" TargetType="ListBox">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="ScrollViewer.CanContentScroll" Value="True"/>
+            <Setter Property="ScrollViewer.HorizontalScrollBarVisibility" Value="Disabled"/>
+            <Setter Property="ScrollViewer.VerticalScrollBarVisibility" Value="Auto"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBox">
+                        <Border Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="10"
+                                ClipToBounds="True">
+                            <ScrollViewer Focusable="False" Padding="{TemplateBinding Padding}"
+                                          CanContentScroll="{TemplateBinding ScrollViewer.CanContentScroll}"
+                                          HorizontalScrollBarVisibility="{TemplateBinding ScrollViewer.HorizontalScrollBarVisibility}"
+                                          VerticalScrollBarVisibility="{TemplateBinding ScrollViewer.VerticalScrollBarVisibility}"
+                                          ClipToBounds="True">
+                                <ItemsPresenter ClipToBounds="True"/>
+                            </ScrollViewer>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ToolListItemStyle" TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Padding" Value="0"/>
+            <Setter Property="Margin" Value="0,1"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Row" Background="{TemplateBinding Background}" BorderBrush="Transparent"
+                                BorderThickness="1" CornerRadius="9">
+                            <ContentPresenter/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Row" Property="Background" Value="{DynamicResource BgHover}"/></Trigger>
+                            <Trigger Property="IsSelected" Value="True"><Setter TargetName="Row" Property="Background" Value="{DynamicResource BgSelected}"/></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Row" Property="BorderBrush" Value="{DynamicResource Accent}"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="Row" Property="Opacity" Value="0.5"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="AppIconTileStyle" TargetType="Border">
+            <Setter Property="Width" Value="42"/>
+            <Setter Property="Height" Value="42"/>
+            <Setter Property="Background" Value="{DynamicResource BgMain}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
+            <Setter Property="BorderThickness" Value="1"/>
+            <Setter Property="CornerRadius" Value="10"/>
+            <Setter Property="SnapsToDevicePixels" Value="True"/>
+        </Style>
         <Style TargetType="GridViewColumnHeader">
             <Setter Property="Foreground" Value="{DynamicResource TextSecond}"/>
             <Setter Property="Background" Value="{DynamicResource BgCard}"/>

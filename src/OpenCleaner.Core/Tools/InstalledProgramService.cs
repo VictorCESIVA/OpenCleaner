@@ -13,7 +13,8 @@ public sealed record InstalledProgram(
     string? UninstallString,
     long? EstimatedSizeBytes,
     bool MachineWide,
-    bool Is64Bit)
+    bool Is64Bit,
+    string? IconPath = null)
 {
     public bool CanUninstall => !string.IsNullOrWhiteSpace(UninstallString);
     public string SizeLabel => EstimatedSizeBytes is > 0 ? Contracts.SizeFormatter.Format(EstimatedSizeBytes.Value) : "";
@@ -94,15 +95,21 @@ public static class InstalledProgramService
         object? rawSize = key.GetValue("EstimatedSize");
         if (rawSize is int intSize && intSize > 0) size = intSize * 1024L;
         else if (rawSize is long longSize && longSize > 0) size = longSize * 1024L;
+        string displayName = name.Trim();
+        string? uninstallString = (key.GetValue("UninstallString") as string)?.Trim();
+        string? iconPath = IconPathResolver.FromDisplayIcon(
+            key.GetValue("DisplayIcon") as string, uninstallString);
+        iconPath ??= IconPathResolver.FromStartMenuShortcut(displayName);
         return new InstalledProgram(
-            name.Trim(),
+            displayName,
             (key.GetValue("DisplayVersion") as string)?.Trim(),
             (key.GetValue("Publisher") as string)?.Trim(),
             (key.GetValue("InstallLocation") as string)?.Trim(),
-            (key.GetValue("UninstallString") as string)?.Trim(),
+            uninstallString,
             size,
             machineWide,
-            is64Bit);
+            is64Bit,
+            iconPath);
     }
 
     private static int? GetInt(RegistryKey key, string name)
