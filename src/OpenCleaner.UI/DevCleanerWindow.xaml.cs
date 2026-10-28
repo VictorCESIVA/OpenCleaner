@@ -183,6 +183,7 @@ public partial class DevCleanerWindow : System.Windows.Window
             {
                 result = await Task.Run(() => plugin.CleanAsync(toClean, backupManager, progress, operation.Token),
                     operation.Token);
+                if (!result.Success) throw new InvalidOperationException(result.Message);
                 await transaction.CommitAsync(operation.Token);
             }
 

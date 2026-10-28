@@ -353,7 +353,7 @@ public partial class MainWindow : Window
         var selected = FilesListView.SelectedItems.Cast<CleanableItem>().ToList();
         var items = selected.Count > 0 ? selected : _foundItems.ToList();
         var warning = _selectedPluginTag == "registry"
-            ? "Le registre sera modifié. Une exportation de sauvegarde sera créée avant chaque modification."
+            ? "Le registre sera modifié. Une exportation sera créée avant chaque modification. En cas d'annulation, les modifications déjà effectuées restent à restaurer manuellement."
             : "Une sauvegarde sera créée avant chaque suppression.";
         if (MessageBox.Show(this, $"Nettoyer {items.Count:N0} élément(s) ?\n\n{warning}",
             "Confirmer le nettoyage", MessageBoxButton.YesNo, MessageBoxImage.Warning,
@@ -373,6 +373,7 @@ public partial class MainWindow : Window
                 {
                     result = await Task.Run(() => plugin.CleanAsync(items, backup, progress, operation.Token),
                         operation.Token);
+                    if (!result.Success) throw new InvalidOperationException(result.Message);
                     await transaction.CommitAsync(operation.Token);
                 }
                 ActionStatus.Text = result.Message;
@@ -401,11 +402,16 @@ public partial class MainWindow : Window
             {
                 InvalidateAnalysis();
                 StatusText.Text = "Nettoyage annulé — relancez l'analyse pour actualiser les résultats";
+                if (_selectedPluginTag == "registry")
+                    MessageBox.Show(this, "Les modifications du registre déjà effectuées ne sont pas annulées. Les exports permettant leur restauration manuelle sont dans %LOCALAPPDATA%\\OpenCleaner\\RegistryBackups.",
+                        "Registre", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
                 StatusText.Text = "Le nettoyage a échoué";
-                ActionStatus.Text = ex.Message;
+                ActionStatus.Text = ex.Message + (_selectedPluginTag == "registry"
+                    ? " Les modifications du registre déjà effectuées restent à restaurer manuellement depuis les exports."
+                    : "");
             }
             finally { HideLoading(); }
         }
@@ -438,17 +444,17 @@ public partial class MainWindow : Window
         _isDarkTheme = dark;
         var palette = dark ? new Dictionary<string, string>
         {
-            ["BgMain"]="#10161E", ["BgSidebar"]="#0C1118", ["BgCard"]="#18212D",
-            ["BgHover"]="#213041", ["BgSelected"]="#223E3A", ["Accent"]="#85E0B4",
-            ["AccentHover"]="#A5EDC9", ["AccentForeground"]="#0D211A",
-            ["TextPrimary"]="#F0F5F7", ["TextSecond"]="#A7B5C6", ["Border"]="#2A3849",
+            ["BgMain"]="#15191F", ["BgSidebar"]="#101419", ["BgCard"]="#1D232B",
+            ["BgHover"]="#29323C", ["BgSelected"]="#263C38", ["Accent"]="#8BC9AA",
+            ["AccentHover"]="#A8DCC1", ["AccentForeground"]="#0D211A",
+            ["TextPrimary"]="#F1F3F4", ["TextSecond"]="#B0BAC4", ["Border"]="#343E49",
             ["Warning"]="#F2C078", ["Danger"]="#FF929C"
         } : new Dictionary<string, string>
         {
-            ["BgMain"]="#F2F5F8", ["BgSidebar"]="#E7EDF2", ["BgCard"]="#FFFFFF",
-            ["BgHover"]="#E6EDF3", ["BgSelected"]="#D4EDE1", ["Accent"]="#176649",
+            ["BgMain"]="#F4F5F6", ["BgSidebar"]="#EAEDEF", ["BgCard"]="#FFFFFF",
+            ["BgHover"]="#E6E9EB", ["BgSelected"]="#DCEBE3", ["Accent"]="#176649",
             ["AccentHover"]="#105139", ["AccentForeground"]="#FFFFFF",
-            ["TextPrimary"]="#162332", ["TextSecond"]="#536479", ["Border"]="#CDD8E3",
+            ["TextPrimary"]="#202830", ["TextSecond"]="#55616D", ["Border"]="#D2D8DD",
             ["Warning"]="#805211", ["Danger"]="#B7263B"
         };
         foreach (var (key, color) in palette)
@@ -550,6 +556,7 @@ public partial class MainWindow : Window
                 {
                     result = await Task.Run(() => service.ExecuteSmartCleanAsync(scans, progress, operation.Token),
                         operation.Token);
+                    if (!result.Success) throw new InvalidOperationException(string.Join("\n", result.Errors));
                     await transaction.CommitAsync(operation.Token);
                 }
                 SmartCleanDesc.Text = $"{result.ItemsCleaned:N0} fichiers supprimés • {SizeFormatter.Format(result.BytesFreed)} libérés";

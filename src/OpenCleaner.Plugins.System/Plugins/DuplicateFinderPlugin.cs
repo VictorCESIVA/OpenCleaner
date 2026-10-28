@@ -175,10 +175,4 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
         }
         finally { foreach (var keeper in keepers.Values) await keeper.Stream.DisposeAsync(); }
     }
-
-    public Task<long> EstimateSizeAsync(CancellationToken ct = default)
-    {
-        ct.ThrowIfCancellationRequested();
-        return Task.FromResult(0L);
-    }
 }

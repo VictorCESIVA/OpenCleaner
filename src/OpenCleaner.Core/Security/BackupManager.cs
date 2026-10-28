@@ -107,7 +107,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
         finally { _gate.Release(); }
     }
 
-    private async Task<BackupInfo> CreateBackupCoreAsync(string originalPath, CancellationToken ct)
+    private async Task<BackupInfo> CreateBackupCoreAsync(string originalPath, CancellationToken ct, string? restorePath = null)
     {
         originalPath = PathSafety.Normalize(originalPath);
         if (PathSafety.HasReparsePoint(originalPath) || PathSafety.HasReparsePoint(_backupsRoot))
@@ -134,7 +134,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
 
             var metadata = new BackupMetadata
             {
-                OriginalPath = originalPath,
+                OriginalPath = restorePath ?? originalPath,
                 OriginalHash = contentHash,
                 CreationDate = DateTime.UtcNow,
                 FileSize = fileSize,
@@ -159,7 +159,11 @@ public sealed class BackupManager : IBackupManager, IDisposable
         }
     }
 
-    public async Task<bool> RestoreAsync(string backupId, CancellationToken ct = default)
+    public Task<bool> RestoreAsync(string backupId, CancellationToken ct = default) => RestoreCoreAsync(backupId, false, ct);
+
+    public Task<bool> RestoreIfMissingAsync(string backupId, CancellationToken ct = default) => RestoreCoreAsync(backupId, true, ct);
+
+    private async Task<bool> RestoreCoreAsync(string backupId, bool onlyIfMissing, CancellationToken ct)
     {
         await _gate.WaitAsync(ct);
         string? stagedFile = null;
@@ -179,6 +183,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 return false;
             }
             string backupFile = GetBackupFile(directory, metadata);
+            if (onlyIfMissing && File.Exists(originalPath)) return true;
             string originalDirectory = Path.GetDirectoryName(originalPath)!;
             Directory.CreateDirectory(originalDirectory);
             if (PathSafety.HasReparsePoint(originalDirectory))
@@ -232,9 +237,6 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 }
             }
 
-            // Preserve an existing newer file before replacing it. Cancellation or a failed copy
-            // leaves the current file in place, and replacement happens only after verification.
-            if (File.Exists(originalPath)) await CreateBackupCoreAsync(originalPath, ct);
             ct.ThrowIfCancellationRequested();
             if (PathSafety.IsCritical(originalPath) || PathSafety.HasReparsePoint(originalDirectory) ||
                 PathSafety.HasReparsePoint(stagedFile))
@@ -242,7 +244,23 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 _logger.LogWarning("Restore target for {BackupId} became unsafe: {Path}", backupId, originalPath);
                 return false;
             }
-            File.Move(stagedFile, originalPath, overwrite: true);
+            if (!onlyIfMissing && File.Exists(originalPath))
+            {
+                // shortcut: a crash can leave this copy unencrypted until a crash-safe encrypted handoff exists.
+                string preserved = Path.Combine(originalDirectory, $".opencleaner-preserved-{Guid.NewGuid():N}.tmp");
+                File.Replace(stagedFile, originalPath, preserved);
+                stagedFile = null;
+                try
+                {
+                    await CreateBackupCoreAsync(preserved, CancellationToken.None, originalPath);
+                    File.Delete(preserved);
+                }
+                catch (Exception ex)
+                {
+                    throw new InvalidOperationException($"Fichier restauré, mais la version précédente reste à conserver : {preserved}", ex);
+                }
+            }
+            else File.Move(stagedFile, originalPath, overwrite: false);
             stagedFile = null;
             _logger.LogInformation("Restored backup {BackupId} to {OriginalPath}", backupId, originalPath);
             return true;

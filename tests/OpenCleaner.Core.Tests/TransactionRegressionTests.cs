@@ -85,6 +85,62 @@ public sealed class TransactionRegressionTests : IDisposable
     }
 
     [Fact]
+    public async Task JournalFailurePreventsDeletion()
+    {
+        string source = Path.Combine(_root, "journal-failure.txt");
+        await File.WriteAllTextAsync(source, "keep this");
+        using var backups = new BackupManager(NullLogger<BackupManager>.Instance, Path.Combine(_root, "backups"));
+        using var transactions = Manager(backups);
+        using (var connection = new SqliteConnection($"Data Source={Database}"))
+        {
+            connection.Open();
+            using var command = connection.CreateCommand();
+            command.CommandText = "CREATE TRIGGER deny_operation BEFORE INSERT ON Operations BEGIN SELECT RAISE(ABORT, 'journal failed'); END;";
+            command.ExecuteNonQuery();
+        }
+        await using (var scope = new CleanupTransactionScope(transactions))
+        {
+            var guardian = new FileGuardian(backups, NullLogger<FileGuardian>.Instance, transactions);
+            await Assert.ThrowsAsync<SqliteException>(() => guardian.SafeDeleteAsync(source));
+        }
+        Assert.Equal("keep this", await File.ReadAllTextAsync(source));
+    }
+
+    [Fact]
+    public async Task PendingCleanupSurvivesPurgeAndRecoveryDoesNotOverwriteRecreatedFile()
+    {
+        string source = Path.Combine(_root, "recreated.txt");
+        await File.WriteAllTextAsync(source, "old");
+        using var backups = new BackupManager(NullLogger<BackupManager>.Instance, Path.Combine(_root, "backups"));
+        Guid id;
+        using (var manager = Manager(backups))
+        {
+            id = manager.BeginTransaction();
+            var deleted = await new FileGuardian(backups, NullLogger<FileGuardian>.Instance).SafeDeleteAsync(source);
+            Assert.True(deleted.Success);
+            await manager.StageOperationAsync(id, deleted);
+        }
+        await File.WriteAllTextAsync(source, "new");
+        using var restarted = Manager(backups);
+        Assert.Contains(id, await restarted.GetUnfinishedTransactionsAsync());
+        Assert.Equal(0, await restarted.PurgeOldTransactionsAsync(TimeSpan.FromTicks(1)));
+        await restarted.RollbackAsync(id);
+        Assert.Equal("new", await File.ReadAllTextAsync(source));
+        Assert.Empty(await restarted.GetUnfinishedTransactionsAsync());
+    }
+
+    [Fact]
+    public async Task ScopePropagatesRollbackFailure()
+    {
+        var manager = new Mock<ITransactionManager>();
+        manager.Setup(m => m.BeginTransaction()).Returns(Guid.NewGuid());
+        manager.Setup(m => m.RollbackAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new IOException("restore failed"));
+        var scope = new CleanupTransactionScope(manager.Object);
+        await Assert.ThrowsAsync<IOException>(async () => await scope.DisposeAsync());
+    }
+
+    [Fact]
     public async Task JournalStoresOnlyBackupIdentifier()
     {
         string source = Path.Combine(_root, "journal.txt");
@@ -120,6 +176,7 @@ public sealed class TransactionRegressionTests : IDisposable
     {
         using var manager = Manager(Mock.Of<IBackupManager>());
         Guid id = manager.BeginTransaction();
+        await manager.CommitAsync(id);
         using (var connection = new SqliteConnection($"Data Source={Database}"))
         {
             connection.Open();
@@ -139,7 +196,7 @@ public sealed class TransactionRegressionTests : IDisposable
     {
         string backupId = Guid.NewGuid().ToString("N");
         var backups = new Mock<IBackupManager>();
-        backups.Setup(b => b.RestoreAsync(backupId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
+        backups.Setup(b => b.RestoreIfMissingAsync(backupId, It.IsAny<CancellationToken>())).ReturnsAsync(false);
         using var manager = Manager(backups.Object);
         Guid id = manager.BeginTransaction();
         await manager.StageOperationAsync(id, SuccessfulOperation(backupId));
@@ -157,7 +214,7 @@ public sealed class TransactionRegressionTests : IDisposable
         string failed = Guid.NewGuid().ToString("N");
         var restored = new List<string>();
         var backups = new Mock<IBackupManager>();
-        backups.Setup(b => b.RestoreAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        backups.Setup(b => b.RestoreIfMissingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true).Callback<string, CancellationToken>((backupId, _) => restored.Add(backupId));
         using var manager = Manager(backups.Object);
         Guid id = manager.BeginTransaction();
@@ -175,7 +232,7 @@ public sealed class TransactionRegressionTests : IDisposable
     {
         using var cancellation = new CancellationTokenSource();
         var backups = new Mock<IBackupManager>();
-        backups.Setup(b => b.RestoreAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
+        backups.Setup(b => b.RestoreIfMissingAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync(true).Callback(() => cancellation.Cancel());
         using var manager = Manager(backups.Object);
         Guid id = manager.BeginTransaction();

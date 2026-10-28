@@ -101,11 +101,11 @@ public sealed class FileGuardian : IFileGuardian
 
             ct.ThrowIfCancellationRequested();
             if (IsSystemCriticalPath(path)) return Failure("Path became unsafe before delete");
-            deletion.Delete();
-            _logger.LogInformation("File deleted successfully: {Path}", path);
             var result = new OperationResult(true, "Deleted successfully", transactionId, originalFile, backupPath,
                 ItemsProcessed: 1, BytesRecovered: backupPath == null ? originalFile.Size : 0);
             await StageAsync(result);
+            deletion.Delete();
+            _logger.LogInformation("File deleted successfully: {Path}", path);
             return result;
         }
         catch (OperationCanceledException) { throw; }
@@ -155,9 +155,7 @@ public sealed class FileGuardian : IFileGuardian
     {
         if (_transactions == null || result.BackupPath == null ||
             CleanupTransactionScope.CurrentTransactionId is not Guid transactionId) return;
-        try { await _transactions.StageOperationAsync(transactionId, result); }
-        catch (Exception ex)
-        { _logger.LogWarning(ex, "Could not stage deletion {Path} in the transaction journal", result.OriginalFile?.Path); }
+        await _transactions.StageOperationAsync(transactionId, result);
     }
 
     private IEnumerable<string> EnumerateSafeFiles(string directory, string pattern, bool recursive, CancellationToken ct)

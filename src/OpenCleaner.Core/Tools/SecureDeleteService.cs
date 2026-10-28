@@ -26,45 +26,37 @@ public static class SecureDeleteService
             {
                 if (!File.Exists(path) || PathSafety.IsCritical(path) || PathSafety.HasReparsePoint(path))
                     continue;
-                FileAttributes attributes = File.GetAttributes(path);
-                bool readOnly = (attributes & FileAttributes.ReadOnly) != 0;
-                if (readOnly) File.SetAttributes(path, attributes & ~FileAttributes.ReadOnly);
+                path = PathSafety.Normalize(path);
+                await using var deletion = new FileDeletionHandle(path, forOverwrite: true);
+                if (!PathSafety.IsSamePath(deletion.ResolvedPath, path))
+                    throw new IOException("Resolved file target changed, aborting overwrite");
+                var stream = deletion.Stream;
+                long length = stream.Length;
+                byte[] buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
                 try
                 {
-                    long length = new FileInfo(path).Length;
-                    await using (var stream = new FileStream(path, FileMode.Open, FileAccess.Write,
-                                     FileShare.None, BufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan))
+                    for (int pass = 0; pass < passes; pass++)
                     {
-                        byte[] buffer = ArrayPool<byte>.Shared.Rent(BufferSize);
-                        try
+                        stream.Position = 0;
+                        long remaining = length;
+                        while (remaining > 0)
                         {
-                            for (int pass = 0; pass < passes; pass++)
-                            {
-                                stream.Position = 0;
-                                long remaining = length;
-                                while (remaining > 0)
-                                {
-                                    ct.ThrowIfCancellationRequested();
-                                    int chunk = (int)Math.Min(buffer.Length, remaining);
-                                    RandomNumberGenerator.Fill(buffer.AsSpan(0, chunk));
-                                    await stream.WriteAsync(buffer.AsMemory(0, chunk), ct);
-                                    remaining -= chunk;
-                                }
-                                await stream.FlushAsync(ct);
-                                stream.Flush(flushToDisk: true);
-                            }
-                            stream.SetLength(0);
+                            ct.ThrowIfCancellationRequested();
+                            deletion.EnsureSingleLink();
+                            int chunk = (int)Math.Min(buffer.Length, remaining);
+                            RandomNumberGenerator.Fill(buffer.AsSpan(0, chunk));
+                            await stream.WriteAsync(buffer.AsMemory(0, chunk), ct);
+                            remaining -= chunk;
                         }
-                        finally { ArrayPool<byte>.Shared.Return(buffer); }
+                        await stream.FlushAsync(ct);
+                        stream.Flush(flushToDisk: true);
                     }
-                    File.Delete(path);
-                    deleted++;
+                    deletion.EnsureSingleLink();
+                    stream.SetLength(0);
                 }
-                catch
-                {
-                    if (readOnly && File.Exists(path)) File.SetAttributes(path, attributes);
-                    throw;
-                }
+                finally { ArrayPool<byte>.Shared.Return(buffer); }
+                deletion.Delete();
+                deleted++;
             }
             finally { progress?.Report((index + 1d) / list.Count); }
         }

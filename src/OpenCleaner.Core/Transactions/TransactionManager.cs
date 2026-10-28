@@ -196,7 +196,9 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
         ct.ThrowIfCancellationRequested();
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "DELETE FROM Transactions WHERE CreatedAt < @Cutoff;";
+        command.CommandText = "DELETE FROM Transactions WHERE CreatedAt < @Cutoff AND State IN (@Committed, @RolledBack);";
+        command.Parameters.AddWithValue("@Committed", (int)TransactionState.Committed);
+        command.Parameters.AddWithValue("@RolledBack", (int)TransactionState.RolledBack);
         command.Parameters.AddWithValue("@Cutoff",
             (DateTime.UtcNow - maxAge).ToString("O", CultureInfo.InvariantCulture));
         return Task.FromResult(command.ExecuteNonQuery());
@@ -208,6 +210,19 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
         await gate.WaitAsync(ct);
         try { await DoRollbackAsync(GetTransaction(transactionId), ct); }
         finally { gate.Release(); }
+    }
+
+    public Task<IReadOnlyList<Guid>> GetUnfinishedTransactionsAsync()
+    {
+        using var connection = OpenConnection();
+        using var command = connection.CreateCommand();
+        command.CommandText = "SELECT Id FROM Transactions WHERE State IN (@Pending, @Failed) ORDER BY CreatedAt";
+        command.Parameters.AddWithValue("@Pending", (int)TransactionState.Pending);
+        command.Parameters.AddWithValue("@Failed", (int)TransactionState.Failed);
+        using var reader = command.ExecuteReader();
+        var ids = new List<Guid>();
+        while (reader.Read()) ids.Add(Guid.Parse(reader.GetString(0)));
+        return Task.FromResult<IReadOnlyList<Guid>>(ids);
     }
 
     private async Task DoRollbackAsync(Transaction transaction, CancellationToken ct)
@@ -229,7 +244,7 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
                 }
                 try
                 {
-                    if (!await _backupManager.RestoreAsync(id, ct)) failures.Add(id);
+                    if (!await _backupManager.RestoreIfMissingAsync(id, ct)) failures.Add(id);
                 }
                 catch (OperationCanceledException) when (ct.IsCancellationRequested) { throw; }
                 catch (Exception ex)

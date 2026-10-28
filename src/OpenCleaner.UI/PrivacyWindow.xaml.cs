@@ -149,6 +149,7 @@ public partial class PrivacyWindow : System.Windows.Window
             {
                 result = await Task.Run(() => plugin.CleanAsync(selected, backupManager, progress, operation.Token),
                     operation.Token);
+                if (!result.Success) throw new InvalidOperationException(result.Message);
                 await transaction.CommitAsync(operation.Token);
             }
 

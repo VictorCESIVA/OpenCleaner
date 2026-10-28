@@ -6,26 +6,24 @@ namespace OpenCleaner.UI;
 public partial class UpdatesWindow : Window
 {
     private const string CheckArguments =
-        "upgrade --include-unknown --accept-source-agreements --disable-interactivity";
-    private const string UpgradeArguments =
-        "upgrade --all --include-unknown --silent --accept-package-agreements --accept-source-agreements --disable-interactivity";
+        "upgrade --accept-source-agreements --disable-interactivity";
 
     public UpdatesWindow() => InitializeComponent();
 
-    private async void Check_Click(object sender, RoutedEventArgs e) => await RunAsync(CheckArguments);
+    private async void Check_Click(object sender, RoutedEventArgs e) => await RunAsync(upgrade: false);
 
     private async void Upgrade_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show(this,
-                "Mettre à jour toutes les applications détectées par winget ?\n\nCertaines opérations peuvent demander des droits administrateur ou redémarrer une application.",
+                "Mettre à jour les applications dont winget connaît la version ?\n\nWindows demandera une autorisation administrateur. Certaines applications peuvent être fermées ou nécessiter un redémarrage.",
                 "Mises à jour", MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
-        await RunAsync(UpgradeArguments);
+        await RunAsync(upgrade: true);
     }
 
     private void Cancel_Click(object sender, RoutedEventArgs e) => UiOperation.CancelCurrent();
 
-    private async Task RunAsync(string arguments)
+    private async Task RunAsync(bool upgrade)
     {
         if (!UiOperation.TryBegin(this, out var operation)) return;
         using (operation)
@@ -33,23 +31,18 @@ public partial class UpdatesWindow : Window
             SetBusy(true);
             Output.Text = "";
             OutputPlaceholder.Visibility = Visibility.Collapsed;
-            StatusText.Text = "Vérification de winget…";
+            StatusText.Text = upgrade ? "En attente de l'autorisation administrateur…" : "Recherche des mises à jour…";
             try
             {
-                bool available = await Task.Run(WingetService.IsAvailable, operation.Token);
-                if (!available)
+                var progress = operation.CreateProgress<string>(line =>
                 {
-                    StatusText.Text = "winget n'est pas disponible sur ce poste.";
-                    return;
-                }
-                StatusText.Text = "Exécution de winget…";
-                var progress = new Progress<string>(line =>
-                {
+                    StatusText.Text = upgrade ? "Mise à jour des applications en cours…" : "Recherche des mises à jour…";
                     Output.AppendText(line + Environment.NewLine);
                     Output.ScrollToEnd();
                 });
-                WingetResult result = await Task.Run(
-                    () => WingetService.RunAsync(arguments, progress, operation.Token), operation.Token);
+                WingetResult result = await Task.Run(() => upgrade
+                    ? ElevatedWinget.RunAsync(progress, operation.Token)
+                    : WingetService.RunAsync(CheckArguments, progress, operation.Token), operation.Token);
                 StatusText.Text = result.ExitCode == 0
                     ? "Terminé."
                     : $"Terminé avec le code {result.ExitCode}. Consultez la sortie.";
@@ -58,6 +51,14 @@ public partial class UpdatesWindow : Window
             catch (OperationCanceledException)
             {
                 StatusText.Text = "Opération annulée.";
+            }
+            catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
+            {
+                StatusText.Text = "Autorisation administrateur refusée : aucune mise à jour n'a été lancée.";
+            }
+            catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 2)
+            {
+                StatusText.Text = "winget est introuvable. Installez ou réparez le Programme d'installation d'applications Windows.";
             }
             catch (Exception ex)
             {

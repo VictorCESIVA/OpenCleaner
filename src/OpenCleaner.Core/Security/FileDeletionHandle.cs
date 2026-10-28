@@ -13,12 +13,13 @@ internal sealed class FileDeletionHandle : IAsyncDisposable
     public FileStream Stream { get; }
     public string ResolvedPath { get; private set; }
 
-    public FileDeletionHandle(string path)
+    public FileDeletionHandle(string path, bool forOverwrite = false)
     {
         _path = path;
         ResolvedPath = path;
         if (!OperatingSystem.IsWindows())
         {
+            if (forOverwrite) throw new PlatformNotSupportedException("Verified overwriting requires Windows");
             Stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete,
                 65536, FileOptions.Asynchronous);
             _attributes = File.GetAttributes(path);
@@ -27,7 +28,9 @@ internal sealed class FileDeletionHandle : IAsyncDisposable
 
         // DELETE + READ + WRITE_ATTRIBUTES. Do not share write or delete access with other
         // processes: a path replacement must not swap a different file in after verification.
-        SafeFileHandle handle = CreateFile(path, 0x80000000u | 0x00010000u | 0x00000100u, 1, IntPtr.Zero,
+        uint access = 0x80000000u | 0x00010000u | 0x00000100u;
+        if (forOverwrite) access |= 0x40000000u;
+        SafeFileHandle handle = CreateFile(path, access, 1, IntPtr.Zero,
             3, 0x00200000u | 0x08000000u, IntPtr.Zero);
         if (handle.IsInvalid)
         {
@@ -47,8 +50,10 @@ internal sealed class FileDeletionHandle : IAsyncDisposable
             _attributes = (FileAttributes)information.FileAttributes;
             if ((_attributes & (FileAttributes.ReparsePoint | FileAttributes.System | FileAttributes.Directory)) != 0)
                 throw new IOException("Linked, directory or system file target blocked");
+            if (forOverwrite && information.NumberOfLinks != 1)
+                throw new IOException("Cannot overwrite a file with multiple hard links");
             ResolvedPath = resolved;
-            Stream = new FileStream(handle, FileAccess.Read, 65536, isAsync: false);
+            Stream = new FileStream(handle, forOverwrite ? FileAccess.ReadWrite : FileAccess.Read, 65536, isAsync: false);
         }
         catch { handle.Dispose(); throw; }
     }
@@ -72,6 +77,15 @@ internal sealed class FileDeletionHandle : IAsyncDisposable
             if (changedAttributes) SetAttributes(_attributes);
             throw error;
         }
+    }
+
+    public void EnsureSingleLink()
+    {
+        if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
+        if (!GetFileInformationByHandle(Stream.SafeFileHandle, out var information))
+            throw NativeError("Cannot inspect file links");
+        if (information.NumberOfLinks != 1)
+            throw new IOException("Cannot overwrite a file with multiple hard links");
     }
 
     private void SetAttributes(FileAttributes attributes)

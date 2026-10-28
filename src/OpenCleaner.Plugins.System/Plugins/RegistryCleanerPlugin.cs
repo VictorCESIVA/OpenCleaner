@@ -140,10 +140,4 @@ public sealed class RegistryCleanerPlugin : ICleanerPlugin
             if (child != null) Write(child, writer, ct, depth + 1);
         }
     }
-
-    public Task<long> EstimateSizeAsync(CancellationToken ct = default)
-    {
-        ct.ThrowIfCancellationRequested();
-        return Task.FromResult(0L);
-    }
 }

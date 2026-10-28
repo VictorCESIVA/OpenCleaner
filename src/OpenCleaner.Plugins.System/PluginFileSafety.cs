@@ -279,10 +279,4 @@ public abstract class SafeFileCleanerPlugin : ICleanerPlugin
             ItemsProcessed: 0, BytesRecovered: 0));
         return _selection.CleanAsync(items, FileGuardian, Logger, progress, ct);
     }
-
-    public Task<long> EstimateSizeAsync(CancellationToken ct = default)
-    {
-        ct.ThrowIfCancellationRequested();
-        return Task.FromResult(0L);
-    }
 }

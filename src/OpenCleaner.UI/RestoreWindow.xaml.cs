@@ -90,8 +90,8 @@ public partial class RestoreWindow : Window
         var selected = BackupsListView.SelectedItems.Cast<BackupInfo>().ToList();
         if (selected.Count == 0 || UiOperation.IsBusy) return;
         var prompt = selected.Count == 1
-            ? $"Restaurer ce fichier ?\n\n{selected[0].OriginalPath}\n\nLe fichier existant sera sauvegardé avant remplacement."
-            : $"Restaurer {selected.Count} fichiers sélectionnés ?\n\nTout fichier existant sera sauvegardé avant remplacement.";
+            ? $"Restaurer ce fichier ?\n\n{selected[0].OriginalPath}\n\nLe fichier existant sera conservé puis sauvegardé."
+            : $"Restaurer {selected.Count} fichiers sélectionnés ?\n\nTout fichier existant sera conservé puis sauvegardé.";
         if (MessageBox.Show(this, prompt,
             "Confirmer la restauration", MessageBoxButton.YesNo, MessageBoxImage.Question,
             MessageBoxResult.No) != MessageBoxResult.Yes) return;

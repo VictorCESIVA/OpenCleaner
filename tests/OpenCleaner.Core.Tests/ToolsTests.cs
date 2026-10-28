@@ -1,4 +1,6 @@
 using OpenCleaner.Core.Tools;
+using OpenCleaner.Core.Security;
+using System.Runtime.InteropServices;
 using Xunit;
 
 namespace OpenCleaner.Core.Tests;
@@ -57,4 +59,65 @@ public sealed class ToolsTests
             if (File.Exists(file)) File.Delete(file);
         }
     }
+
+    [Fact]
+    public async Task SecureDeleteRejectsMultipleHardLinksWithoutModifyingEitherName()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        string directory = Path.Combine(Path.GetTempPath(), "OpenCleaner-Shred-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        string file = Path.Combine(directory, "original.txt");
+        string link = Path.Combine(directory, "link.txt");
+        try
+        {
+            await File.WriteAllTextAsync(file, "contenu original");
+            Assert.True(CreateHardLink(link, file, IntPtr.Zero), $"CreateHardLink failed: {Marshal.GetLastWin32Error()}");
+            await Assert.ThrowsAsync<IOException>(() => SecureDeleteService.ShredAsync([file], passes: 1));
+            Assert.Equal("contenu original", await File.ReadAllTextAsync(file));
+            Assert.Equal("contenu original", await File.ReadAllTextAsync(link));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [Fact]
+    public async Task SecureDeleteDoesNotModifyLockedFile()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        string file = Path.Combine(Path.GetTempPath(), "OpenCleaner-Shred-" + Guid.NewGuid().ToString("N") + ".txt");
+        await File.WriteAllTextAsync(file, "contenu original");
+        try
+        {
+            using (File.Open(file, FileMode.Open, FileAccess.Read, FileShare.None))
+                await Assert.ThrowsAsync<IOException>(() => SecureDeleteService.ShredAsync([file], passes: 1));
+            Assert.Equal("contenu original", await File.ReadAllTextAsync(file));
+        }
+        finally { File.Delete(file); }
+    }
+
+    [Fact]
+    public async Task OverwriteHandlePreventsPathReplacementUntilDeletion()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        string directory = Path.Combine(Path.GetTempPath(), "OpenCleaner-Shred-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        string file = Path.Combine(directory, "original.txt");
+        string moved = Path.Combine(directory, "moved.txt");
+        try
+        {
+            await File.WriteAllTextAsync(file, "original");
+            await using (var handle = new FileDeletionHandle(file, forOverwrite: true))
+            {
+                Assert.Throws<IOException>(() => File.Move(file, moved));
+                Assert.True(CreateHardLink(moved, file, IntPtr.Zero));
+                Assert.Throws<IOException>(() => handle.EnsureSingleLink());
+            }
+            Assert.Equal("original", await File.ReadAllTextAsync(file));
+            Assert.Equal("original", await File.ReadAllTextAsync(moved));
+        }
+        finally { Directory.Delete(directory, recursive: true); }
+    }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CreateHardLink(string newFileName, string existingFileName, IntPtr securityAttributes);
 }

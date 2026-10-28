@@ -23,9 +23,6 @@ public interface ICleanerPlugin
         CancellationToken ct = default
     );
 
-    // Estimation de la taille (optionnel, pour UI rapide)
-    Task<long> EstimateSizeAsync(CancellationToken ct = default);
-
     // Vérifications
     bool IsAvailable { get; }             // Plugin applicable sur ce système ?
     bool RequiresAdmin { get; }           // Nécessite élévation ?

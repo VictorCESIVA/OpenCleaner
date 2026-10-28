@@ -30,7 +30,6 @@ public partial class App : System.Windows.Application
         };
 
         BuildServices();
-        _ = PurgeTransactionJournalAsync();
 
         // ── Mode background (lancé par le planificateur Windows) ──────────
         if (e.Args.Contains("--background"))
@@ -42,8 +41,7 @@ public partial class App : System.Windows.Application
         // ── Mode normal UI ────────────────────────────────────────────────
         new MainWindow().Show();
 
-        _ = UpgradeBackupStorageAsync();
-        _ = UpdateService.CheckForUpdatesOnStartupAsync();
+        _ = InitializeAsync();
     }
 
     // ─────────────────────────────────────────────────────────────────────
@@ -89,6 +87,31 @@ public partial class App : System.Windows.Application
             await transactions.PurgeOldTransactionsAsync(TimeSpan.FromDays(30));
         }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Transaction purge failed: {ex}"); }
+    }
+
+    private static async Task InitializeAsync()
+    {
+        await UpgradeBackupStorageAsync();
+        try
+        {
+            var transactions = Services.GetRequiredService<ITransactionManager>();
+            var pending = await transactions.GetUnfinishedTransactionsAsync();
+            if (pending.Count > 0 && MessageBox.Show(
+                    $"{pending.Count} nettoyage(s) interrompu(s) ou incomplets ont été détectés. Restaurer les fichiers manquants ? Les fichiers existants seront conservés.",
+                    "Récupération des nettoyages", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+            {
+                if (UiOperation.TryBegin(Current.MainWindow, out var operation))
+                    using (operation)
+                        foreach (var id in pending) await transactions.RollbackAsync(id);
+            }
+            await PurgeTransactionJournalAsync();
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show($"La récupération est incomplète. Les sauvegardes restent disponibles dans Restauration.\n\n{ex.Message}",
+                "Récupération", MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        _ = UpdateService.CheckForUpdatesOnStartupAsync();
     }
 
     private static async Task UpgradeBackupStorageAsync()
@@ -152,57 +175,75 @@ public partial class App : System.Windows.Application
         catch (Exception ex) { logger.LogWarning(ex, "Impossible de migrer les anciennes sauvegardes"); }
 
         var failures = 0;
-        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(25));
-        await using (var transaction = new CleanupTransactionScope(
-                         Services.GetRequiredService<ITransactionManager>()))
+        if ((await Services.GetRequiredService<ITransactionManager>().GetUnfinishedTransactionsAsync()).Count > 0)
         {
-            foreach (var pluginId in pluginIds.Distinct(StringComparer.Ordinal))
+            logger.LogWarning("Nettoyage automatique suspendu : récupération nécessaire dans OpenCleaner.");
+            Current.Shutdown(1);
+            return;
+        }
+        using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(25));
+        try
+        {
+            await using (var transaction = new CleanupTransactionScope(
+                             Services.GetRequiredService<ITransactionManager>()))
             {
-                if (!ScheduleConfig.IsAutomaticPlugin(pluginId.Trim())) { failures++; continue; }
-                ICleanerPlugin? plugin = pluginId.Trim() switch
+                foreach (var pluginId in pluginIds.Distinct(StringComparer.Ordinal))
                 {
-                    "system.temp"       => new SystemTempPlugin(fileGuardian,
-                                               logFactory.CreateLogger<SystemTempPlugin>()),
-                    "system.windowsupdate"  => new WindowsUpdatePlugin(fileGuardian,
-                                               logFactory.CreateLogger<WindowsUpdatePlugin>()),
-                    "system.thumbnailcache" => new ThumbnailCachePlugin(fileGuardian,
-                                               logFactory.CreateLogger<ThumbnailCachePlugin>()),
-                    "browser.chrome"    => new ChromeCleanerPlugin(fileGuardian,
-                                               logFactory.CreateLogger<ChromeCleanerPlugin>()),
-                    "applications.office"     => new OfficeCleanerPlugin(fileGuardian,
-                                               logFactory.CreateLogger<OfficeCleanerPlugin>()),
-                    "games.steam"      => new SteamCleanerPlugin(fileGuardian,
-                                               logFactory.CreateLogger<SteamCleanerPlugin>()),
-                    _                   => null
-                };
+                    if (!ScheduleConfig.IsAutomaticPlugin(pluginId.Trim())) { failures++; continue; }
+                    ICleanerPlugin? plugin = pluginId.Trim() switch
+                    {
+                        "system.temp"       => new SystemTempPlugin(fileGuardian,
+                                                   logFactory.CreateLogger<SystemTempPlugin>()),
+                        "system.windowsupdate"  => new WindowsUpdatePlugin(fileGuardian,
+                                                   logFactory.CreateLogger<WindowsUpdatePlugin>()),
+                        "system.thumbnailcache" => new ThumbnailCachePlugin(fileGuardian,
+                                                   logFactory.CreateLogger<ThumbnailCachePlugin>()),
+                        "browser.chrome"    => new ChromeCleanerPlugin(fileGuardian,
+                                                   logFactory.CreateLogger<ChromeCleanerPlugin>()),
+                        "applications.office"     => new OfficeCleanerPlugin(fileGuardian,
+                                                   logFactory.CreateLogger<OfficeCleanerPlugin>()),
+                        "games.steam"      => new SteamCleanerPlugin(fileGuardian,
+                                                   logFactory.CreateLogger<SteamCleanerPlugin>()),
+                        _                   => null
+                    };
 
-                if (plugin == null || !plugin.IsAvailable) { failures++; continue; }
+                    if (plugin == null || !plugin.IsAvailable) { failures++; continue; }
 
+                    try
+                    {
+                        var analyzed = await Task.Run(() => plugin.AnalyzeAsync(ct: timeout.Token), timeout.Token);
+                        var items = analyzed.Where(i => i.RiskLevel == RiskLevel.Safe && i.Type == ItemType.File).ToList();
+                        var result = await Task.Run(() => plugin.CleanAsync(items, backupManager, ct: timeout.Token), timeout.Token);
+                        if (result.Success)
+                        {
+                            cleaned++;
+                        }
+                        else failures++;
+                        freed += result.BytesRecovered ?? 0;
+                    }
+                    catch (OperationCanceledException) { failures++; break; }
+                    catch (Exception ex)
+                    {
+                        failures++;
+                        logger.LogError(ex, "Erreur plugin background {PluginId}", pluginId);
+                    }
+                }
                 try
                 {
-                    var analyzed = await Task.Run(() => plugin.AnalyzeAsync(ct: timeout.Token), timeout.Token);
-                    var items = analyzed.Where(i => i.RiskLevel == RiskLevel.Safe && i.Type == ItemType.File).ToList();
-                    var result = await Task.Run(() => plugin.CleanAsync(items, backupManager, ct: timeout.Token), timeout.Token);
-                    if (result.Success)
-                    {
-                        cleaned++;
-                    }
-                    else failures++;
-                    freed += result.BytesRecovered ?? 0;
+                    if (failures == 0) await transaction.CommitAsync();
+                    else await transaction.RollbackAsync();
                 }
-                catch (OperationCanceledException) { failures++; break; }
                 catch (Exception ex)
                 {
                     failures++;
-                    logger.LogError(ex, "Erreur plugin background {PluginId}", pluginId);
+                    logger.LogError(ex, "Impossible d'enregistrer la transaction de nettoyage");
                 }
             }
-            try { await transaction.CommitAsync(); }
-            catch (Exception ex)
-            {
-                failures++;
-                logger.LogError(ex, "Impossible d'enregistrer la transaction de nettoyage");
             }
+        catch (Exception ex)
+        {
+            failures++;
+            logger.LogError(ex, "Récupération du nettoyage automatique incomplète");
         }
 
         // Log le résultat dans un fichier pour traçabilité

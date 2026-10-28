@@ -15,7 +15,7 @@
             <StackPanel Grid.Row="0" Margin="0,0,0,12">
                 <TextBlock Text="Mises à jour des applications" FontSize="26" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimary}"/>
-                <TextBlock Text="Utilise Windows Package Manager (winget). Certaines mises à jour peuvent demander des droits administrateur ou un redémarrage."
+                <TextBlock Text="Utilise Windows Package Manager (winget). Les applications dont la version est inconnue sont ignorées. La mise à jour demande une autorisation administrateur."
                            FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 

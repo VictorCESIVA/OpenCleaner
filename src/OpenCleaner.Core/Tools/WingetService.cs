@@ -35,11 +35,11 @@ public static class WingetService
     }
 
     public static async Task<WingetResult> RunAsync(string arguments, IProgress<string>? progress = null,
-        CancellationToken ct = default)
+        CancellationToken ct = default, string executablePath = "winget")
     {
         var start = new ProcessStartInfo
         {
-            FileName = "winget",
+            FileName = executablePath,
             Arguments = arguments,
             UseShellExecute = false,
             CreateNoWindow = true,

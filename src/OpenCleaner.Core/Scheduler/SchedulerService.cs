@@ -104,6 +104,8 @@ public sealed class SchedulerService
             td.Settings.StopIfGoingOnBatteries     = false;
             td.Settings.RunOnlyIfNetworkAvailable   = false;
             td.Settings.MultipleInstances = TaskInstancesPolicy.IgnoreNew;
+            td.Settings.RestartCount = 3;
+            td.Settings.RestartInterval = TimeSpan.FromMinutes(10);
 
             // Triggers : un par jour sélectionné
             foreach (var day in config.Days.Distinct())

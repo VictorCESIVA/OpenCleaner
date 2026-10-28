@@ -3,19 +3,19 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Application.Resources>
         <!-- Shared palette: every window follows the selected theme. -->
-        <SolidColorBrush x:Key="BgMain" Color="#10161E"/>
-        <SolidColorBrush x:Key="BgSidebar" Color="#0C1118"/>
-        <SolidColorBrush x:Key="BgCard" Color="#18212D"/>
-        <SolidColorBrush x:Key="BgHover" Color="#213041"/>
-        <SolidColorBrush x:Key="BgSelected" Color="#223E3A"/>
-        <SolidColorBrush x:Key="Accent" Color="#85E0B4"/>
-        <SolidColorBrush x:Key="AccentHover" Color="#A5EDC9"/>
+        <SolidColorBrush x:Key="BgMain" Color="#15191F"/>
+        <SolidColorBrush x:Key="BgSidebar" Color="#101419"/>
+        <SolidColorBrush x:Key="BgCard" Color="#1D232B"/>
+        <SolidColorBrush x:Key="BgHover" Color="#29323C"/>
+        <SolidColorBrush x:Key="BgSelected" Color="#263C38"/>
+        <SolidColorBrush x:Key="Accent" Color="#8BC9AA"/>
+        <SolidColorBrush x:Key="AccentHover" Color="#A8DCC1"/>
         <SolidColorBrush x:Key="AccentForeground" Color="#0D211A"/>
         <SolidColorBrush x:Key="AccentSoft" Color="#2485E0B4"/>
         <SolidColorBrush x:Key="WarnSoft" Color="#24F4C27A"/>
-        <SolidColorBrush x:Key="TextPrimary" Color="#F0F5F7"/>
-        <SolidColorBrush x:Key="TextSecond" Color="#A7B5C6"/>
-        <SolidColorBrush x:Key="Border" Color="#2A3849"/>
+        <SolidColorBrush x:Key="TextPrimary" Color="#F1F3F4"/>
+        <SolidColorBrush x:Key="TextSecond" Color="#B0BAC4"/>
+        <SolidColorBrush x:Key="Border" Color="#343E49"/>
         <SolidColorBrush x:Key="RiskSafe" Color="#85E0B4"/>
         <SolidColorBrush x:Key="RiskRecommended" Color="#F4C27A"/>
         <SolidColorBrush x:Key="RiskExpert" Color="#F5A0A4"/>
@@ -35,14 +35,14 @@
         </Style>
         <Style x:Key="Eyebrow" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource TextSecond}"/>
-            <Setter Property="FontSize" Value="10"/>
+            <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
         <Style x:Key="Card" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource BgCard}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="CornerRadius" Value="9"/>
             <Setter Property="Padding" Value="20"/>
         </Style>
         <Style x:Key="SecondBtnStyle" TargetType="Button">
@@ -89,8 +89,8 @@
             <Setter Property="Foreground" Value="{DynamicResource TextSecond}"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
             <Setter Property="Margin" Value="0,1"/>
-            <Setter Property="Padding" Value="12,9"/>
-            <Setter Property="MinHeight" Value="36"/>
+            <Setter Property="Padding" Value="12,7"/>
+            <Setter Property="MinHeight" Value="33"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="FontWeight" Value="Normal"/>

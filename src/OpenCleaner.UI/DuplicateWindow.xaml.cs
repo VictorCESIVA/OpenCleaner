@@ -254,6 +254,7 @@ public partial class DuplicateWindow : Window
             {
                 result = await Task.Run(() => plugin.CleanAsync(toDelete, backupManager, progress, operation.Token),
                     operation.Token);
+                if (!result.Success) throw new InvalidOperationException(result.Message);
                 await transaction.CommitAsync(operation.Token);
             }
 

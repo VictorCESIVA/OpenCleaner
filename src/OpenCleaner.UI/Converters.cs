@@ -1,5 +1,6 @@
 using OpenCleaner.Contracts;
 using System.Globalization;
+using System.Windows;
 using System.Windows.Data;
 using System.Windows.Media;
 
@@ -123,10 +124,14 @@ public class LocalDateConverter : IValueConverter
 }
 
 /// <summary>Keep the dashboard bounded for list virtualization; scroll the page on short displays.</summary>
-public class DashboardHeightConverter : IValueConverter
+public class DashboardHeightConverter : IMultiValueConverter
 {
     public static readonly DashboardHeightConverter Instance = new();
-    public object Convert(object value, Type t, object p, CultureInfo c) =>
-        value is double height && double.IsFinite(height) ? Math.Max(740, height - 48) : 740;
-    public object ConvertBack(object v, Type t, object p, CultureInfo c) => throw new NotSupportedException();
+    public object Convert(object[] values, Type t, object p, CultureInfo c)
+    {
+        var minimum = values.Length > 1 && values[1] is Visibility.Visible ? 740 : 620;
+        return values.Length > 0 && values[0] is double height && double.IsFinite(height)
+            ? Math.Max(minimum, height - 48) : minimum;
+    }
+    public object[] ConvertBack(object v, Type[] t, object p, CultureInfo c) => throw new NotSupportedException();
 }

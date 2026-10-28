@@ -41,7 +41,6 @@ public sealed class CleanupTransactionScope : IAsyncDisposable
     {
         if (_completed) return;
         try { await _manager.RollbackAsync(_transactionId); }
-        catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Cleanup rollback failed: {ex}"); }
         finally
         {
             _completed = true;

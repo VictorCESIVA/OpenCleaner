@@ -94,10 +94,4 @@ public sealed class DiskAnalyzerPlugin : ICleanerPlugin
         return Task.FromResult(new OperationResult(false, "L'analyseur disque est en lecture seule.",
             Guid.NewGuid(), ItemsProcessed: 0, BytesRecovered: 0));
     }
-
-    public Task<long> EstimateSizeAsync(CancellationToken ct = default)
-    {
-        ct.ThrowIfCancellationRequested();
-        return Task.FromResult(0L);
-    }
 }

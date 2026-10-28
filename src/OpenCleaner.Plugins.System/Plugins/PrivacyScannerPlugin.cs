@@ -118,10 +118,4 @@ public sealed class PrivacyScannerPlugin : ICleanerPlugin
     public Task<OperationResult> CleanAsync(IEnumerable<CleanableItem> items, IBackupManager backupManager,
         IProgress<double>? progress = null, CancellationToken ct = default)
         => _selection.CleanAsync(items, _fileGuardian, _logger, progress, ct);
-
-    public Task<long> EstimateSizeAsync(CancellationToken ct = default)
-    {
-        ct.ThrowIfCancellationRequested();
-        return Task.FromResult(0L);
-    }
 }
