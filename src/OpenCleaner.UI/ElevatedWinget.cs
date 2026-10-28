@@ -29,7 +29,7 @@ internal static class ElevatedWinget
             Verb = "runas"
         };
         if (Path.GetFileNameWithoutExtension(start.FileName).Equals("dotnet", StringComparison.OrdinalIgnoreCase))
-            start.ArgumentList.Add(typeof(Program).Assembly.Location);
+            start.ArgumentList.Add(Path.Combine(AppContext.BaseDirectory, "OpenCleaner.UI.dll"));
         start.ArgumentList.Add(HelperArgument);
         start.ArgumentList.Add(pipeName);
 
