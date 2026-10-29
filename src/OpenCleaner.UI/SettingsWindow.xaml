@@ -13,10 +13,10 @@
 
             <!-- EN-TÊTE -->
             <StackPanel Grid.Row="0" Margin="0,0,0,16">
-                <TextBlock Text="Paramètres"
+                <TextBlock Text="{loc:Translate Settings.Title}"
                            FontSize="26" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimary}"/>
-                <TextBlock Text="Planificateur de nettoyage automatique via le Planificateur de tâches Windows."
+                <TextBlock Text="{loc:Translate Settings.Subtitle}"
                            FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
@@ -28,14 +28,14 @@
                     <Border Style="{StaticResource Card}"
                             Padding="20,14" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Nettoyage automatique"
+                            <TextBlock Text="{loc:Translate Settings.SchedulerTitle}"
                                        FontSize="14" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                             <CheckBox x:Name="EnabledCheck"
-                                      Content="Activer le nettoyage automatique"
+                                      Content="{loc:Translate Settings.SchedulerEnable}"
                                       Checked="EnabledCheck_Changed"
                                       Unchecked="EnabledCheck_Changed"/>
-                            <TextBlock Text="Crée une tâche dans le Planificateur de tâches Windows."
+                            <TextBlock Text="{loc:Translate Settings.SchedulerHint}"
                                        FontSize="11" Foreground="{DynamicResource TextSecond}"
                                        Margin="20,4,0,0"/>
                         </StackPanel>
@@ -45,10 +45,10 @@
                     <Border Style="{StaticResource Card}"
                             Padding="20,14" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Exécutions planifiées"
+                            <TextBlock Text="{loc:Translate Settings.RunsTitle}"
                                        FontSize="14" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
-                            <TextBlock x:Name="LastRunText" Text="Aucune exécution enregistrée."
+                            <TextBlock x:Name="LastRunText" Text="{loc:Translate Settings.NoRuns}"
                                        FontSize="12" Foreground="{DynamicResource TextSecond}"
                                        TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
                             <TextBlock x:Name="NextRunText" Text=""
@@ -79,12 +79,12 @@
                     <Border Style="{StaticResource Card}"
                             Padding="20,14" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Heure de lancement"
+                            <TextBlock Text="{loc:Translate Settings.TimeTitle}"
                                        FontSize="14" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                             <StackPanel Orientation="Horizontal">
                                 <TextBox x:Name="TimeBox"
-                                         Text="03:00" AutomationProperties.Name="Heure du nettoyage automatique"
+                                         Text="03:00" AutomationProperties.Name="{loc:Translate Settings.TimeAutomation}"
                                          Width="80" Height="34"
                                          Background="{DynamicResource BgMain}"
                                          Foreground="{DynamicResource TextPrimary}"
@@ -92,7 +92,7 @@
                                          Padding="8,6"
                                          FontSize="14"
                                          CaretBrush="{DynamicResource TextPrimary}"/>
-                                <TextBlock Text="(format HH:mm)"
+                                <TextBlock Text="{loc:Translate Settings.TimeHint}"
                                            FontSize="11" Foreground="{DynamicResource TextSecond}"
                                            VerticalAlignment="Center" Margin="12,0,0,0"/>
                             </StackPanel>
@@ -103,17 +103,17 @@
                     <Border Style="{StaticResource Card}"
                             Padding="20,14" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Jours de la semaine"
+                            <TextBlock Text="{loc:Translate Settings.DaysTitle}"
                                        FontSize="14" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                             <WrapPanel>
-                                <CheckBox x:Name="DayMon" Content="Lun" Tag="Monday"    Margin="0,4,16,4"/>
-                                <CheckBox x:Name="DayTue" Content="Mar" Tag="Tuesday"   Margin="0,4,16,4"/>
-                                <CheckBox x:Name="DayWed" Content="Mer" Tag="Wednesday" Margin="0,4,16,4"/>
-                                <CheckBox x:Name="DayThu" Content="Jeu" Tag="Thursday"  Margin="0,4,16,4"/>
-                                <CheckBox x:Name="DayFri" Content="Ven" Tag="Friday"    Margin="0,4,16,4"/>
-                                <CheckBox x:Name="DaySat" Content="Sam" Tag="Saturday"  Margin="0,4,16,4"/>
-                                <CheckBox x:Name="DaySun" Content="Dim" Tag="Sunday"    Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DayMon" Content="{loc:Translate Settings.DayMon}" Tag="Monday"    Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DayTue" Content="{loc:Translate Settings.DayTue}" Tag="Tuesday"   Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DayWed" Content="{loc:Translate Settings.DayWed}" Tag="Wednesday" Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DayThu" Content="{loc:Translate Settings.DayThu}" Tag="Thursday"  Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DayFri" Content="{loc:Translate Settings.DayFri}" Tag="Friday"    Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DaySat" Content="{loc:Translate Settings.DaySat}" Tag="Saturday"  Margin="0,4,16,4"/>
+                                <CheckBox x:Name="DaySun" Content="{loc:Translate Settings.DaySun}" Tag="Sunday"    Margin="0,4,16,4"/>
                             </WrapPanel>
                         </StackPanel>
                     </Border>
@@ -122,17 +122,17 @@
                     <Border Style="{StaticResource Card}"
                             Padding="20,14" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Catégories à nettoyer"
+                            <TextBlock Text="{loc:Translate Settings.CategoriesTitle}"
                                        FontSize="14" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                             <WrapPanel>
-                                <CheckBox x:Name="PlugSystem"  Content="Fichiers temporaires" Tag="system.temp"            Margin="0,4,20,4"/>
-                                <CheckBox x:Name="PlugWinUpd" Content="Windows Update" Tag="system.windowsupdate" IsEnabled="False" IsChecked="False" ToolTipService.ShowOnDisabled="True" ToolTip="Nettoyage suspendu : utilisez les outils de stockage Windows." Margin="0,4,20,4"/>
-                                <CheckBox x:Name="PlugBrowser" Content="Navigateurs"          Tag="browser.chrome"         Margin="0,4,20,4"/>
-                                <CheckBox x:Name="PlugThumb"   Content="Miniatures"           Tag="system.thumbnailcache"  Margin="0,4,20,4"/>
-                                <CheckBox x:Name="PlugOffice"  Content="Microsoft Office"               Tag="applications.office"    Margin="0,4,20,4"/>
-                                <CheckBox x:Name="PlugSteam"   Content="Steam"                Tag="games.steam"            Margin="0,4,20,4"/>
-                                <CheckBox x:Name="PlugAppCaches" Content="Caches d'applications" Tag="applications.caches" Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugSystem"  Content="{loc:Translate Settings.CategorySystem}" Tag="system.temp"            Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugWinUpd" Content="{loc:Translate Settings.CategoryWindowsUpdate}" Tag="system.windowsupdate" IsEnabled="False" IsChecked="False" ToolTipService.ShowOnDisabled="True" ToolTip="{loc:Translate Nav.WindowsUpdateTip}" Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugBrowser" Content="{loc:Translate Settings.CategoryBrowsers}"          Tag="browser.chrome"         Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugThumb"   Content="{loc:Translate Settings.CategoryThumbnails}"           Tag="system.thumbnailcache"  Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugOffice"  Content="{loc:Translate Settings.CategoryOffice}"               Tag="applications.office"    Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugSteam"   Content="{loc:Translate Settings.CategorySteam}"                Tag="games.steam"            Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugAppCaches" Content="{loc:Translate Settings.CategoryAppCaches}" Tag="applications.caches" Margin="0,4,20,4"/>
                             </WrapPanel>
                         </StackPanel>
                     </Border>
@@ -141,16 +141,16 @@
                     <Border Style="{StaticResource Card}"
                             Padding="20,14" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Dossiers exclus"
+                            <TextBlock Text="{loc:Translate Settings.ExclusionsTitle}"
                                        FontSize="14" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
-                            <TextBlock Text="OpenCleaner ne les analysera pas et ne supprimera aucun fichier sous ces chemins. Les protections système restent appliquées."
+                            <TextBlock Text="{loc:Translate Settings.ExclusionsDesc}"
                                        FontSize="11" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap"/>
                             <ListBox x:Name="ExclusionsList" Height="90" Margin="0,8,0,0"
                                      Style="{StaticResource ToolListBoxStyle}"
                                      ItemContainerStyle="{StaticResource ToolListItemStyle}"
                                      SelectionChanged="ExclusionsList_SelectionChanged"
-                                     AutomationProperties.Name="Dossiers exclus du nettoyage">
+                                     AutomationProperties.Name="{loc:Translate Settings.ExclusionsAutomation}">
                                 <ListBox.ItemTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding}" FontSize="11"
@@ -161,10 +161,10 @@
                                 </ListBox.ItemTemplate>
                             </ListBox>
                             <WrapPanel Margin="0,8,0,0">
-                                <Button x:Name="AddExclusionBtn" Content="Ajouter un dossier…"
+                                <Button x:Name="AddExclusionBtn" Content="{loc:Translate Settings.AddFolder}"
                                         Style="{StaticResource SecondBtnStyle}"
                                         Click="AddExclusion_Click" Margin="0,0,8,0"/>
-                                <Button x:Name="RemoveExclusionBtn" Content="Retirer"
+                                <Button x:Name="RemoveExclusionBtn" Content="{loc:Translate Settings.RemoveFolder}"
                                         Style="{StaticResource SecondBtnStyle}"
                                         Click="RemoveExclusion_Click" IsEnabled="False"/>
                             </WrapPanel>
@@ -179,17 +179,17 @@
                     <Border Style="{StaticResource Card}"
                             Padding="20,14" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Alerte d'espace faible"
+                            <TextBlock Text="{loc:Translate Settings.PreferencesTitle}"
                                        FontSize="14" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
-                            <TextBlock Text="Affiche un bandeau au démarrage lorsqu'un disque descend sous ce seuil. Le seuil ne modifie pas les catégories nettoyées."
+                            <TextBlock Text="{loc:Translate Settings.PreferencesDesc}"
                                        FontSize="11" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap"/>
                             <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
-                                <TextBlock Text="Seuil :" VerticalAlignment="Center" FontSize="12"
+                                <TextBlock Text="{loc:Translate Settings.ThresholdLabel}" VerticalAlignment="Center" FontSize="12"
                                            Foreground="{DynamicResource TextSecond}" Margin="0,0,8,0"/>
                                 <ComboBox x:Name="LowSpaceCombo" Width="120" Height="34"
                                           SelectionChanged="LowSpaceCombo_Changed"
-                                          AutomationProperties.Name="Seuil d'alerte d'espace faible">
+                                          AutomationProperties.Name="{loc:Translate Settings.ThresholdAutomation}">
                                     <ComboBoxItem Content="5 %" Tag="5"/>
                                     <ComboBoxItem Content="10 %" Tag="10"/>
                                     <ComboBoxItem Content="15 %" Tag="15"/>
@@ -207,17 +207,17 @@
                     <Border Style="{StaticResource Card}"
                             Padding="20,14" Margin="0,0,0,12">
                         <StackPanel>
-                            <TextBlock Text="Sauvegardes chiffrées"
+                            <TextBlock Text="{loc:Translate Settings.BackupsTitle}"
                                        FontSize="14" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
-                            <TextBlock Text="Le code de récupération permet de retrouver l'accès aux sauvegardes si la clé protégée par Windows est perdue. Conservez-le hors de cet ordinateur."
+                            <TextBlock Text="{loc:Translate Settings.BackupHint}"
                                        FontSize="11" Foreground="{DynamicResource TextSecond}"
                                        TextWrapping="Wrap"/>
                             <WrapPanel Margin="0,10,0,0">
-                                <Button x:Name="CreateRecoveryBtn" Content="Créer un code"
+                                <Button x:Name="CreateRecoveryBtn" Content="{loc:Translate Settings.CreateCode}"
                                         Style="{StaticResource SecondBtnStyle}"
                                         Click="CreateRecovery_Click" Margin="0,0,8,0"/>
-                                <Button x:Name="RegenerateRecoveryBtn" Content="Régénérer"
+                                <Button x:Name="RegenerateRecoveryBtn" Content="{loc:Translate Settings.RegenerateCode}"
                                         Style="{StaticResource SecondBtnStyle}"
                                         Click="RegenerateRecovery_Click"/>
                             </WrapPanel>
@@ -231,12 +231,12 @@
                     <Border Style="{StaticResource Card}"
                             Padding="20,14" Margin="0,0,0,4">
                         <StackPanel>
-                            <TextBlock Text="Version de l'application"
+                            <TextBlock Text="{loc:Translate Settings.VersionTitle}"
                                        FontSize="14" FontWeight="SemiBold"
                                        Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,8"/>
                             <TextBlock x:Name="ApplicationVersionText" Foreground="{DynamicResource TextSecond}" Margin="0,0,0,12"/>
                             <StackPanel>
-                                <Button x:Name="CheckUpdateBtn" Content="Vérifier les mises à jour"
+                                <Button x:Name="CheckUpdateBtn" Content="{loc:Translate Settings.CheckUpdates}"
                                         Style="{StaticResource AccentBtn}"
                                         Click="CheckUpdate_Click"
                                         IsEnabled="True"/>
@@ -244,7 +244,7 @@
                                            FontSize="12" Foreground="{DynamicResource TextSecond}"
                                            VerticalAlignment="Center" Margin="0,8,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
-                            <TextBlock Text="Une installation via Setup.exe recherche les mises à jour au démarrage. Leur application demande votre confirmation."
+                            <TextBlock Text="{loc:Translate Settings.UpdateHint}"
                                        FontSize="11" Foreground="{DynamicResource TextSecond}"
                                        Margin="0,6,0,0" TextWrapping="Wrap"/>
                         </StackPanel>
@@ -264,7 +264,7 @@
                     <TextBlock Grid.Column="0" x:Name="SaveStatus" TextWrapping="Wrap" Margin="0,0,16,0"
                                Text="" Foreground="{DynamicResource TextSecond}"
                                VerticalAlignment="Center" FontSize="12"/>
-                    <Button Grid.Column="1" Content="Enregistrer"
+                    <Button Grid.Column="1" Content="{loc:Translate Settings.Save}"
                             Style="{StaticResource AccentBtn}"
                             Click="Save_Click"/>
                 </Grid>

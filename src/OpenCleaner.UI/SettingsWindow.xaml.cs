@@ -18,6 +18,8 @@ public partial class SettingsWindow : UserControl
     private bool _loadingPreferences;
     private bool _loadingLanguage;
 
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     public SettingsWindow()
     {
         InitializeComponent();
@@ -25,6 +27,7 @@ public partial class SettingsWindow : UserControl
         LoadExclusions();
         LoadPreferences();
         LoadLanguage();
+        LocalizationService.Instance.LanguageChanged += OnLanguageChanged;
         var version = typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion.Split('+')[0];
         ApplicationVersionText.Text = "OpenCleaner " + (version ?? typeof(App).Assembly.GetName().Version?.ToString(3));
@@ -41,7 +44,7 @@ public partial class SettingsWindow : UserControl
     {
         var config = SchedulerService.LoadConfig(out string? configError);
         if (configError != null)
-            SaveStatus.Text = "Configuration illisible, valeurs par défaut utilisées : " + configError;
+            SaveStatus.Text = T("Settings.ConfigUnreadable", configError);
 
         EnabledCheck.IsChecked = config.IsEnabled;
         TimeBox.Text = config.TimeOfDay.ToString(@"hh\:mm");
@@ -66,8 +69,8 @@ public partial class SettingsWindow : UserControl
             bool taskExists = _scheduler.GetScheduledTask() != null;
             if (config.IsEnabled != taskExists)
                 SaveStatus.Text = config.IsEnabled
-                    ? "Attention : la tâche planifiée est absente. Enregistrez pour la recréer."
-                    : "Attention : une tâche planifiée existe encore. Enregistrez pour la supprimer.";
+                    ? T("Settings.TaskMissing")
+                    : T("Settings.TaskOrphan");
         }
     }
 
@@ -79,8 +82,8 @@ public partial class SettingsWindow : UserControl
         if (!TimeSpan.TryParseExact(TimeBox.Text.Trim(), @"hh\:mm",
                 null, out var time))
         {
-            MessageBox.Show("Format d'heure invalide. Utilisez HH:mm (ex : 03:00).",
-                "Erreur", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(T("Settings.InvalidTime"),
+                T("Settings.Error"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -93,8 +96,8 @@ public partial class SettingsWindow : UserControl
 
         if ((EnabledCheck.IsChecked == true) && days.Length == 0)
         {
-            MessageBox.Show("Sélectionnez au moins un jour.",
-                "Erreur", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(T("Settings.SelectDay"),
+                T("Settings.Error"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -107,8 +110,8 @@ public partial class SettingsWindow : UserControl
 
         if ((EnabledCheck.IsChecked == true) && pluginIds.Length == 0)
         {
-            MessageBox.Show("Sélectionnez au moins un plugin.",
-                "Erreur", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(T("Settings.SelectPlugin"),
+                T("Settings.Error"), MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
@@ -136,15 +139,16 @@ public partial class SettingsWindow : UserControl
             }
 
             SaveStatus.Text = config.IsEnabled
-                ? $"✅ Tâche planifiée à {config.TimeOfDay:hh\\:mm} ({string.Join(", ", config.Days)})"
-                : "✅ Planificateur désactivé.";
+                ? T("Settings.ScheduledAt", config.TimeOfDay.ToString(@"hh\:mm"),
+                    string.Join(", ", config.Days))
+                : T("Settings.SchedulerOff");
             UpdateRunSummary(config);
         }
         catch (Exception ex)
         {
             MessageBox.Show(
-                "Impossible de mettre à jour la tâche Windows :\n" + ex.Message,
-                "Erreur planificateur", MessageBoxButton.OK, MessageBoxImage.Error);
+                T("Settings.SchedulerUpdateFailed", ex.Message),
+                T("Settings.SchedulerErrorTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
@@ -159,24 +163,23 @@ public partial class SettingsWindow : UserControl
             string? code = await manager.EnsureRecoveryCodeAsync();
             if (code == null)
             {
-                RecoveryStatus.Text = "Un code existe déjà. Utilisez « Régénérer » pour le remplacer.";
+                RecoveryStatus.Text = T("Settings.CodeExists");
                 return;
             }
             ShowRecoveryCode(code);
-            RecoveryStatus.Text = "Code de récupération copié dans le presse-papiers. Conservez-le hors de cet ordinateur.";
+            RecoveryStatus.Text = T("Settings.CodeCopied");
         }
         catch (BackupKeyUnavailableException)
         {
             IBackupManager manager = App.Services.GetRequiredService<IBackupManager>();
             MessageBox.Show(Window.GetWindow(this),
-                manager.HasRecoveryCode
-                    ? "La clé de chiffrement est absente. Utilisez Restauration > Code de récupération pour saisir votre code."
-                    : "La clé et le code de récupération sont absents. Il n'est pas possible de déverrouiller les sauvegardes existantes.",
-                "Sauvegardes verrouillées", MessageBoxButton.OK, MessageBoxImage.Warning);
+                manager.HasRecoveryCode ? T("Settings.KeyMissing") : T("Settings.KeyAndCodeMissing"),
+                T("Settings.BackupsLocked"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Code de récupération", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Window.GetWindow(this), ex.Message, T("Settings.RecoveryCodeTitle"),
+                MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -188,8 +191,8 @@ public partial class SettingsWindow : UserControl
     private async void RegenerateRecovery_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show(Window.GetWindow(this),
-                "Régénérer le code invalide le précédent. Les sauvegardes restent accessibles avec la clé actuelle. Continuer ?",
-                "Régénérer le code", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                T("Settings.RegenerateConfirm"),
+                T("Settings.RegenerateTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
         CreateRecoveryBtn.IsEnabled = RegenerateRecoveryBtn.IsEnabled = false;
         try
@@ -197,11 +200,12 @@ public partial class SettingsWindow : UserControl
             IBackupManager manager = App.Services.GetRequiredService<IBackupManager>();
             string code = await manager.RegenerateRecoveryCodeAsync();
             ShowRecoveryCode(code);
-            RecoveryStatus.Text = "Nouveau code copié dans le presse-papiers. L'ancien code est invalide.";
+            RecoveryStatus.Text = T("Settings.NewCodeCopied");
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Code de récupération", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Window.GetWindow(this), ex.Message, T("Settings.RecoveryCodeTitle"),
+                MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -227,7 +231,8 @@ public partial class SettingsWindow : UserControl
         {
             var applied = await UpdateService.CheckForUpdatesManualAsync(
                 status => Dispatcher.Invoke(() => UpdateStatus.Text = status),
-                msg => MessageBoxResult.Yes == MessageBox.Show(msg, "Mise à jour", MessageBoxButton.YesNo, MessageBoxImage.Question));
+                msg => MessageBoxResult.Yes == MessageBox.Show(msg, T("Settings.UpdateTitle"),
+                    MessageBoxButton.YesNo, MessageBoxImage.Question));
             if (applied)
                 Application.Current.Shutdown();
         }
@@ -255,23 +260,23 @@ public partial class SettingsWindow : UserControl
     {
         ScheduledRunRecord? last = ScheduledRunJournal.ReadLatest(1).FirstOrDefault();
         LastRunText.Text = last == null
-            ? "Aucune exécution enregistrée. Le résultat apparaîtra ici après la première tâche."
-            : DescribeLastRun(last);
+            ? T("Settings.NoRuns")
+            : FormatLastRun(last);
         DateTime? next = config.GetNextRun(DateTime.Now);
         NextRunText.Text = next is DateTime date
-            ? $"Prochaine exécution : {date:dddd d MMMM 'à' HH:mm}."
-            : "Prochaine exécution : planification désactivée ou aucun jour sélectionné.";
+            ? T("Settings.NextRun", date)
+            : T("Settings.NextRunNone");
     }
 
-    private static string DescribeLastRun(ScheduledRunRecord record) =>
-        $"{record.CompletedAt.ToLocalTime():g} — {record.FilesCleaned:N0} fichier(s) • " +
-        $"{SizeFormatter.Format(record.BytesProcessed)} concernés" +
-        (record.Failures > 0 ? $" • {record.Failures} erreur(s)" : " • aucune erreur");
+    private static string FormatLastRun(ScheduledRunRecord record) =>
+        T("Settings.LastRun", record.CompletedAt.ToLocalTime(), record.FilesCleaned,
+            SizeFormatter.Format(record.BytesProcessed)) +
+        (record.Failures > 0 ? T("Settings.LastRunErrors", record.Failures) : T("Settings.LastRunOk"));
 
     internal void ShowScheduleForPreview(ScheduledRunRecord lastRun, DateTime nextRun)
     {
-        LastRunText.Text = DescribeLastRun(lastRun);
-        NextRunText.Text = $"Prochaine exécution : {nextRun:dddd d MMMM 'à' HH:mm}.";
+        LastRunText.Text = FormatLastRun(lastRun);
+        NextRunText.Text = T("Settings.NextRun", nextRun);
     }
 
     // ─── PRÉFÉRENCES ────────────────────────────────────────────────────
@@ -279,7 +284,7 @@ public partial class SettingsWindow : UserControl
     private void LoadLanguage()
     {
         _loadingLanguage = true;
-        string language = LocalizationService.NormalizeLanguage(App.Preferences.Language);
+        string language = LocalizationService.NormalizeLanguage(LocalizationService.Instance.Language);
         foreach (ComboBoxItem item in LanguageCombo.Items)
         {
             if (string.Equals(item.Tag as string, language, StringComparison.OrdinalIgnoreCase))
@@ -289,6 +294,14 @@ public partial class SettingsWindow : UserControl
             }
         }
         _loadingLanguage = false;
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        LoadLanguage();
+        UpdateExclusionsStatus(null);
+        UpdateRunSummary(SchedulerService.LoadConfig());
+        SaveStatus.Text = "";
     }
 
     private void LanguageCombo_Changed(object sender, SelectionChangedEventArgs e)
@@ -317,7 +330,7 @@ public partial class SettingsWindow : UserControl
         }
         LowSpaceCombo.SelectedItem = selected.Item;
         _loadingPreferences = false;
-        PreferencesStatus.Text = $"Bandeau au démarrage sous {threshold} % d'espace libre.";
+        PreferencesStatus.Text = T("Settings.ThresholdBanner", threshold);
     }
 
     private void LowSpaceCombo_Changed(object sender, SelectionChangedEventArgs e)
@@ -326,7 +339,7 @@ public partial class SettingsWindow : UserControl
         if ((LowSpaceCombo.SelectedItem as ComboBoxItem)?.Tag is not string tag ||
             !int.TryParse(tag, out int threshold)) return;
         App.SetPreferences(App.Preferences with { LowSpaceThresholdPercent = threshold });
-        PreferencesStatus.Text = $"Seuil enregistré : {threshold} %.";
+        PreferencesStatus.Text = T("Settings.ThresholdSaved", threshold);
         if (Window.GetWindow(this) is MainWindow main) _ = main.RefreshLowSpaceAsync();
     }
 
@@ -340,8 +353,8 @@ public partial class SettingsWindow : UserControl
 
     private void UpdateExclusionsStatus(string? message) =>
         ExclusionsStatus.Text = message ?? (_exclusions.Count == 0
-            ? "Aucune exclusion : les protections par défaut s'appliquent."
-            : $"{_exclusions.Count} dossier(s) exclu(s) du nettoyage.");
+            ? T("Settings.NoExclusions")
+            : T("Settings.ExclusionCount", _exclusions.Count));
 
     private void ExclusionsList_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
         RemoveExclusionBtn.IsEnabled = ExclusionsList.SelectedItem is string;
@@ -350,17 +363,17 @@ public partial class SettingsWindow : UserControl
     {
         var dialog = new OpenFolderDialog
         {
-            Title = "Choisir un dossier à exclure",
+            Title = T("Settings.AddFolderTitle"),
             Multiselect = false
         };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         if (!CleaningExclusions.Add(dialog.FolderName))
         {
-            UpdateExclusionsStatus("Impossible d'enregistrer cette exclusion. Vérifiez le chemin et les droits du dossier de configuration.");
+            UpdateExclusionsStatus(T("Settings.ExclusionAddFailed"));
             return;
         }
         LoadExclusions();
-        UpdateExclusionsStatus("Dossier exclu : " + dialog.FolderName);
+        UpdateExclusionsStatus(T("Settings.ExclusionAdded", dialog.FolderName));
     }
 
     private void RemoveExclusion_Click(object sender, RoutedEventArgs e)
@@ -368,18 +381,18 @@ public partial class SettingsWindow : UserControl
         if (ExclusionsList.SelectedItem is not string path) return;
         if (!CleaningExclusions.Remove(path))
         {
-            UpdateExclusionsStatus("Impossible de retirer cette exclusion.");
+            UpdateExclusionsStatus(T("Settings.ExclusionRemoveFailed"));
             return;
         }
         LoadExclusions();
-        UpdateExclusionsStatus("Exclusion retirée : " + path);
+        UpdateExclusionsStatus(T("Settings.ExclusionRemoved", path));
     }
 
     internal void ShowExclusionsForPreview(IEnumerable<string> paths)
     {
         _exclusions.Clear();
         foreach (string path in paths) _exclusions.Add(path);
-        ExclusionsStatus.Text = "Aperçu : aucune modification enregistrée.";
+        ExclusionsStatus.Text = T("Settings.PreviewOnly");
         RemoveExclusionBtn.IsEnabled = false;
     }
 }

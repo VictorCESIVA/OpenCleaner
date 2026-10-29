@@ -16,13 +16,13 @@ Le français reste la langue source. L'anglais est introduit progressivement, av
 Migré :
 
 - fenêtre principale complète : navigation, tableau de bord, en-têtes de catégories, filtres, colonnes, états vides, chargement, confirmations de nettoyage, export, bandeau d'espace faible ;
+- fenêtre Paramètres complète : planification, exécutions, langue, exclusions, seuil d'alerte, sauvegardes, mises à jour, messages et dialogues ;
 - libellés de risque, tailles, dates relatives ;
 - sélecteur de langue dans les paramètres ;
 - préférence persistante et bascule immédiate.
 
 Reste à migrer (le français reste affiché) :
 
-- corps des paramètres (planification, exclusions, sauvegardes, seuil, version) ;
 - Santé du PC, Espace disque et sa carte, Démarrage, Désinstallation, Mises à jour ;
 - Restauration, Confidentialité, Doublons, Caches développeur, Effacement sécurisé, code de récupération ;
 - descriptions générées par les plugins et messages des services Core affichés dans l'interface ;
