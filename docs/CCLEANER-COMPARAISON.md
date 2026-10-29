@@ -2,7 +2,7 @@
 
 Comparaison établie à partir des fonctions publiques de CCleaner pour Windows (version 2026). OpenCleaner reste un utilitaire open source local, sans télémétrie ni catalogue propriétaire.
 
-## Fonctions disponibles dans OpenCleaner 1.4.0
+## Fonctions disponibles dans OpenCleaner 1.5.0
 
 | CCleaner | OpenCleaner | Détail |
 |---|---|---|
