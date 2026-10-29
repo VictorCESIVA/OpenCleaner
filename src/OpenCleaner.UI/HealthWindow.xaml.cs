@@ -32,8 +32,8 @@ public sealed class HealthFindingRow
             "disk" => "Explorer",
             "startup" => "Gérer",
             "updates" => "Voir",
-            "cleanTemp" => "Nettoyer",
-            "cleanBrowser" => "Nettoyer",
+            "cleanTemp" => "Analyser",
+            "cleanBrowser" => "Analyser",
             "recycle" => "Vider",
             _ => null
         };
