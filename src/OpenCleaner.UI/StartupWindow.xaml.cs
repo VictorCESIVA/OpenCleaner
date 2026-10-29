@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using OpenCleaner.Core.Tools;
@@ -124,7 +125,9 @@ public partial class StartupWindow : UserControl
         DisableBtn.IsEnabled = !_busy && row.IsEnabled && row.CanToggle;
         EnableBtn.IsEnabled = !_busy && !row.IsEnabled && row.CanToggle;
         if (!_busy && !row.CanToggle)
-            StatusText.Text = "Cet élément nécessite les droits administrateur pour être modifié.";
+            StatusText.Text = "Cet élément ne peut pas être modifié depuis OpenCleaner.";
+        else if (!_busy && row.IsMachine && !ElevatedStartup.IsElevated())
+            StatusText.Text = "Une autorisation administrateur sera demandée pour modifier cet élément machine.";
     }
 
     private void Filter_Changed(object sender, TextChangedEventArgs e)
@@ -146,6 +149,16 @@ public partial class StartupWindow : UserControl
     private async void Disable_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || StartupList.SelectedItem is not StartupItemRow row) return;
+        if (row.IsMachine)
+        {
+            if (MessageBox.Show(Window.GetWindow(this),
+                    $"Désactiver « {row.Name} » au démarrage ?\n\n" +
+                    "Une sauvegarde sera créée dans le registre et une autorisation administrateur sera demandée.",
+                    "Désactiver le démarrage", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                    MessageBoxResult.No) != MessageBoxResult.Yes) return;
+            await ToggleMachineAsync(row, disable: true);
+            return;
+        }
         if (MessageBox.Show(Window.GetWindow(this),
                 $"Désactiver « {row.Name} » au démarrage ?\n\nL'élément sera conservé dans une sauvegarde OpenCleaner.",
                 "Désactiver le démarrage", MessageBoxButton.YesNo, MessageBoxImage.Warning,
@@ -156,8 +169,58 @@ public partial class StartupWindow : UserControl
     private async void Enable_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || StartupList.SelectedItem is not StartupItemRow row) return;
+        if (row.IsMachine)
+        {
+            await ToggleMachineAsync(row, disable: false);
+            return;
+        }
         await ToggleAsync(() => StartupItemService.Enable(row.Item), "Élément réactivé.");
     }
+
+    private async Task ToggleMachineAsync(StartupItemRow row, bool disable)
+    {
+        if (string.IsNullOrWhiteSpace(row.Item.ValueName))
+        {
+            StatusText.Text = "Cet élément ne possède pas de valeur de registre modifiable.";
+            return;
+        }
+
+        MachineStartupKey key = KeyFor(row.Item);
+        var request = disable
+            ? new MachineStartupRequest(MachineStartupAction.Disable, key, row.Item.ValueName, row.Item.Command)
+            : new MachineStartupRequest(MachineStartupAction.Enable, key, row.Item.ValueName);
+        SetBusy(true);
+        StatusText.Text = disable
+            ? "Désactivation de l'élément machine…"
+            : "Réactivation de l'élément machine…";
+        try
+        {
+            MachineStartupResult result = ElevatedStartup.IsElevated()
+                ? await Task.Run(() => new MachineStartupService().Apply(request))
+                : await ElevatedStartup.RunAsync(request);
+            StatusText.Text = result.Message;
+            if (!result.Success) return;
+            _loaded = false;
+            await LoadAsync();
+            _loaded = true;
+            StatusText.Text = result.Message;
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        {
+            StatusText.Text = "Autorisation administrateur annulée. Aucun changement effectué.";
+        }
+        catch (Exception ex)
+        {
+            StatusText.Text = "Opération impossible : " + ex.Message;
+        }
+        finally { SetBusy(false); }
+    }
+
+    private static MachineStartupKey KeyFor(StartupItem item) =>
+        item.Location == StartupItemLocation.LocalMachineRunOnce ||
+        (item.RegistryPath?.EndsWith("RunOnce", StringComparison.OrdinalIgnoreCase) ?? false)
+            ? MachineStartupKey.RunOnce
+            : MachineStartupKey.Run;
 
     private async Task ToggleAsync(Func<bool> action, string successMessage)
     {

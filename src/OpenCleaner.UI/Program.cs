@@ -13,6 +13,12 @@ internal static class Program
             catch (Exception) { /* The parent reports a disconnected helper. */ }
             return;
         }
+        if (args.Length == 2 && args[0] == ElevatedStartup.HelperArgument)
+        {
+            try { ElevatedStartup.RunHelperAsync(args[1]).GetAwaiter().GetResult(); }
+            catch (Exception) { /* The parent reports a disconnected helper. */ }
+            return;
+        }
         Velopack.VelopackApp.Build().Run();
         var userId = System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value ?? Environment.UserName;
         using var mutex = new Mutex(false, @"Global\OpenCleaner-" + userId);

@@ -12,7 +12,8 @@ public enum StartupItemLocation
     LocalMachineRunOnce,
     CurrentUserStartup,
     CommonStartup,
-    DisabledByOpenCleaner
+    DisabledByOpenCleaner,
+    DisabledByOpenCleanerMachine
 }
 
 public sealed record StartupItem(
@@ -30,6 +31,8 @@ public sealed record StartupItem(
 {
     public string StatusLabel => IsEnabled ? "Activé" : "Désactivé";
     public string ImpactLabel => "Impact estimé : " + StartupImpactEstimator.Label(Impact);
+    public bool IsMachine => Location is StartupItemLocation.LocalMachineRun
+        or StartupItemLocation.LocalMachineRunOnce or StartupItemLocation.DisabledByOpenCleanerMachine;
     public string LocationLabel => Location switch
     {
         StartupItemLocation.CurrentUserRun => "HKCU · Run",
@@ -38,6 +41,7 @@ public sealed record StartupItem(
         StartupItemLocation.LocalMachineRunOnce => "HKLM · RunOnce (admin)",
         StartupItemLocation.CurrentUserStartup => "Dossier Démarrage",
         StartupItemLocation.CommonStartup => "Démarrage commun (admin)",
+        StartupItemLocation.DisabledByOpenCleanerMachine => "Désactivé · HKLM (admin)",
         _ => "Désactivé par OpenCleaner"
     };
 }
@@ -54,13 +58,14 @@ public static class StartupItemService
         var items = new List<StartupItem>();
         AddRunItems(items, Registry.CurrentUser, RunPath, StartupItemLocation.CurrentUserRun, canToggle: true);
         AddRunItems(items, Registry.CurrentUser, RunOncePath, StartupItemLocation.CurrentUserRunOnce, canToggle: true);
-        AddRunItems(items, Registry.LocalMachine, RunPath, StartupItemLocation.LocalMachineRun, canToggle: false);
-        AddRunItems(items, Registry.LocalMachine, RunOncePath, StartupItemLocation.LocalMachineRunOnce, canToggle: false);
+        AddRunItems(items, Registry.LocalMachine, RunPath, StartupItemLocation.LocalMachineRun, canToggle: true);
+        AddRunItems(items, Registry.LocalMachine, RunOncePath, StartupItemLocation.LocalMachineRunOnce, canToggle: true);
         AddStartupFiles(items, Environment.GetFolderPath(Environment.SpecialFolder.Startup),
             StartupItemLocation.CurrentUserStartup, canToggle: true);
         AddStartupFiles(items, Environment.GetFolderPath(Environment.SpecialFolder.CommonStartup),
             StartupItemLocation.CommonStartup, canToggle: false);
         AddDisabledItems(items);
+        AddMachineDisabledItems(items);
         return items.OrderBy(i => i.Name, StringComparer.CurrentCultureIgnoreCase).ToList();
     }
 
@@ -72,6 +77,16 @@ public static class StartupItemService
             return DisableRunValue(item);
         if (item.Location == StartupItemLocation.CurrentUserStartup && item.FilePath != null)
             return DisableStartupFile(item.FilePath);
+        if (item.Location is StartupItemLocation.LocalMachineRun or StartupItemLocation.LocalMachineRunOnce &&
+            item.ValueName != null)
+        {
+            var request = new MachineStartupRequest(MachineStartupAction.Disable,
+                item.Location == StartupItemLocation.LocalMachineRunOnce
+                    ? MachineStartupKey.RunOnce
+                    : MachineStartupKey.Run,
+                item.ValueName, item.Command);
+            return new MachineStartupService().Apply(request).Success;
+        }
         return false;
     }
 
@@ -83,6 +98,13 @@ public static class StartupItemService
         {
             if (item.FilePath != null) return EnableStartupFile(item.FilePath);
             if (item.RegistryPath != null && item.ValueName != null) return EnableRunValue(item);
+        }
+        if (item.Location == StartupItemLocation.DisabledByOpenCleanerMachine && item.ValueName != null)
+        {
+            var request = new MachineStartupRequest(MachineStartupAction.Enable,
+                item.RegistryPath == RunOncePath ? MachineStartupKey.RunOnce : MachineStartupKey.Run,
+                item.ValueName);
+            return new MachineStartupService().Apply(request).Success;
         }
         return false;
     }
@@ -127,6 +149,36 @@ public static class StartupItemService
                 items.Add(new StartupItem($"{location}|{file}", name, file, location, true, canToggle,
                     FilePath: file, IconPath: IconPathResolver.FromFilePath(file),
                     Impact: IsExecutable(file) ? StartupImpactEstimator.Estimate(file) : StartupImpact.Unknown));
+            }
+        }
+        catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)
+        { }
+    }
+
+    private static void AddMachineDisabledItems(List<StartupItem> items)
+    {
+        try
+        {
+            using RegistryKey? disabled = Registry.LocalMachine.OpenSubKey(MachineStartupService.MachineBackupRoot);
+            if (disabled == null) return;
+            foreach (string subKey in new[] { "Run", "RunOnce" })
+            {
+                using RegistryKey? key = disabled.OpenSubKey(subKey);
+                if (key == null) continue;
+                string originalPath = subKey == "Run"
+                    ? MachineStartupService.MachineRunPath
+                    : MachineStartupService.MachineRunOncePath;
+                foreach (string name in key.GetValueNames())
+                {
+                    string? command = key.GetValue(name)?.ToString();
+                    if (string.IsNullOrWhiteSpace(command)) continue;
+                    string? executable = IconPathResolver.ExtractExecutable(command) ??
+                                         IconPathResolver.FromStartMenuShortcut(name);
+                    items.Add(new StartupItem($"disabled-machine|{subKey}|{name}", name, command,
+                        StartupItemLocation.DisabledByOpenCleanerMachine, false, true, originalPath, name,
+                        IconPath: executable,
+                        Impact: StartupImpactEstimator.Estimate(executable)));
+                }
             }
         }
         catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)

@@ -14,5 +14,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\OpenCleaner.Core\OpenCleaner.Core.csproj" />
     <Compile Include="..\..\src\OpenCleaner.UI\ElevatedWinget.cs" Link="ElevatedWinget.cs" />
+    <Compile Include="..\..\src\OpenCleaner.UI\ElevatedStartup.cs" Link="ElevatedStartup.cs" />
   </ItemGroup>
 </Project>

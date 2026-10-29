@@ -17,6 +17,7 @@ internal sealed class StartupItemRow : INotifyPropertyChanged
     public string LocationLabel => Item.LocationLabel;
     public bool IsEnabled => Item.IsEnabled;
     public bool CanToggle => Item.CanToggle;
+    public bool IsMachine => Item.IsMachine;
     public string? IconPath => Item.IconPath;
 
     public StartupImpact Impact => Item.Impact;

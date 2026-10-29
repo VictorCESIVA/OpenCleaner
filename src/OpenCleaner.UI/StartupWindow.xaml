@@ -13,7 +13,7 @@
             <StackPanel Grid.Row="0" Margin="0,0,0,12">
                 <TextBlock Text="Démarrage Windows" FontSize="26" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimary}"/>
-                <TextBlock Text="Programmes lancés à l'ouverture de session. Les éléments utilisateur sont déplacés vers une sauvegarde OpenCleaner ; les éléments machine nécessitent les droits administrateur."
+                <TextBlock Text="Programmes lancés à l'ouverture de session. Les éléments utilisateur sont déplacés vers une sauvegarde OpenCleaner ; les éléments machine sont sauvegardés dans le registre après autorisation administrateur."
                            FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 

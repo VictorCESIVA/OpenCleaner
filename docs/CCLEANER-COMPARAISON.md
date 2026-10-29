@@ -13,7 +13,7 @@ Comparaison établie à partir des fonctions publiques de CCleaner pour Windows 
 | Prefetch | Oui | Cible experte, fichiers de plus de 30 jours. |
 | Applications (Office, Thunderbird, caches dev) | Oui | Office, Thunderbird, npm, Yarn, NuGet, pip, Gradle, VS Code, Teams, Discord, Spotify, JetBrains. |
 | Outils IA | Oui | Caches et journaux de Cursor, Claude et ChatGPT. |
-| Startup Manager | Partiel | HKCU Run/RunOnce et dossier Démarrage avec sauvegarde, réactivation et impact estimé ; HKLM en lecture seule. |
+| Startup Manager | Oui | HKCU Run/RunOnce, dossier Démarrage et clés machine HKLM Run/RunOnce avec sauvegarde, autorisation administrateur et impact estimé ; le dossier Démarrage commun reste en lecture seule. |
 | Apps Uninstaller | Oui | Liste, recherche, portée, taille et lancement du désinstalleur officiel. |
 | Software Updater | Oui | Via `winget`, avec sortie visible, confirmation et annulation. |
 | Disk Analyzer | Oui | Carte proportionnelle, navigation instantanée dans l'arborescence scannée, liste, plus gros fichiers et vue Applications (taille mesurée ou estimée). |
