@@ -7,6 +7,7 @@ using OpenCleaner.Core.Settings;
 using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System;
 using OpenCleaner.Plugins.System.Plugins;
+using OpenCleaner.UI.Localization;
 using System.Windows;
 
 namespace OpenCleaner.UI;
@@ -59,6 +60,7 @@ public partial class App : System.Windows.Application
     private static void BuildServices()
     {
         Preferences = PreferencesStore.Load();
+        LocalizationService.Instance.SetLanguage(Preferences.Language);
         CleaningExclusions.Load();
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddDebug());

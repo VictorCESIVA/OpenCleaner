@@ -7,6 +7,7 @@ using OpenCleaner.Core.Security;
 using OpenCleaner.Core.Tools;
 using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System.Plugins;
+using OpenCleaner.UI.Localization;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
@@ -31,17 +32,19 @@ public partial class MainWindow : Window
     private readonly Dictionary<string, UserControl> _toolViews = [];
     private Button? _activeToolButton;
 
-    private static readonly Dictionary<string, (string Title, string Desc)> PluginMeta = new()
+    private static readonly Dictionary<string, (string TitleKey, string DescKey)> PluginMeta = new()
     {
-        ["system"] = ("Fichiers temporaires", "Caches temporaires, rapports d'erreurs et shaders DirectX"),
-        ["windowsupdate"] = ("Windows Update", "Nettoyage suspendu : utilisez Paramètres Windows > Stockage > Fichiers temporaires"),
-        ["thumbnails"] = ("Miniatures Windows", "Cache des aperçus de l'Explorateur de fichiers"),
-        ["browser"] = ("Navigateurs", "Choisissez les données à analyser dans Chrome, Edge, Brave, Firefox, Opera et Vivaldi"),
-        ["steam"] = ("Steam", "Caches de téléchargement — vos jeux sont conservés"),
-        ["office"] = ("Office et Thunderbird", "Journaux Office et caches Thunderbird — les documents de récupération sont conservés"),
-        ["appcaches"] = ("Caches d'applications", "Caches et journaux de Slack, Notion, WhatsApp, Signal, Zoom, Store, OneDrive et rapports de plantage"),
-        ["registry"] = ("Registre Windows", "Analyse experte — vérifiez chaque résultat avant toute modification"),
+        ["system"] = ("Plugin.System.Title", "Plugin.System.Desc"),
+        ["windowsupdate"] = ("Plugin.WindowsUpdate.Title", "Plugin.WindowsUpdate.Desc"),
+        ["thumbnails"] = ("Plugin.Thumbnails.Title", "Plugin.Thumbnails.Desc"),
+        ["browser"] = ("Plugin.Browser.Title", "Plugin.Browser.Desc"),
+        ["steam"] = ("Plugin.Steam.Title", "Plugin.Steam.Desc"),
+        ["office"] = ("Plugin.Office.Title", "Plugin.Office.Desc"),
+        ["appcaches"] = ("Plugin.AppCaches.Title", "Plugin.AppCaches.Desc"),
+        ["registry"] = ("Plugin.Registry.Title", "Plugin.Registry.Desc"),
     };
+
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
 
     public MainWindow()
     {
@@ -52,14 +55,19 @@ public partial class MainWindow : Window
         UpdatePluginHeader("system");
         _loadingOptions = false;
         UiOperation.StateChanged += OnOperationStateChanged;
-        Closed += (_, _) => UiOperation.StateChanged -= OnOperationStateChanged;
+        LocalizationService.Instance.LanguageChanged += OnLanguageChanged;
+        Closed += (_, _) =>
+        {
+            UiOperation.StateChanged -= OnOperationStateChanged;
+            LocalizationService.Instance.LanguageChanged -= OnLanguageChanged;
+        };
         Closing += (_, e) =>
         {
             if (UiOperation.IsBusy)
             {
                 e.Cancel = true;
                 UiOperation.CancelCurrent();
-                StatusText.Text = "Annulation en cours… vous pourrez ensuite fermer l'application.";
+                StatusText.Text = T("Main.Cancelling");
             }
         };
         Loaded += async (_, _) => await CheckLowSpaceAsync();
@@ -87,10 +95,9 @@ public partial class MainWindow : Window
 
     private void ShowLowSpace(DiskSpaceAlert alert)
     {
-        LowSpaceTitle.Text = $"Espace faible sur {alert.Drive.TrimEnd('\\')}";
-        LowSpaceDetail.Text = $"{SizeFormatter.Format(alert.FreeBytes)} libres sur " +
-                              $"{SizeFormatter.Format(alert.TotalBytes)} ({alert.FreePercent:0.#} %). " +
-                              "Analysez le contenu avant de supprimer des fichiers.";
+        LowSpaceTitle.Text = T("Main.LowSpaceTitle", alert.Drive.TrimEnd('\\'));
+        LowSpaceDetail.Text = T("Main.LowSpaceDetail", SizeFormatter.Format(alert.FreeBytes),
+            SizeFormatter.Format(alert.TotalBytes), alert.FreePercent.ToString("0.#"));
         LowSpaceBanner.Visibility = Visibility.Visible;
     }
 
@@ -99,6 +106,15 @@ public partial class MainWindow : Window
     internal void ShowLowSpaceForPreview(DiskSpaceAlert alert) => ShowLowSpace(alert);
 
     private void OnOperationStateChanged() => SetBusy(UiOperation.IsBusy);
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        UpdatePluginHeader(_selectedPluginTag);
+        ThemeIcon.Text = T(_isDarkTheme ? "Nav.ThemeLight" : "Nav.ThemeDark");
+        ApplyFilter();
+        if (!UiOperation.IsBusy && _foundItems.Count == 0)
+            StatusText.Text = T("Main.ReadyForScan");
+    }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
@@ -171,9 +187,9 @@ public partial class MainWindow : Window
     private void UpdatePluginHeader(string tag)
     {
         if (!PluginMeta.TryGetValue(tag, out var meta)) return;
-        PluginTitle.Text = meta.Title;
-        PluginDescription.Text = meta.Desc;
-        StatusText.Text = "Prêt pour l'analyse";
+        PluginTitle.Text = T(meta.TitleKey);
+        PluginDescription.Text = T(meta.DescKey);
+        StatusText.Text = T("Main.ReadyForScan");
         BrowserOptionsPanel.Visibility = tag == "browser" ? Visibility.Visible : Visibility.Collapsed;
         if (tag == "browser") LoadBrowserOptions();
     }
@@ -203,7 +219,7 @@ public partial class MainWindow : Window
         BrowserCleanOptions.IncludeHistory = OptHistory.IsChecked == true;
         BrowserCleanOptions.IncludeFavicons = OptFavicons.IsChecked == true;
         InvalidateAnalysis();
-        StatusText.Text = "Options modifiées — relancez l'analyse";
+        StatusText.Text = T("Main.OptionsChanged");
     }
 
     private ICleanerPlugin? CreatePlugin(string tag)
@@ -229,7 +245,7 @@ public partial class MainWindow : Window
         NavigationScroll.IsEnabled = SettingsNav.IsEnabled = BrowserOptionsPanel.IsEnabled = !busy;
         ToolCancelBtn.Visibility = busy && ToolContent.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
         ToolCancelBtn.IsEnabled = busy;
-        ToolCancelBtn.Content = "Annuler l'opération";
+        ToolCancelBtn.Content = T("Nav.CancelOperation");
         AnalyzeBtn.IsEnabled = SmartScanBtn.IsEnabled = !busy;
         SearchBox.IsEnabled = RiskFilterCombo.IsEnabled = !busy;
         CleanBtn.IsEnabled = !busy && _currentPlugin != null && _foundItems.Count > 0;
@@ -238,8 +254,9 @@ public partial class MainWindow : Window
         SmartCleanBtn.IsEnabled = !busy && _smartScanResults?.Any(r => r.Items.Count > 0) == true;
     }
 
-    private void ShowLoading(string text, string sub = "Vous pouvez annuler l'opération à tout moment.")
+    private void ShowLoading(string text, string? sub = null)
     {
+        sub ??= T("Main.CancelDetail");
         SetBusy(true);
         LoadingText.Text = text;
         LoadingSubText.Text = sub;
@@ -262,9 +279,9 @@ public partial class MainWindow : Window
     {
         UiOperation.CancelCurrent();
         ToolCancelBtn.IsEnabled = false;
-        ToolCancelBtn.Content = "Annulation en cours…";
-        LoadingText.Text = "Annulation en cours…";
-        LoadingSubText.Text = "L'opération en cours se termine proprement.";
+        ToolCancelBtn.Content = T("Main.CancellingShort");
+        LoadingText.Text = T("Main.CancellingShort");
+        LoadingSubText.Text = T("Main.CancellingSub");
     }
 
     private async void Analyze_Click(object sender, RoutedEventArgs e)
@@ -274,8 +291,8 @@ public partial class MainWindow : Window
         {
             InvalidateAnalysis();
             EmptyState.Visibility = Visibility.Collapsed;
-            ShowLoading("Analyse en cours…");
-            StatusText.Text = "Analyse en cours…";
+            ShowLoading(T("Main.LoadingAnalyze"));
+            StatusText.Text = T("Main.LoadingAnalyze");
             try
             {
                 var plugin = CreatePlugin(_selectedPluginTag);
@@ -287,21 +304,22 @@ public partial class MainWindow : Window
                 ApplyFilter();
                 if (items.Count > 0 && TryFindResource("FadeInStory") is Storyboard story) story.Begin();
                 UpdateStats(_allAnalyzedItems);
-                StatusText.Text = items.Count == 0 ? "Aucun élément à nettoyer" :
-                    $"{items.Count:N0} éléments • {SizeFormatter.Format(items.Sum(i => i.Size))}";
+                StatusText.Text = items.Count == 0
+                    ? T("Main.NothingToClean")
+                    : T("Main.ItemsFound", items.Count, SizeFormatter.Format(items.Sum(i => i.Size)));
                 if (_selectedPluginTag == "browser" && BrowsersRunning())
-                    ActionStatus.Text = "Fermez vos navigateurs avant le nettoyage. Les fichiers ouverts seront ignorés.";
+                    ActionStatus.Text = T("Main.CloseBrowsers");
             }
             catch (OperationCanceledException)
             {
                 _currentPlugin = null;
-                StatusText.Text = "Analyse annulée";
+                StatusText.Text = T("Main.ScanCancelled");
                 EmptyState.Visibility = Visibility.Visible;
             }
             catch (Exception ex)
             {
                 _currentPlugin = null;
-                StatusText.Text = "L'analyse a échoué";
+                StatusText.Text = T("Main.ScanFailed");
                 ActionStatus.Text = ex.Message;
                 EmptyState.Visibility = Visibility.Visible;
             }
@@ -361,7 +379,8 @@ public partial class MainWindow : Window
             RevealFileBtn.IsEnabled = !UiOperation.IsBusy && FilesListView.SelectedItem is CleanableItem;
         var selected = FilesListView.SelectedItems.Cast<CleanableItem>().ToList();
         if (selected.Count > 0)
-            ActionStatus.Text = $"{selected.Count:N0} élément(s) sélectionné(s) ({SizeFormatter.Format(selected.Sum(i => i.Size))})";
+            ActionStatus.Text = T("Main.SelectedCount", selected.Count,
+                SizeFormatter.Format(selected.Sum(i => i.Size)));
     }
 
     private void FilesListView_DoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
@@ -378,9 +397,9 @@ public partial class MainWindow : Window
         if (_allAnalyzedItems.Count == 0 || UiOperation.IsBusy) return;
         var dlg = new SaveFileDialog
         {
-            Title = "Exporter le rapport d'analyse",
-            Filter = "Rapport JSON (*.json)|*.json",
-            FileName = $"OpenCleaner-Rapport-{_selectedPluginTag}-{DateTime.Now:yyyyMMdd-HHmm}.json"
+            Title = T("Main.ExportReportTitle"),
+            Filter = T("Main.ExportFilter"),
+            FileName = $"OpenCleaner-Report-{_selectedPluginTag}-{DateTime.Now:yyyyMMdd-HHmm}.json"
         };
         if (dlg.ShowDialog(this) != true) return;
         try
@@ -405,11 +424,11 @@ public partial class MainWindow : Window
             };
             var json = JsonSerializer.Serialize(payload, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(dlg.FileName, json);
-            ActionStatus.Text = $"Rapport exporté : {Path.GetFileName(dlg.FileName)}";
+            ActionStatus.Text = T("Main.ReportExported", Path.GetFileName(dlg.FileName));
         }
         catch (Exception ex)
         {
-            ActionStatus.Text = $"Échec de l'export : {ex.Message}";
+            ActionStatus.Text = T("Main.ExportFailed", ex.Message);
         }
     }
 
@@ -430,23 +449,23 @@ public partial class MainWindow : Window
         if (_currentPlugin == null || _foundItems.Count == 0 || UiOperation.IsBusy) return;
         if (_selectedPluginTag == "browser" && BrowsersRunning())
         {
-            MessageBox.Show(this, "Fermez tous les navigateurs (Chrome, Edge, Brave, Firefox, Opera, Vivaldi), puis relancez le nettoyage.",
-                "Navigateurs ouverts", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, T("Main.CloseAllBrowsers"),
+                T("Main.BrowsersOpenTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
         var selected = FilesListView.SelectedItems.Cast<CleanableItem>().ToList();
         var items = selected.Count > 0 ? selected : _foundItems.ToList();
         var warning = _selectedPluginTag == "registry"
-            ? "Le registre sera modifié. Une exportation sera créée avant chaque modification. En cas d'annulation, les modifications déjà effectuées restent à restaurer manuellement."
-            : "Une sauvegarde sera créée avant chaque suppression.";
-        if (MessageBox.Show(this, $"Nettoyer {items.Count:N0} élément(s) ?\n\n{warning}",
-            "Confirmer le nettoyage", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+            ? T("Main.RegistryWarning")
+            : T("Main.BackupWarning");
+        if (MessageBox.Show(this, T("Main.ConfirmClean", items.Count, warning),
+            T("Main.ConfirmCleanTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
             MessageBoxResult.No) != MessageBoxResult.Yes) return;
         if (!UiOperation.TryBegin(this, out var operation)) return;
         using (operation)
         {
             var plugin = _currentPlugin;
-            ShowLoading("Nettoyage en cours…", "Chaque fichier est sauvegardé avant sa suppression.");
+            ShowLoading(T("Main.Cleaning"), T("Main.CleaningSub"));
             try
             {
                 var backup = App.Services.GetRequiredService<IBackupManager>();
@@ -461,7 +480,7 @@ public partial class MainWindow : Window
                     await transaction.CommitAsync(operation.Token);
                 }
                 ActionStatus.Text = result.Message;
-                StatusText.Text = result.Success ? "Nettoyage terminé" : "Nettoyage terminé avec des éléments ignorés";
+                StatusText.Text = result.Success ? T("Main.CleanDone") : T("Main.CleanDoneSkipped");
                 // Re-analyze registry paths; File.Exists cannot represent a registry key.
                 if (_selectedPluginTag == "registry")
                 {
@@ -485,16 +504,16 @@ public partial class MainWindow : Window
             catch (OperationCanceledException)
             {
                 InvalidateAnalysis();
-                StatusText.Text = "Nettoyage annulé — relancez l'analyse pour actualiser les résultats";
+                StatusText.Text = T("Main.CleanCancelled");
                 if (_selectedPluginTag == "registry")
-                    MessageBox.Show(this, "Les modifications du registre déjà effectuées ne sont pas annulées. Les exports permettant leur restauration manuelle sont dans %LOCALAPPDATA%\\OpenCleaner\\RegistryBackups.",
-                        "Registre", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(this, T("Main.RegistryManual"),
+                        T("Main.RegistryDialogTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             catch (Exception ex)
             {
-                StatusText.Text = "Le nettoyage a échoué";
+                StatusText.Text = T("Main.CleanFailed");
                 ActionStatus.Text = ex.Message + (_selectedPluginTag == "registry"
-                    ? " Les modifications du registre déjà effectuées restent à restaurer manuellement depuis les exports."
+                    ? T("Main.RegistryErrorSuffix")
                     : "");
             }
             finally { HideLoading(); }
@@ -508,10 +527,10 @@ public partial class MainWindow : Window
         var risk = items.Count > 0 ? items.Max(i => i.RiskLevel) : RiskLevel.Safe;
         StatRisk.Text = risk switch
         {
-            RiskLevel.Safe => "Faible",
-            RiskLevel.Recommended => "À vérifier",
-            RiskLevel.ExpertOnly => "Expert",
-            _ => "Inconnu"
+            RiskLevel.Safe => T("Risk.Low"),
+            RiskLevel.Recommended => T("Risk.Review"),
+            RiskLevel.ExpertOnly => T("Risk.Expert"),
+            _ => T("Main.RiskUnknown")
         };
         StatRisk.SetResourceReference(TextBlock.ForegroundProperty, risk switch
         {
@@ -558,7 +577,7 @@ public partial class MainWindow : Window
             SetThemeColor(key, color);
         foreach (var view in _toolViews.Values.OfType<IThemeAware>())
             view.ApplyTheme(dark);
-        ThemeIcon.Text = dark ? "Thème clair" : "Thème sombre";
+        ThemeIcon.Text = T(dark ? "Nav.ThemeLight" : "Nav.ThemeDark");
     }
 
     private static void SetThemeColor(string key, string hex)
@@ -625,8 +644,8 @@ public partial class MainWindow : Window
         {
             _smartScanResults = null;
             SmartCleanResult.Visibility = Visibility.Collapsed;
-            ShowLoading("Analyse rapide…");
-            SmartCleanDesc.Text = "Analyse des caches à faible risque…";
+            ShowLoading(T("Main.SmartScanning"));
+            SmartCleanDesc.Text = T("Main.SmartScanDesc");
             try
             {
                 ICleanerPlugin[] plugins = new[] { "system", "thumbnails", "browser" }
@@ -635,16 +654,17 @@ public partial class MainWindow : Window
                 _smartScanResults = await Task.Run(() => service.QuickScanAsync(plugins, operation.Token), operation.Token);
                 var total = _smartScanResults.Sum(r => r.TotalSize);
                 var failed = _smartScanResults.Count(r => r.Error != null);
-                SmartCleanDesc.Text = $"{_smartScanResults.Length - failed}/{_smartScanResults.Length} catégories analysées";
-                if (failed > 0) SmartCleanDesc.Text += $" • {failed} analyse(s) incomplète(s)";
+                SmartCleanDesc.Text = T("Main.SmartCategories",
+                    _smartScanResults.Length - failed, _smartScanResults.Length);
+                if (failed > 0) SmartCleanDesc.Text += T("Main.SmartIncomplete", failed);
                 SmartCleanResult.Text = total == 0
-                    ? failed > 0 ? "Analyse partielle — réessayez ou analysez les catégories séparément" : "Aucun cache à nettoyer"
-                    : $"{SizeFormatter.Format(total)} de caches détectés";
+                    ? failed > 0 ? T("Main.SmartPartial") : T("Main.SmartNone")
+                    : T("Main.SmartDetected", SizeFormatter.Format(total));
                 SmartCleanResult.ToolTip = string.Join(Environment.NewLine, _smartScanResults.Where(r => r.Error != null)
                     .Select(r => r.Plugin.Name + " : " + r.Error));
                 SmartCleanResult.Visibility = Visibility.Visible;
             }
-            catch (OperationCanceledException) { SmartCleanDesc.Text = "Analyse rapide annulée"; }
+            catch (OperationCanceledException) { SmartCleanDesc.Text = T("Main.SmartCancelled"); }
             catch (Exception ex) { SmartCleanDesc.Text = ex.Message; }
             finally { HideLoading(); }
         }
@@ -655,23 +675,23 @@ public partial class MainWindow : Window
         if (_smartScanResults == null || UiOperation.IsBusy) return;
         if (BrowsersRunning() && _smartScanResults.Any(r => r.Plugin.Id == "browser.chrome" && r.Items.Count > 0))
         {
-            MessageBox.Show(this, "Fermez vos navigateurs avant le nettoyage rapide.",
-                "Navigateurs ouverts", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(this, T("Main.CloseBrowsersQuick"),
+                T("Main.BrowsersOpenTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        if (MessageBox.Show(this, $"Nettoyer {_smartScanResults.Sum(r => r.Items.Count):N0} fichiers de cache ?\n\n" +
-            "Chaque suppression sera précédée d'une sauvegarde.", "Confirmer le nettoyage rapide",
-            MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        if (MessageBox.Show(this, T("Main.ConfirmSmart", _smartScanResults.Sum(r => r.Items.Count)),
+            T("Main.ConfirmSmartTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question,
+            MessageBoxResult.No) != MessageBoxResult.Yes) return;
         if (!UiOperation.TryBegin(this, out var operation)) return;
         using (operation)
         {
-            ShowLoading("Nettoyage rapide…");
+            ShowLoading(T("Main.SmartCleaning"));
             try
             {
                 var scans = _smartScanResults;
                 var service = new SmartCleanService(App.Services.GetRequiredService<IBackupManager>());
                 var progress = new Progress<(int current, int total, string plugin)>(p =>
-                    SmartCleanDesc.Text = $"Nettoyage {p.plugin}… ({p.current}/{p.total})");
+                    SmartCleanDesc.Text = T("Main.SmartCleaningStep", p.plugin, p.current, p.total));
                 SmartCleanResult result;
                 await using (var transaction = new CleanupTransactionScope(
                                  App.Services.GetRequiredService<ITransactionManager>()))
@@ -681,8 +701,9 @@ public partial class MainWindow : Window
                     if (!result.Success) throw new InvalidOperationException(string.Join("\n", result.Errors));
                     await transaction.CommitAsync(operation.Token);
                 }
-                SmartCleanDesc.Text = $"{result.ItemsCleaned:N0} fichiers supprimés • {SizeFormatter.Format(result.BytesFreed)} libérés";
-                if (!result.Success) SmartCleanDesc.Text += $" • {result.Errors.Count} erreur(s)";
+                SmartCleanDesc.Text = T("Main.SmartResult", result.ItemsCleaned,
+                    SizeFormatter.Format(result.BytesFreed));
+                if (!result.Success) SmartCleanDesc.Text += T("Main.SmartErrors", result.Errors.Count);
                 _smartScanResults = null;
                 _currentPlugin = null;
                 _foundItems.Clear();
@@ -690,12 +711,12 @@ public partial class MainWindow : Window
                 EmptyState.Visibility = Visibility.Visible;
                 SmartCleanResult.Visibility = Visibility.Collapsed;
             }
-            catch (OperationCanceledException) { SmartCleanDesc.Text = "Nettoyage interrompu — relancez l'analyse"; _smartScanResults = null; }
+            catch (OperationCanceledException) { SmartCleanDesc.Text = T("Main.SmartInterrupted"); _smartScanResults = null; }
             catch (Exception ex) { SmartCleanDesc.Text = ex.Message; _smartScanResults = null; }
             finally { HideLoading(); }
         }
     }
 
-    internal void NotifyUpdateAvailable() => ActionStatus.Text = "Une mise à jour est disponible dans les paramètres.";
+    internal void NotifyUpdateAvailable() => ActionStatus.Text = T("Main.UpdateAvailable");
     private static ILogger<T> GetLogger<T>() => App.Services.GetRequiredService<ILogger<T>>();
 }

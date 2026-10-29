@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Scheduler;
 using OpenCleaner.Core.Security;
+using OpenCleaner.UI.Localization;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
@@ -15,6 +16,7 @@ public partial class SettingsWindow : UserControl
     private readonly SchedulerService _scheduler;
     private readonly ObservableCollection<string> _exclusions = [];
     private bool _loadingPreferences;
+    private bool _loadingLanguage;
 
     public SettingsWindow()
     {
@@ -22,6 +24,7 @@ public partial class SettingsWindow : UserControl
         ExclusionsList.ItemsSource = _exclusions;
         LoadExclusions();
         LoadPreferences();
+        LoadLanguage();
         var version = typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion.Split('+')[0];
         ApplicationVersionText.Text = "OpenCleaner " + (version ?? typeof(App).Assembly.GetName().Version?.ToString(3));
@@ -272,6 +275,30 @@ public partial class SettingsWindow : UserControl
     }
 
     // ─── PRÉFÉRENCES ────────────────────────────────────────────────────
+
+    private void LoadLanguage()
+    {
+        _loadingLanguage = true;
+        string language = LocalizationService.NormalizeLanguage(App.Preferences.Language);
+        foreach (ComboBoxItem item in LanguageCombo.Items)
+        {
+            if (string.Equals(item.Tag as string, language, StringComparison.OrdinalIgnoreCase))
+            {
+                LanguageCombo.SelectedItem = item;
+                break;
+            }
+        }
+        _loadingLanguage = false;
+    }
+
+    private void LanguageCombo_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingLanguage) return;
+        if ((LanguageCombo.SelectedItem as ComboBoxItem)?.Tag is not string tag) return;
+        string language = LocalizationService.NormalizeLanguage(tag);
+        App.SetPreferences(App.Preferences with { Language = language });
+        LocalizationService.Instance.SetLanguage(language);
+    }
 
     private void LoadPreferences()
     {

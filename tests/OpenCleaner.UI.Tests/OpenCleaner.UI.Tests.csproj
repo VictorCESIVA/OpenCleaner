@@ -15,5 +15,10 @@
     <ProjectReference Include="..\..\src\OpenCleaner.Core\OpenCleaner.Core.csproj" />
     <Compile Include="..\..\src\OpenCleaner.UI\ElevatedWinget.cs" Link="ElevatedWinget.cs" />
     <Compile Include="..\..\src\OpenCleaner.UI\ElevatedStartup.cs" Link="ElevatedStartup.cs" />
+    <Compile Include="..\..\src\OpenCleaner.UI\Localization\LocalizationCatalog.cs" Link="Localization\LocalizationCatalog.cs" />
+    <EmbeddedResource Include="..\..\src\OpenCleaner.UI\Localization\strings-fr.json"
+                      LogicalName="Localization.strings-fr.json" />
+    <EmbeddedResource Include="..\..\src\OpenCleaner.UI\Localization\strings-en.json"
+                      LogicalName="Localization.strings-en.json" />
   </ItemGroup>
 </Project>

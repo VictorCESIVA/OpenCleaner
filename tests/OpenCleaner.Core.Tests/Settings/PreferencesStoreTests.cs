@@ -27,13 +27,33 @@ public sealed class PreferencesStoreTests : IDisposable
     [Fact]
     public void SaveAndLoadRoundTrip()
     {
-        var expected = new AppPreferences { DarkTheme = false, LowSpaceThresholdPercent = 15 };
+        var expected = new AppPreferences { DarkTheme = false, LowSpaceThresholdPercent = 15, Language = "en" };
 
         Assert.True(PreferencesStore.Save(expected, _file));
         AppPreferences actual = PreferencesStore.Load(_file);
 
         Assert.False(actual.DarkTheme);
         Assert.Equal(15, actual.LowSpaceThresholdPercent);
+        Assert.Equal("en", actual.Language);
+    }
+
+    [Fact]
+    public void MissingLanguageDefaultsToFrench()
+    {
+        File.WriteAllText(_file, "{\"DarkTheme\":false,\"LowSpaceThresholdPercent\":10}");
+
+        Assert.Equal("fr", PreferencesStore.Load(_file).Language);
+    }
+
+    [Theory]
+    [InlineData("de", "fr")]
+    [InlineData("EN", "en")]
+    [InlineData(null, "fr")]
+    public void LanguageIsNormalized(string? stored, string expected)
+    {
+        File.WriteAllText(_file, $"{{\"Language\":{(stored == null ? "null" : $"\"{stored}\"")}}}");
+
+        Assert.Equal(expected, PreferencesStore.Load(_file).Language);
     }
 
     [Theory]

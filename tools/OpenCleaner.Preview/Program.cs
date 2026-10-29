@@ -121,12 +121,27 @@ internal class Program
         ((Border)main.FindName("LoadingOverlay")).Visibility=Visibility.Collapsed;
         ((TextBlock)main.FindName("PluginTitle")).Text="Fichiers temporaires système";
         var files=(ListView)main.FindName("FilesListView");
-        files.ItemsSource=new[]{
+        var previewItems = new[]{
             new CleanableItem("preview-safe",@"C:\Exemple\Temp\cache.tmp",1024*512,"Fichier temporaire",RiskLevel.Safe,ItemType.File),
             new CleanableItem("preview-recommended",@"C:\Exemple\Navigateur\Cookies",1024*24,"Cookies du navigateur",RiskLevel.Recommended,ItemType.File),
             new CleanableItem("preview-expert",@"HKCU\Software\Exemple",0,"Clé à vérifier",RiskLevel.ExpertOnly,ItemType.RegistryKey)};
+        files.ItemsSource=previewItems;
         ((StackPanel)main.FindName("EmptyState")).Visibility=Visibility.Collapsed;
         Render(main,Path.Combine(output,"MainWindow-example-data.png"),main.Width,main.Height-36);
+        if (OpenCleaner.UI.Localization.LocalizationService.Instance.SetLanguage("en"))
+        {
+            var mainEn = new MainWindow();
+            ((ListView)mainEn.FindName("FilesListView")).ItemsSource = previewItems;
+            ((StackPanel)mainEn.FindName("EmptyState")).Visibility = Visibility.Collapsed;
+            var settingsEn = new SettingsWindow();
+            settingsEn.ShowExclusionsForPreview([@"C:\Users\Exemple\Documents\Projets", @"D:\Sauvegardes"]);
+            settingsEn.ShowScheduleForPreview(
+                new ScheduledRunRecord(DateTime.UtcNow.AddDays(-1), 1_240, 512L * 1024 * 1024, 0),
+                DateTime.Now.Date.AddDays(2).AddHours(3));
+            Render(mainEn,Path.Combine(output,"MainWindow-en.png"),mainEn.Width,mainEn.Height-36);
+            Render(settingsEn,Path.Combine(output,"SettingsWindow-en.png"),1048,824);
+            OpenCleaner.UI.Localization.LocalizationService.Instance.SetLanguage("fr");
+        }
         main.ShowLowSpaceForPreview(new DiskSpaceAlert("C:\\", 42L*1024*1024*1024, 500L*1024*1024*1024, 42.0/500));
         Render(main,Path.Combine(output,"MainWindow-low-space.png"),main.Width,main.Height-36);
         ((Border)main.FindName("LowSpaceBanner")).Visibility=Visibility.Collapsed;

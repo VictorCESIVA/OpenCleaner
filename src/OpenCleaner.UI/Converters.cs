@@ -1,4 +1,5 @@
 using OpenCleaner.Contracts;
+using OpenCleaner.UI.Localization;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Data;
@@ -65,9 +66,9 @@ public class RiskLabelConverter : IValueConverter
     public object Convert(object value, Type t, object p, CultureInfo c) =>
         value switch
         {
-            RiskLevel.Safe        => "Faible",
-            RiskLevel.Recommended => "À vérifier",
-            RiskLevel.ExpertOnly  => "Expert",
+            RiskLevel.Safe        => LocalizationService.Instance.Get("Risk.Low"),
+            RiskLevel.Recommended => LocalizationService.Instance.Get("Risk.Review"),
+            RiskLevel.ExpertOnly  => LocalizationService.Instance.Get("Risk.Expert"),
             _                     => "?"
         };
 
@@ -78,15 +79,11 @@ public class RiskLabelConverter : IValueConverter
 public class BytesConverter : IValueConverter
 {
     public static readonly BytesConverter Instance = new();
-    private static readonly string[] Units = ["o", "Ko", "Mo", "Go", "To"];
 
     public object Convert(object value, Type t, object p, CultureInfo c)
     {
         if (value is not long bytes) return "—";
-        int i = 0;
-        double d = bytes;
-        while (d >= 1024 && i < Units.Length - 1) { d /= 1024; i++; }
-        return $"{d:0.#} {Units[i]}";
+        return SizeFormatter.Format(bytes);
     }
 
     public object ConvertBack(object v, Type t, object p, CultureInfo c) => throw new NotSupportedException();
@@ -102,11 +99,11 @@ public class RelativeDateConverter : IValueConverter
         if (value is not DateTime dt) return "";
         var diff = dt.Kind == DateTimeKind.Utc ? DateTime.UtcNow - dt : DateTime.Now - dt;
 
-        return diff.TotalMinutes < 2   ? "à l'instant" :
-               diff.TotalMinutes < 60  ? $"il y a {(int)diff.TotalMinutes} min" :
-               diff.TotalHours  < 24   ? $"il y a {(int)diff.TotalHours} h" :
-               diff.TotalDays   < 30   ? $"il y a {(int)diff.TotalDays} j" :
-                                         $"il y a {(int)(diff.TotalDays / 30)} mois";
+        return diff.TotalMinutes < 2   ? LocalizationService.Instance.Get("Time.JustNow") :
+               diff.TotalMinutes < 60  ? LocalizationService.Instance.Get("Time.MinutesAgo", (int)diff.TotalMinutes) :
+               diff.TotalHours  < 24   ? LocalizationService.Instance.Get("Time.HoursAgo", (int)diff.TotalHours) :
+               diff.TotalDays   < 30   ? LocalizationService.Instance.Get("Time.DaysAgo", (int)diff.TotalDays) :
+                                         LocalizationService.Instance.Get("Time.MonthsAgo", (int)(diff.TotalDays / 30));
     }
 
     public object ConvertBack(object v, Type t, object p, CultureInfo c) => throw new NotSupportedException();

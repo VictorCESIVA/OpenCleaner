@@ -12,6 +12,8 @@
   </PropertyGroup>
   <ItemGroup>
     <Resource Include="Assets\OpenCleaner.ico" />
+    <EmbeddedResource Include="Localization\strings-fr.json" />
+    <EmbeddedResource Include="Localization\strings-en.json" />
     <InternalsVisibleTo Include="OpenCleaner.Preview" />
   </ItemGroup>
   <ItemGroup>

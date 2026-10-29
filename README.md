@@ -1,6 +1,6 @@
 # OpenCleaner
 
-Utilitaire Windows gratuit et open source pour examiner les fichiers temporaires, les caches et l'occupation du disque. Interface WPF en français, thèmes sombre et clair, avec les outils accessibles dans une seule fenêtre.
+Utilitaire Windows gratuit et open source pour examiner les fichiers temporaires, les caches et l'occupation du disque. Interface WPF en français avec une traduction anglaise en cours, thèmes sombre et clair, avec les outils accessibles dans une seule fenêtre.
 
 ## Utilisation
 
@@ -9,7 +9,9 @@ Utilitaire Windows gratuit et open source pour examiner les fichiers temporaires
 3. Confirmez **Nettoyer**. Chaque suppression de fichier passe par le gardien et une sauvegarde vérifiée.
 4. Consultez **Restauration** pour restaurer ou supprimer les sauvegardes.
 
-Au démarrage, un bandeau signale un disque sous le seuil d'alerte (10 % par défaut, réglable de 5 à 25 % dans les paramètres) avec un accès direct à **Santé du PC** ; il ne supprime rien. Le thème et ce seuil sont conservés dans `%APPDATA%/OpenCleaner/preferences.json`.
+Au démarrage, un bandeau signale un disque sous le seuil d'alerte (10 % par défaut, réglable de 5 à 25 % dans les paramètres) avec un accès direct à **Santé du PC** ; il ne supprime rien. Le thème, la langue et ce seuil sont conservés dans `%APPDATA%/OpenCleaner/preferences.json`.
+
+La langue se change dans **Paramètres > Langue** (français/anglais) et s'applique immédiatement. L'anglais couvre pour l'instant la fenêtre principale ; les autres écrans migrent progressivement (voir [docs/LOCALIZATION.md](docs/LOCALIZATION.md)).
 
 Les sauvegardes sont conservées localement : elles occupent de l'espace. Un nettoyage avec une sauvegarde sur le même disque ne libère pas immédiatement le volume affiché lors du scan. Supprimez seulement les sauvegardes dont vous n'avez plus besoin pour récupérer cet espace.
 
@@ -82,7 +84,7 @@ L'application ne force plus la fermeture des navigateurs et ne redémarre plus a
 - **Plugins.System** : analyseurs et nettoyeurs intégrés.
 - **UI** : fenêtres WPF et coordination des opérations.
 - **Tests** : régressions du moteur et des plugins, sur des fixtures temporaires.
-- **docs** : site statique de présentation ; rapports d'audit du [14 octobre 2026](docs/AUDIT-2026-10-14.md), du [26 octobre 2026](docs/AUDIT-2026-10-26.md) et du [29 octobre 2026](docs/AUDIT-2026-10-29.md), et [comparaison avec CCleaner](docs/CCLEANER-COMPARAISON.md).
+- **docs** : site statique de présentation ; rapports d'audit du [14 octobre 2026](docs/AUDIT-2026-10-14.md), du [26 octobre 2026](docs/AUDIT-2026-10-26.md) et du [29 octobre 2026](docs/AUDIT-2026-10-29.md), [comparaison avec CCleaner](docs/CCLEANER-COMPARAISON.md) et [chantier de localisation](docs/LOCALIZATION.md).
 
 La CI compile et teste la solution sur Windows et refuse les vulnérabilités NuGet connues. Le workflow de release valide le tag, exécute ces vérifications, construit un package Velopack et le signe si le certificat est fourni via les secrets GitHub.
 

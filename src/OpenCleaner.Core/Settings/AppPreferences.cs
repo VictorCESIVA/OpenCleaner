@@ -9,10 +9,12 @@ public sealed record AppPreferences
     public const int DefaultLowSpacePercent = 10;
 
     public bool DarkTheme { get; init; } = true;
+    public string Language { get; init; } = "fr";
     public int LowSpaceThresholdPercent { get; init; } = DefaultLowSpacePercent;
 
     public AppPreferences Normalize() => this with
     {
+        Language = string.Equals(Language?.Trim(), "en", StringComparison.OrdinalIgnoreCase) ? "en" : "fr",
         LowSpaceThresholdPercent = Math.Clamp(LowSpaceThresholdPercent,
             MinimumLowSpacePercent, MaximumLowSpacePercent)
     };
