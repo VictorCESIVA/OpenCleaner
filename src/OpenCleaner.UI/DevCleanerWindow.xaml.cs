@@ -17,9 +17,9 @@ public sealed class DevItem : System.ComponentModel.INotifyPropertyChanged
     private bool _isSelected = true;
 
     public CleanableItem Item      { get; init; } = null!;
-    public string        Category  { get; init; } = "";
+    public string        Category  => PluginDescriptionLocalizer.Localize(Item.Description).Split('—')[0].Trim();
     public string        SizeLabel { get; init; } = "";
-    public string        PathLabel => Item.Description + "\n" + Item.Path;
+    public string        PathLabel => PluginDescriptionLocalizer.Localize(Item.Description) + "\n" + Item.Path;
     public long          Size      => Item.Size;
 
     public bool IsSelected
@@ -30,10 +30,15 @@ public sealed class DevItem : System.ComponentModel.INotifyPropertyChanged
 
     public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
 
+    internal void RefreshLocalization()
+    {
+        PropertyChanged?.Invoke(this, new(nameof(PathLabel)));
+        PropertyChanged?.Invoke(this, new(nameof(Category)));
+    }
+
     public static DevItem From(CleanableItem item) => new()
     {
         Item      = item,
-        Category  = item.Description.Split('—')[0].Trim(),
         SizeLabel = SizeFormatter.Format(item.Size)
     };
 
@@ -53,6 +58,10 @@ public partial class DevCleanerWindow : UserControl
     {
         InitializeComponent();
         ResultList.ItemsSource = _items;
+        LocalizationService.Instance.LanguageChanged += (_, _) =>
+        {
+            foreach (DevItem item in _items) item.RefreshLocalization();
+        };
         foreach (var option in Options)
         {
             option.Checked += OptionsChanged;
@@ -190,7 +199,7 @@ public partial class DevCleanerWindow : UserControl
                 await transaction.CommitAsync(operation.Token);
             }
 
-            StatusText.Text = (result.Success ? "✅ " : "⚠️ ") + result.Message;
+            StatusText.Text = (result.Success ? "✅ " : "⚠️ ") + PluginMessageLocalizer.Localize(result.Message);
             _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
         catch (OperationCanceledException) { StatusText.Text = T("Dev.Cancelled"); _plugin = null; }

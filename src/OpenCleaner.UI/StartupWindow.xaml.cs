@@ -217,12 +217,12 @@ public partial class StartupWindow : UserControl
             MachineStartupResult result = ElevatedStartup.IsElevated()
                 ? await Task.Run(() => new MachineStartupService().Apply(request))
                 : await ElevatedStartup.RunAsync(request);
-            StatusText.Text = result.Message;
+            StatusText.Text = PluginMessageLocalizer.Localize(result.Message);
             if (!result.Success) return;
             _loaded = false;
             await LoadAsync();
             _loaded = true;
-            StatusText.Text = result.Message;
+            StatusText.Text = PluginMessageLocalizer.Localize(result.Message);
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
         {

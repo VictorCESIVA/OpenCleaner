@@ -112,6 +112,7 @@ public partial class MainWindow : Window
         UpdatePluginHeader(_selectedPluginTag);
         ThemeIcon.Text = T(_isDarkTheme ? "Nav.ThemeLight" : "Nav.ThemeDark");
         ApplyFilter();
+        FilesListView.Items.Refresh();
         if (!UiOperation.IsBusy && _foundItems.Count == 0)
             StatusText.Text = T("Main.ReadyForScan");
     }
@@ -479,7 +480,7 @@ public partial class MainWindow : Window
                     if (!result.Success) throw new InvalidOperationException(result.Message);
                     await transaction.CommitAsync(operation.Token);
                 }
-                ActionStatus.Text = result.Message;
+                ActionStatus.Text = PluginMessageLocalizer.Localize(result.Message);
                 StatusText.Text = result.Success ? T("Main.CleanDone") : T("Main.CleanDoneSkipped");
                 // Re-analyze registry paths; File.Exists cannot represent a registry key.
                 if (_selectedPluginTag == "registry")
@@ -661,7 +662,8 @@ public partial class MainWindow : Window
                     ? failed > 0 ? T("Main.SmartPartial") : T("Main.SmartNone")
                     : T("Main.SmartDetected", SizeFormatter.Format(total));
                 SmartCleanResult.ToolTip = string.Join(Environment.NewLine, _smartScanResults.Where(r => r.Error != null)
-                    .Select(r => r.Plugin.Name + " : " + r.Error));
+                    .Select(r => PluginDescriptionLocalizer.Localize(r.Plugin.Name) + " : " +
+                         PluginMessageLocalizer.Localize(r.Error)));
                 SmartCleanResult.Visibility = Visibility.Visible;
             }
             catch (OperationCanceledException) { SmartCleanDesc.Text = T("Main.SmartCancelled"); }

@@ -23,15 +23,17 @@ Migré :
 - Restauration, Confidentialité et Doublons : en-têtes, listes, aperçu, confirmations, progression, résultats et états vides ;
 - Caches développeur, Effacement sécurisé et code de récupération : catégories, avertissements, confirmations, progression et messages ;
 - messages applicatifs : récupération des nettoyages interrompus, sauvegardes corrompues/verrouillées, opération déjà en cours, mises à jour et instance déjà ouverte ;
+- descriptions d'éléments produites par les plugins dans la liste de nettoyage, les alertes de confidentialité et les artefacts dev (y compris les modèles dynamiques doublons, historique de registre et noms à vérifier) ;
+- noms de plugins, résultats de nettoyage et messages du service HKLM affichés dans l'interface ;
 - libellés de risque, tailles, nombres, dates relatives et culture d'affichage (fr-FR / en-US) ;
 - sélecteur de langue dans les paramètres ;
 - préférence persistante et bascule immédiate.
 
-Reste à migrer (le français reste affiché) :
+Reste hors interface traduite :
 
-- descriptions générées par les plugins (alertes de confidentialité, messages de doublons, artefacts dev) et messages des services Core affichés dans l'interface ;
-- messages détaillés du service d'élévation HKLM, du helper winget et de la gestion des tâches planifiées ;
-- journaux locaux et sorties externes (winget).
+- journaux locaux (fichiers de log, pas des chaînes affichées) ;
+- sorties externes produites par winget ou les programmes tiers ;
+- messages d'exception techniques de services, affichés tels quels lorsqu'ils remontent jusqu'à un dialogue.
 
 ## Ajouter ou modifier une traduction
 

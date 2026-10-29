@@ -13,19 +13,23 @@ namespace OpenCleaner.UI;
 
 // ──── ViewModel ─────────────────────────────────────────────────────────────
 
-public sealed class PrivacyAlert
+public sealed class PrivacyAlert : System.ComponentModel.INotifyPropertyChanged
 {
     public CleanableItem Item       { get; init; } = null!;
     public string        RiskIcon   { get; init; } = "🟢";
-    public string        Alert      { get; init; } = "";
+    public string        Alert      => PluginDescriptionLocalizer.Localize(Item.Description);
     public string        Path       => Item.Path;
     public Brush         AlertColor { get; init; } = Brushes.White;
+
+    public event System.ComponentModel.PropertyChangedEventHandler? PropertyChanged;
+
+    internal void RefreshLocalization() =>
+        PropertyChanged?.Invoke(this, new(nameof(Alert)));
 
     public static PrivacyAlert From(CleanableItem item) => new()
     {
         Item      = item,
         RiskIcon  = item.RiskLevel == RiskLevel.ExpertOnly ? "🔴" : "🟠",
-        Alert     = item.Description,
         AlertColor = item.RiskLevel == RiskLevel.ExpertOnly
             ? (Brush)Application.Current.FindResource("RiskExpert")
             : (Brush)Application.Current.FindResource("RiskRecommended")
@@ -46,6 +50,10 @@ public partial class PrivacyWindow : UserControl
     {
         InitializeComponent();
         AlertList.ItemsSource = _alerts;
+        LocalizationService.Instance.LanguageChanged += (_, _) =>
+        {
+            foreach (PrivacyAlert alert in _alerts) alert.RefreshLocalization();
+        };
     }
 
     // ─── SCAN ───────────────────────────────────────────────────────────
@@ -157,7 +165,7 @@ public partial class PrivacyWindow : UserControl
                 await transaction.CommitAsync(operation.Token);
             }
 
-            StatusText.Text = (result.Success ? "✅ " : "⚠️ ") + result.Message;
+            StatusText.Text = (result.Success ? "✅ " : "⚠️ ") + PluginMessageLocalizer.Localize(result.Message);
             _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
         catch (OperationCanceledException) { StatusText.Text = T("Privacy.Cancelled"); _plugin = null; }

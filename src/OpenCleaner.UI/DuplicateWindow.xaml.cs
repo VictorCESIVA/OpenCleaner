@@ -276,7 +276,9 @@ public partial class DuplicateWindow : UserControl
                 await transaction.CommitAsync(operation.Token);
             }
 
-            StatusText.Text = result.Success ? "✅ " + result.Message : "⚠️ " + result.Message;
+            StatusText.Text = result.Success
+                ? "✅ " + PluginMessageLocalizer.Localize(result.Message)
+                : "⚠️ " + PluginMessageLocalizer.Localize(result.Message);
             // Relancer l'analyse pour mettre à jour l'arbre
             _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }

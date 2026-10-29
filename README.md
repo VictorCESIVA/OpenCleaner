@@ -11,7 +11,7 @@ Utilitaire Windows gratuit et open source pour examiner les fichiers temporaires
 
 Au démarrage, un bandeau signale un disque sous le seuil d'alerte (10 % par défaut, réglable de 5 à 25 % dans les paramètres) avec un accès direct à **Santé du PC** ; il ne supprime rien. Le thème, la langue et ce seuil sont conservés dans `%APPDATA%/OpenCleaner/preferences.json`.
 
-La langue se change dans **Paramètres > Langue** (français/anglais) et s'applique immédiatement. Toutes les fenêtres sont traduites ; les descriptions générées par les plugins et certains messages détaillés des services restent en cours de migration (voir [docs/LOCALIZATION.md](docs/LOCALIZATION.md)).
+La langue se change dans **Paramètres > Langue** (français/anglais) et s'applique immédiatement. Toutes les fenêtres, les messages applicatifs et les descriptions d'éléments sont traduits ; seuls les journaux locaux, les sorties externes et certaines exceptions techniques restent dans leur langue d'origine (voir [docs/LOCALIZATION.md](docs/LOCALIZATION.md)).
 
 Les sauvegardes sont conservées localement : elles occupent de l'espace. Un nettoyage avec une sauvegarde sur le même disque ne libère pas immédiatement le volume affiché lors du scan. Supprimez seulement les sauvegardes dont vous n'avez plus besoin pour récupérer cet espace.
 
