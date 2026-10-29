@@ -4,6 +4,7 @@ using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
 using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System.Plugins;
+using OpenCleaner.UI.Localization;
 using System.Collections.ObjectModel;
 using System.Windows;
 
@@ -42,6 +43,8 @@ public sealed class DevItem : System.ComponentModel.INotifyPropertyChanged
 
 public partial class DevCleanerWindow : UserControl
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     private readonly ObservableCollection<DevItem> _items = [];
     private List<CleanableItem> _allItems = [];
     private DevCleanerPlugin? _plugin;
@@ -67,7 +70,7 @@ public partial class DevCleanerWindow : UserControl
         CleanBtn.IsEnabled = SelectAllBtn.IsEnabled = false;
         EstimateText.Text = "—";
         EstimateDetail.Text = "";
-        StatusText.Text = "Options modifiées — relancez l'analyse";
+        StatusText.Text = T("Dev.OptionsChanged");
     }
 
     // ─── SCAN ───────────────────────────────────────────────────────────
@@ -84,7 +87,7 @@ public partial class DevCleanerWindow : UserControl
         _allItems.Clear();
         EstimateText.Text   = "—";
         EstimateDetail.Text = "";
-        StatusText.Text     = "Analyse en cours…";
+        StatusText.Text     = T("Dev.Scanning");
 
         try
         {
@@ -107,7 +110,7 @@ public partial class DevCleanerWindow : UserControl
                 ScanDocker      = CbDocker.IsChecked  == true,
             };
 
-            var progress = operation.CreateProgress<double>(p => StatusText.Text = $"Scan… {p:P0}");
+            var progress = operation.CreateProgress<double>(p => StatusText.Text = T("Dev.Progress", p));
             _allItems = (await Task.Run(() => plugin.AnalyzeAsync(progress, operation.Token), operation.Token)).ToList();
 
             foreach (var item in _allItems)
@@ -123,13 +126,13 @@ public partial class DevCleanerWindow : UserControl
             EstimateDetail.Text = string.Join("\n", byCategory.Take(6));
 
             StatusText.Text = _allItems.Count == 0
-                ? "✅ Aucun artefact dev détecté."
-                : $"{_allItems.Count} fichiers / dossiers — {SizeFormatter.Format(total)} détectés.";
+                ? T("Dev.NoArtifacts")
+                : T("Dev.Found", _allItems.Count, SizeFormatter.Format(total));
 
             CleanBtn.IsEnabled    = _allItems.Count > 0;
             SelectAllBtn.IsEnabled = _allItems.Count > 0;
         }
-        catch (OperationCanceledException) { StatusText.Text = "Opération annulée — relancez lʼanalyse."; _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T("Dev.Cancelled"); _plugin = null; }
         catch (Exception ex) { StatusText.Text = "❌ " + ex.Message; }
         finally { ScanBtn.IsEnabled = true; foreach (var option in Options) option.IsEnabled = true; }
     }
@@ -153,12 +156,11 @@ public partial class DevCleanerWindow : UserControl
     private async void Clean_Click(object sender, RoutedEventArgs e)
     {
         var toClean = _items.Where(i => i.IsSelected).Select(i => i.Item).ToList();
-        if (toClean.Count == 0) { StatusText.Text = "Aucun élément sélectionné."; return; }
+        if (toClean.Count == 0) { StatusText.Text = T("Dev.NoneSelected"); return; }
 
         var confirm = MessageBox.Show(
-            $"Supprimer/nettoyer {toClean.Count} élément(s) ?\n" +
-            "Chaque fichier sera sauvegardé avant sa suppression. Les sauvegardes occupent de lʼespace jusquʼà leur suppression.",
-            "Confirmer le nettoyage Dev",
+            T("Dev.Confirm", toClean.Count),
+            T("Dev.ConfirmTitle"),
             MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
         if (confirm != MessageBoxResult.Yes) return;
@@ -168,7 +170,7 @@ public partial class DevCleanerWindow : UserControl
         foreach (var option in Options) option.IsEnabled = false;
         SelectAllBtn.IsEnabled = false;
         CleanBtn.IsEnabled = ScanBtn.IsEnabled = false;
-        StatusText.Text    = "Nettoyage en cours…";
+        StatusText.Text    = T("Dev.Cleaning");
 
         try
         {
@@ -177,7 +179,7 @@ public partial class DevCleanerWindow : UserControl
             var logger        = App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<DevCleanerPlugin>>();
             var plugin        = _plugin;
 
-            var progress = operation.CreateProgress<double>(p => StatusText.Text = $"Nettoyage… {p:P0}");
+            var progress = operation.CreateProgress<double>(p => StatusText.Text = T("Dev.CleanProgress", p));
             OperationResult result;
             await using (var transaction = new CleanupTransactionScope(
                              App.Services.GetRequiredService<ITransactionManager>()))
@@ -191,7 +193,7 @@ public partial class DevCleanerWindow : UserControl
             StatusText.Text = (result.Success ? "✅ " : "⚠️ ") + result.Message;
             _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
-        catch (OperationCanceledException) { StatusText.Text = "Opération annulée — relancez lʼanalyse."; _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T("Dev.Cancelled"); _plugin = null; }
         catch (Exception ex) { StatusText.Text = "❌ " + ex.Message; }
         finally { ScanBtn.IsEnabled = true; foreach (var option in Options) option.IsEnabled = true; }
     }

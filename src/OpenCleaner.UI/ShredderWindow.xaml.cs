@@ -5,6 +5,7 @@ using System.Windows.Controls;
 using Microsoft.Win32;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Tools;
+using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
@@ -17,6 +18,8 @@ public sealed class ShredFile
 
 public partial class ShredderWindow : UserControl
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     private readonly ObservableCollection<ShredFile> _files = [];
     private bool _busy;
 
@@ -33,7 +36,8 @@ public partial class ShredderWindow : UserControl
         int selected = FileList.SelectedItems.Count;
         RemoveBtn.IsEnabled = !_busy && selected > 0;
         ShredBtn.IsEnabled = !_busy && _files.Count > 0;
-        CountText.Text = $"{_files.Count:N0} fichier(s) • {SizeFormatter.Format(_files.Sum(f => f.Size))}";
+        CountText.Text = T("Shred.Count", _files.Count.ToString("N0"),
+            SizeFormatter.Format(_files.Sum(f => f.Size)));
     }
 
     private void SetBusy(bool busy)
@@ -52,7 +56,7 @@ public partial class ShredderWindow : UserControl
 
     private void Add_Click(object sender, RoutedEventArgs e)
     {
-        var dialog = new OpenFileDialog { Multiselect = true, Title = "Choisir les fichiers à effacer" };
+        var dialog = new OpenFileDialog { Multiselect = true, Title = T("Shred.DialogTitle") };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         foreach (string path in dialog.FileNames)
         {
@@ -63,7 +67,7 @@ public partial class ShredderWindow : UserControl
                 _files.Add(new ShredFile { Path = path, Size = info.Length });
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            { StatusText.Text = $"Fichier ignoré : {path}"; }
+            { StatusText.Text = T("Shred.Ignored", path); }
         }
         UpdateSelection();
     }
@@ -79,31 +83,31 @@ public partial class ShredderWindow : UserControl
     {
         if (_busy || _files.Count == 0) return;
         if (MessageBox.Show(Window.GetWindow(this),
-                $"Effacer définitivement {_files.Count:N0} fichier(s) ?\n\nAucune sauvegarde ne sera créée et l'opération est irréversible.",
-                "Effacement sécurisé", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                T("Shred.Confirm", _files.Count),
+                T("Shred.ConfirmTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
         if (!UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using (operation)
         {
             SetBusy(true);
-            StatusText.Text = "Écriture des passes aléatoires…";
+            StatusText.Text = T("Shred.Writing");
             try
             {
                 var paths = _files.Select(f => f.Path).ToList();
                 int deleted = await Task.Run(
                     () => SecureDeleteService.ShredAsync(paths, 3, ct: operation.Token), operation.Token);
                 PruneMissingFiles();
-                StatusText.Text = $"{deleted:N0} fichier(s) effacé(s) définitivement.";
+                StatusText.Text = T("Shred.Done", deleted.ToString("N0"));
             }
             catch (OperationCanceledException)
             {
                 PruneMissingFiles();
-                StatusText.Text = "Effacement annulé ; certains fichiers peuvent être partiellement écrasés.";
+                StatusText.Text = T("Shred.Cancelled");
             }
             catch (Exception ex)
             {
                 PruneMissingFiles();
-                StatusText.Text = "Échec : " + ex.Message;
+                StatusText.Text = T("Shred.Failed", ex.Message);
             }
             finally { SetBusy(false); }
         }

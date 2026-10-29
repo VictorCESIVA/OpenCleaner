@@ -1,9 +1,12 @@
 using System.Windows;
+using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
 public partial class RecoveryKeyWindow : Window
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     private readonly bool _enterMode;
 
     public RecoveryKeyWindow(string? code, bool enterMode)
@@ -12,19 +15,19 @@ public partial class RecoveryKeyWindow : Window
         _enterMode = enterMode;
         if (enterMode)
         {
-            Title = "Déverrouiller les sauvegardes";
-            HeaderText.Text = "Saisissez votre code de récupération";
-            HelpText.Text = "Le code a été affiché lors de sa création. Il est insensible à la casse et les tirets sont facultatifs.";
+            Title = T("Recovery.UnlockTitle");
+            HeaderText.Text = T("Recovery.EnterHeader");
+            HelpText.Text = T("Recovery.EnterHelp");
             CopyBtn.Visibility = Visibility.Collapsed;
-            OkBtn.Content = "Déverrouiller";
+            OkBtn.Content = T("Recovery.UnlockButton");
         }
         else
         {
-            HeaderText.Text = "Conservez ce code de récupération";
-            HelpText.Text = "Il permet de retrouver l'accès aux sauvegardes si la clé protégée par Windows est perdue. Stockez-le hors de cet ordinateur ; il ne sera plus affiché.";
+            HeaderText.Text = T("Recovery.KeepHeader");
+            HelpText.Text = T("Recovery.KeepHelp");
             CodeBox.Text = code ?? string.Empty;
             CodeBox.IsReadOnly = true;
-            OkBtn.Content = "J'ai conservé le code";
+            OkBtn.Content = T("Recovery.KeepButton");
         }
     }
 
@@ -35,12 +38,12 @@ public partial class RecoveryKeyWindow : Window
         try
         {
             Clipboard.SetText(Code);
-            MessageBox.Show(this, "Code copié dans le presse-papiers.", "Code de récupération",
+            MessageBox.Show(this, T("Recovery.Copied"), T("Recovery.CodeTitle"),
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, $"Impossible de copier le code : {ex.Message}", "Code de récupération",
+            MessageBox.Show(this, T("Recovery.CopyFailed", ex.Message), T("Recovery.CodeTitle"),
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
@@ -49,7 +52,7 @@ public partial class RecoveryKeyWindow : Window
     {
         if (_enterMode && string.IsNullOrWhiteSpace(Code))
         {
-            MessageBox.Show(this, "Saisissez le code de récupération.", "Code de récupération",
+            MessageBox.Show(this, T("Recovery.EnterPrompt"), T("Recovery.CodeTitle"),
                 MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }

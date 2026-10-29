@@ -21,14 +21,14 @@ Migré :
 - Santé du PC complète : score, sections, constats du moteur, recommandations, historique, tendance, disques, mémoire, actions rapides et export ;
 - Démarrage, Désinstallation et Mises à jour : en-têtes, recherche, tri, états, libellés de lignes, confirmations et statuts ;
 - Restauration, Confidentialité et Doublons : en-têtes, listes, aperçu, confirmations, progression, résultats et états vides ;
+- Caches développeur, Effacement sécurisé et code de récupération : catégories, avertissements, confirmations, progression et messages ;
 - libellés de risque, tailles, nombres, dates relatives et culture d'affichage (fr-FR / en-US) ;
 - sélecteur de langue dans les paramètres ;
 - préférence persistante et bascule immédiate.
 
 Reste à migrer (le français reste affiché) :
 
-- Caches développeur, Effacement sécurisé, code de récupération ;
-- descriptions générées par les plugins (alertes de confidentialité, messages de doublons) et messages des services Core affichés dans l'interface ;
+- descriptions générées par les plugins (alertes de confidentialité, messages de doublons, artefacts dev) et messages des services Core affichés dans l'interface ;
 - messages détaillés du service d'élévation HKLM et du helper de démarrage ;
 - textes des tâches planifiées et journaux secondaires.
 
@@ -66,6 +66,12 @@ Reste à migrer (le français reste affiché) :
 ![Confidentialité en anglais](preview/privacy-en.png)
 
 ![Doublons en anglais](preview/duplicate-en.png)
+
+![Caches développeur en anglais](preview/dev-en.png)
+
+![Effacement sécurisé en anglais](preview/shredder-en.png)
+
+![Code de récupération en anglais](preview/recovery-en.png)
 
 ## Limites
 

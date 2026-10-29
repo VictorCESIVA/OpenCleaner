@@ -154,6 +154,9 @@ internal class Program
             var restoreEn = new RestoreWindow();
             var privacyEn = new PrivacyWindow();
             var duplicateEn = new DuplicateWindow();
+            var devEn = new DevCleanerWindow();
+            var shredderEn = new ShredderWindow();
+            var recoveryEn = new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION", false);
             Render(diskEn,Path.Combine(output,"DiskSpaceWindow-apps-en.png"),1048,824);
             Render(healthEn,Path.Combine(output,"HealthWindow-en.png"),1048,824);
             Render(healthEn,Path.Combine(output,"HealthWindow-en-full.png"),1048,1600);
@@ -163,6 +166,9 @@ internal class Program
             Render(restoreEn,Path.Combine(output,"RestoreWindow-en.png"),1048,824);
             Render(privacyEn,Path.Combine(output,"PrivacyWindow-en.png"),1048,824);
             Render(duplicateEn,Path.Combine(output,"DuplicateWindow-en.png"),1048,824);
+            Render(devEn,Path.Combine(output,"DevCleanerWindow-en.png"),1048,824);
+            Render(shredderEn,Path.Combine(output,"ShredderWindow-en.png"),1048,824);
+            Render(recoveryEn,Path.Combine(output,"RecoveryKeyWindow-en.png"),560,340);
             OpenCleaner.UI.Localization.LocalizationService.Instance.SetLanguage("fr");
         }
         main.ShowLowSpaceForPreview(new DiskSpaceAlert("C:\\", 42L*1024*1024*1024, 500L*1024*1024*1024, 42.0/500));

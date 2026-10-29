@@ -1,7 +1,8 @@
 <Window Style="{StaticResource {x:Type Window}}" x:Class="OpenCleaner.UI.RecoveryKeyWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Code de récupération" Height="340" Width="560"
+        xmlns:loc="clr-namespace:OpenCleaner.UI.Localization"
+        Title="{loc:Translate Recovery.CodeTitle}" Height="340" Width="560"
         MinHeight="300" MinWidth="460"
         WindowStartupLocation="CenterOwner">
     <Border Background="{DynamicResource BgMain}" Padding="24">
@@ -16,15 +17,15 @@
                      BorderBrush="{DynamicResource Border}" BorderThickness="1"
                      Padding="12,10" FontFamily="Consolas" FontSize="14"
                      TextWrapping="Wrap" AcceptsReturn="True"
-                     AutomationProperties.Name="Code de récupération"/>
+                     AutomationProperties.Name="{loc:Translate Recovery.CodeTitle}"/>
             <WrapPanel HorizontalAlignment="Right">
-                <Button x:Name="CopyBtn" Content="Copier le code"
+                <Button x:Name="CopyBtn" Content="{loc:Translate Recovery.Copy}"
                         Style="{StaticResource SecondBtnStyle}"
                         Click="Copy_Click" Margin="0,0,10,0"/>
-                <Button x:Name="OkBtn" Content="Valider"
+                <Button x:Name="OkBtn" Content="{loc:Translate Recovery.Validate}"
                         Style="{StaticResource AccentBtn}"
                         Click="Ok_Click" Margin="0,0,10,0"/>
-                <Button Content="Fermer"
+                <Button Content="{loc:Translate Recovery.Close}"
                         Style="{StaticResource SecondBtnStyle}"
                         Click="Cancel_Click"/>
             </WrapPanel>
