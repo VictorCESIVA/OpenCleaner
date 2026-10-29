@@ -14,12 +14,14 @@ public partial class SettingsWindow : UserControl
 {
     private readonly SchedulerService _scheduler;
     private readonly ObservableCollection<string> _exclusions = [];
+    private bool _loadingPreferences;
 
     public SettingsWindow()
     {
         InitializeComponent();
         ExclusionsList.ItemsSource = _exclusions;
         LoadExclusions();
+        LoadPreferences();
         var version = typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion.Split('+')[0];
         ApplicationVersionText.Text = "OpenCleaner " + (version ?? typeof(App).Assembly.GetName().Version?.ToString(3));
@@ -243,8 +245,39 @@ public partial class SettingsWindow : UserControl
         PlugAppCaches.IsEnabled = on;
     }
 
-    // ─── EXCLUSIONS ─────────────────────────────────────────────────────
+    // ─── PRÉFÉRENCES ────────────────────────────────────────────────────
 
+    private void LoadPreferences()
+    {
+        _loadingPreferences = true;
+        int threshold = App.Preferences.LowSpaceThresholdPercent;
+        var candidates = LowSpaceCombo.Items.OfType<ComboBoxItem>()
+            .Select(item => (Item: item, Value: int.TryParse(item.Tag as string, out int value) ? value : 0))
+            .Where(candidate => candidate.Value > 0)
+            .ToList();
+        var selected = candidates.FirstOrDefault(candidate => candidate.Value == threshold);
+        if (selected.Item == null)
+        {
+            selected = candidates.OrderBy(candidate => Math.Abs(candidate.Value - threshold)).First();
+            threshold = selected.Value;
+            App.SetPreferences(App.Preferences with { LowSpaceThresholdPercent = threshold });
+        }
+        LowSpaceCombo.SelectedItem = selected.Item;
+        _loadingPreferences = false;
+        PreferencesStatus.Text = $"Bandeau au démarrage sous {threshold} % d'espace libre.";
+    }
+
+    private void LowSpaceCombo_Changed(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loadingPreferences) return;
+        if ((LowSpaceCombo.SelectedItem as ComboBoxItem)?.Tag is not string tag ||
+            !int.TryParse(tag, out int threshold)) return;
+        App.SetPreferences(App.Preferences with { LowSpaceThresholdPercent = threshold });
+        PreferencesStatus.Text = $"Seuil enregistré : {threshold} %.";
+        if (Window.GetWindow(this) is MainWindow main) _ = main.RefreshLowSpaceAsync();
+    }
+
+    // ─── EXCLUSIONS ─────────────────────────────────────────────────────
     private void LoadExclusions()
     {
         _exclusions.Clear();

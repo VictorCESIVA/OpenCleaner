@@ -3,6 +3,7 @@ using Microsoft.Extensions.Logging;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Scheduler;
 using OpenCleaner.Core.Security;
+using OpenCleaner.Core.Settings;
 using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System;
 using OpenCleaner.Plugins.System.Plugins;
@@ -13,6 +14,13 @@ namespace OpenCleaner.UI;
 public partial class App : System.Windows.Application
 {
     public static IServiceProvider Services { get; private set; } = null!;
+    public static AppPreferences Preferences { get; private set; } = new();
+
+    public static void SetPreferences(AppPreferences preferences)
+    {
+        Preferences = (preferences ?? new AppPreferences()).Normalize();
+        PreferencesStore.Save(Preferences);
+    }
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -50,6 +58,7 @@ public partial class App : System.Windows.Application
 
     private static void BuildServices()
     {
+        Preferences = PreferencesStore.Load();
         CleaningExclusions.Load();
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddDebug());

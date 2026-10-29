@@ -47,7 +47,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         FilesListView.ItemsSource = _foundItems;
-        ApplyTheme(true);
+        ApplyTheme(App.Preferences.DarkTheme);
         UpdateSidebarSelection("system");
         UpdatePluginHeader("system");
         _loadingOptions = false;
@@ -70,7 +70,8 @@ public partial class MainWindow : Window
         try
         {
             SystemHealthInfo info = await Task.Run(SystemInfoService.Get);
-            DiskSpaceAlert? alert = DiskSpaceAlertService.FindLowSpace(info.Disks);
+            DiskSpaceAlert? alert = DiskSpaceAlertService.FindLowSpace(info.Disks,
+                App.Preferences.LowSpaceThresholdPercent / 100.0);
             if (alert == null)
             {
                 LowSpaceBanner.Visibility = Visibility.Collapsed;
@@ -92,6 +93,8 @@ public partial class MainWindow : Window
                               "Analysez le contenu avant de supprimer des fichiers.";
         LowSpaceBanner.Visibility = Visibility.Visible;
     }
+
+    internal Task RefreshLowSpaceAsync() => CheckLowSpaceAsync();
 
     internal void ShowLowSpaceForPreview(DiskSpaceAlert alert) => ShowLowSpace(alert);
 
@@ -566,7 +569,11 @@ public partial class MainWindow : Window
         else Application.Current.Resources[key] = new SolidColorBrush(color);
     }
 
-    private void ThemeToggle_Click(object sender, RoutedEventArgs e) => ApplyTheme(!_isDarkTheme);
+    private void ThemeToggle_Click(object sender, RoutedEventArgs e)
+    {
+        ApplyTheme(!_isDarkTheme);
+        App.SetPreferences(App.Preferences with { DarkTheme = _isDarkTheme });
+    }
     internal void ShowTool(string key, Button? button = null)
     {
         if (UiOperation.IsBusy) return;

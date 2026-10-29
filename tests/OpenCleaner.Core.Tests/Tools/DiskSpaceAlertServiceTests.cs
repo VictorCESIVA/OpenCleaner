@@ -63,4 +63,22 @@ public sealed class DiskSpaceAlertServiceTests
     [Fact]
     public void NullCollectionIsRejected() =>
         Assert.Throws<ArgumentNullException>(() => DiskSpaceAlertService.FindLowSpace(null!));
+
+    [Fact]
+    public void CustomThresholdChangesTheAlert()
+    {
+        var disks = new[] { Disk("C:\\", 500 * Gigabyte, 60 * Gigabyte) }; // 12 %
+
+        Assert.Null(DiskSpaceAlertService.FindLowSpace(disks, threshold: 0.10));
+        Assert.NotNull(DiskSpaceAlertService.FindLowSpace(disks, threshold: 0.15));
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-0.1)]
+    [InlineData(1)]
+    [InlineData(1.5)]
+    public void InvalidCustomThresholdIsRejected(double threshold) =>
+        Assert.Throws<ArgumentOutOfRangeException>(() =>
+            DiskSpaceAlertService.FindLowSpace([Disk("C:\\", 100 * Gigabyte, 5 * Gigabyte)], threshold));
 }

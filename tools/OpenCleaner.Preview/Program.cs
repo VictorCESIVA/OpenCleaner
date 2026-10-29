@@ -107,6 +107,7 @@ internal class Program
             Console.WriteLine(name+" instantiated and rendered");
         }
         Render(health,Path.Combine(output,"HealthWindow-full.png"),1048,1500);
+        Render(settings,Path.Combine(output,"SettingsWindow-full.png"),1048,1200);
         ((Border)main.FindName("BrowserOptionsPanel")).Visibility=Visibility.Visible;
         ((TextBlock)main.FindName("PluginTitle")).Text="Navigateurs Chrome / Edge / Brave";
         Render(main,Path.Combine(output,"MainWindow-browser-minimum.png"),main.MinWidth,main.MinHeight-36);
