@@ -5,7 +5,7 @@ using OpenCleaner.Core.Tools;
 
 namespace OpenCleaner.UI;
 
-public partial class StartupWindow : Window
+public partial class StartupWindow : UserControl
 {
     private readonly ObservableCollection<StartupItemRow> _items = [];
     private IReadOnlyList<StartupItemRow> _all = [];
@@ -131,7 +131,7 @@ public partial class StartupWindow : Window
     private async void Disable_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || StartupList.SelectedItem is not StartupItemRow row) return;
-        if (MessageBox.Show(this,
+        if (MessageBox.Show(Window.GetWindow(this),
                 $"Désactiver « {row.Name} » au démarrage ?\n\nL'élément sera conservé dans une sauvegarde OpenCleaner.",
                 "Désactiver le démarrage", MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;

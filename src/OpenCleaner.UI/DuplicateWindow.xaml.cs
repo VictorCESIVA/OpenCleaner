@@ -40,7 +40,7 @@ public sealed class DuplicateFile
 
 // ─── Fenêtre ────────────────────────────────────────────────────────────────
 
-public partial class DuplicateWindow : Window
+public partial class DuplicateWindow : UserControl
 {
     private readonly ObservableCollection<DuplicateGroup> _groups = [];
     private List<CleanableItem> _allItems = [];
@@ -61,7 +61,7 @@ public partial class DuplicateWindow : Window
 
     private async void Scan_Click(object sender, RoutedEventArgs e)
     {
-        if (!UiOperation.TryBegin(this, out var operation)) return;
+        if (!UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using var scope = operation;
         ScanBtn.IsEnabled       = false;
         DeleteBtn.IsEnabled     = false;
@@ -233,7 +233,7 @@ public partial class DuplicateWindow : Window
 
         if (confirm != MessageBoxResult.Yes) return;
 
-        if (_plugin == null || !UiOperation.TryBegin(this, out var operation)) return;
+        if (_plugin == null || !UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using var scope = operation;
         AutoSelectBtn.IsEnabled = false;
         DeleteBtn.IsEnabled = false;

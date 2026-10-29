@@ -15,7 +15,7 @@ public sealed class ShredFile
     public string SizeLabel => SizeFormatter.Format(Size);
 }
 
-public partial class ShredderWindow : Window
+public partial class ShredderWindow : UserControl
 {
     private readonly ObservableCollection<ShredFile> _files = [];
     private bool _busy;
@@ -53,7 +53,7 @@ public partial class ShredderWindow : Window
     private void Add_Click(object sender, RoutedEventArgs e)
     {
         var dialog = new OpenFileDialog { Multiselect = true, Title = "Choisir les fichiers à effacer" };
-        if (dialog.ShowDialog(this) != true) return;
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
         foreach (string path in dialog.FileNames)
         {
             if (_files.Any(f => string.Equals(f.Path, path, StringComparison.OrdinalIgnoreCase))) continue;
@@ -78,11 +78,11 @@ public partial class ShredderWindow : Window
     private async void Shred_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _files.Count == 0) return;
-        if (MessageBox.Show(this,
+        if (MessageBox.Show(Window.GetWindow(this),
                 $"Effacer définitivement {_files.Count:N0} fichier(s) ?\n\nAucune sauvegarde ne sera créée et l'opération est irréversible.",
                 "Effacement sécurisé", MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
-        if (!UiOperation.TryBegin(this, out var operation)) return;
+        if (!UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using (operation)
         {
             SetBusy(true);

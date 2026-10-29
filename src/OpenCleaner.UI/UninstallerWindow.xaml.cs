@@ -5,7 +5,7 @@ using OpenCleaner.Core.Tools;
 
 namespace OpenCleaner.UI;
 
-public partial class UninstallerWindow : Window
+public partial class UninstallerWindow : UserControl
 {
     private readonly ObservableCollection<InstalledProgramRow> _items = [];
     private IReadOnlyList<InstalledProgramRow> _all = [];
@@ -132,19 +132,19 @@ public partial class UninstallerWindow : Window
         string prompt = $"Lancer le désinstalleur de « {program.Name} » ?\n\n" +
             (program.Publisher is { Length: > 0 } publisher ? publisher + "\n\n" : "") +
             "Le programme de désinstallation de l'éditeur sera exécuté. OpenCleaner ne peut pas annuler cette action.";
-        if (MessageBox.Show(this, prompt, "Désinstaller", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+        if (MessageBox.Show(Window.GetWindow(this), prompt, "Désinstaller", MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
         try
         {
             if (InstalledProgramService.LaunchUninstall(program))
                 StatusText.Text = $"Désinstalleur lancé pour « {program.Name} ». Actualisez la liste après la fin.";
             else
-                MessageBox.Show(this, "Aucune commande de désinstallation n'est disponible pour ce programme.",
+                MessageBox.Show(Window.GetWindow(this), "Aucune commande de désinstallation n'est disponible pour ce programme.",
                     "Désinstaller", MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Désinstaller", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "Désinstaller", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

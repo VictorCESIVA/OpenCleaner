@@ -22,12 +22,24 @@ internal class Program
         SeedUninstaller(uninstaller);
         var startup=new StartupWindow();
         SeedStartup(startup);
-        var windows=new Window[]{main,new SettingsWindow(),new RestoreWindow(),new PrivacyWindow(),new DuplicateWindow(),new DiskSpaceWindow(),new DevCleanerWindow(),new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION",false),new HealthWindow(),uninstaller,startup,new UpdatesWindow(),new ShredderWindow()};
+        var health=new HealthWindow();
+        health.Populate(new SystemHealthInfo("Windows 11", "24H2", "26100", "Processeur exemple", 8,
+            16UL * 1024 * 1024 * 1024, 6UL * 1024 * 1024 * 1024, TimeSpan.FromHours(34), ".NET",
+            [new SystemDiskInfo("C:\\", "NTFS", 500L * 1024 * 1024 * 1024, 42L * 1024 * 1024 * 1024)]));
+        if (!((TextBlock)health.FindName("MemoryText")).Text.Contains("utilisés") ||
+            !((StackPanel)health.FindName("DisksPanel")).Children.OfType<StackPanel>().Single().Children.OfType<TextBlock>().Any(t => t.Text.Contains("Espace faible")))
+            throw new InvalidOperationException("Health indicators are incorrect");
+        var unavailable = new HealthWindow();
+        unavailable.Populate(new SystemHealthInfo("Windows", "", "", "", 0, 0, 0, TimeSpan.Zero, "", [new SystemDiskInfo("C:\\", "", 0, 0)]));
+        if (((TextBlock)unavailable.FindName("MemoryText")).Text != "Indisponible" ||
+            !((TextBlock)unavailable.FindName("AdviceText")).Text.Contains("indisponible"))
+            throw new InvalidOperationException("Unavailable health indicators are incorrect");
+        var windows=new FrameworkElement[]{main,new SettingsWindow(),new RestoreWindow(),new PrivacyWindow(),new DuplicateWindow(),new DiskSpaceWindow(),new DevCleanerWindow(),new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION",false),health,uninstaller,startup,new UpdatesWindow(),new ShredderWindow()};
         foreach(var window in windows)
         {
             var name=window.GetType().Name;
-            Render(window,Path.Combine(output,name+".png"),window.Width,window.Height-36);
-            Render(window,Path.Combine(output,name+"-minimum.png"),window.MinWidth,window.MinHeight-36);
+            Render(window,Path.Combine(output,name+".png"),window is Window w ? w.Width : 1048,window is Window h ? h.Height-36 : 824);
+            Render(window,Path.Combine(output,name+"-minimum.png"),window is Window mw ? mw.MinWidth : 808,window is Window mh ? mh.MinHeight-36 : 704);
             Console.WriteLine(name+" instantiated and rendered");
         }
         ((Border)main.FindName("BrowserOptionsPanel")).Visibility=Visibility.Visible;
@@ -45,9 +57,42 @@ internal class Program
             new CleanableItem("preview-expert",@"HKCU\Software\Exemple",0,"Clé à vérifier",RiskLevel.ExpertOnly,ItemType.RegistryKey)};
         ((StackPanel)main.FindName("EmptyState")).Visibility=Visibility.Collapsed;
         Render(main,Path.Combine(output,"MainWindow-example-data.png"),main.Width,main.Height-36);
+        main.ShowTool("health", (Button)main.FindName("HealthNav"));
+        var integratedHealth = (HealthWindow)((ContentControl)main.FindName("ToolContent")).Content;
+        if (Window.GetWindow(integratedHealth) != main) throw new InvalidOperationException("Tool owner is not the main window");
+        integratedHealth.Populate(new SystemHealthInfo("Windows 11", "24H2", "26100", "Processeur exemple", 8,
+            16UL * 1024 * 1024 * 1024, 6UL * 1024 * 1024 * 1024, TimeSpan.FromHours(34), ".NET",
+            [new SystemDiskInfo("C:\\", "NTFS", 500L * 1024 * 1024 * 1024, 42L * 1024 * 1024 * 1024)]));
+        ((TextBlock)integratedHealth.FindName("RecycleText")).Text = "Corbeille : 18 éléments • 120 Mo";
+        Render(main,Path.Combine(output,"MainWindow-health.png"),main.Width,main.Height-36);
+        Render(main,Path.Combine(output,"MainWindow-health-minimum.png"),main.MinWidth,main.MinHeight-36);
+        main.ShowCleaner("system");
         typeof(MainWindow).GetMethod("ApplyTheme",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(main,new object[]{false});
         Render(main,Path.Combine(output,"MainWindow-light.png"),main.Width,main.Height-36);
-        foreach(var window in windows.Skip(1)) Render(window,Path.Combine(output,window.GetType().Name+"-light.png"),window.Width,window.Height-36);
+        foreach(var window in windows.Skip(1)) Render(window,Path.Combine(output,window.GetType().Name+"-light.png"),window is Window w ? w.Width : 1048,window is Window h ? h.Height-36 : 824);
+        int windowCount = app.Windows.Count;
+        foreach (string key in new[] { "health", "disk", "duplicates", "privacy", "dev", "restore", "updates", "uninstall", "startup", "shredder", "settings" })
+        {
+            main.ShowTool(key);
+            if (((ContentControl)main.FindName("ToolContent")).Content is not UserControl page || Window.GetWindow(page) != main)
+                throw new InvalidOperationException($"Navigation failed: {key}");
+        }
+        if (app.Windows.Count != windowCount) throw new InvalidOperationException("Navigation opened another window");
+        var toolContent = (ContentControl)main.FindName("ToolContent");
+        var settingsView = toolContent.Content;
+        if (!UiOperation.TryBegin(main, out var running)) throw new InvalidOperationException("Could not start navigation guard");
+        using (running)
+        {
+            if (((Button)main.FindName("ToolCancelBtn")).Visibility != Visibility.Visible)
+                throw new InvalidOperationException("Tool cancellation is unavailable");
+            main.ShowTool("health");
+        }
+        if (!ReferenceEquals(settingsView, toolContent.Content)) throw new InvalidOperationException("Navigation allowed during operation");
+        main.ShowTool("health");
+        if (!ReferenceEquals(integratedHealth, toolContent.Content)) throw new InvalidOperationException("Tool state was not preserved");
+        main.ShowCleaner("system");
+        if (((ScrollViewer)main.FindName("DashboardScroll")).Visibility != Visibility.Visible)
+            throw new InvalidOperationException("Cleaner navigation failed");
         RenderToolStates(uninstaller,startup,output);
         Console.WriteLine("Read-only WPF constructor and rendering smoke passed; no startup, scans, cleaning or scheduling invoked.");
         (App.Services as IDisposable)?.Dispose();
@@ -71,22 +116,22 @@ internal class Program
         ((ListBox)uninstaller.FindName("ProgramsList")).ItemsSource=null;
         ((StackPanel)uninstaller.FindName("LoadingState")).Visibility=Visibility.Visible;
         ((TextBlock)uninstaller.FindName("StatusText")).Text="Lecture des applications installées…";
-        Render(uninstaller,Path.Combine(output,"UninstallerWindow-loading.png"),uninstaller.Width,uninstaller.Height-36);
+        Render(uninstaller,Path.Combine(output,"UninstallerWindow-loading.png"),1048,824);
         ((StackPanel)uninstaller.FindName("LoadingState")).Visibility=Visibility.Collapsed;
         typeof(UninstallerWindow).GetMethod("UpdateEmptyState",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(uninstaller,null);
         ((TextBlock)uninstaller.FindName("CountText")).Text="0 application";
         ((TextBlock)uninstaller.FindName("StatusText")).Text="Aucune application détectée.";
-        Render(uninstaller,Path.Combine(output,"UninstallerWindow-empty.png"),uninstaller.Width,uninstaller.Height-36);
+        Render(uninstaller,Path.Combine(output,"UninstallerWindow-empty.png"),1048,824);
 
         ((ListBox)startup.FindName("StartupList")).ItemsSource=null;
         ((StackPanel)startup.FindName("LoadingState")).Visibility=Visibility.Visible;
         ((TextBlock)startup.FindName("StatusText")).Text="Lecture des éléments de démarrage…";
-        Render(startup,Path.Combine(output,"StartupWindow-loading.png"),startup.Width,startup.Height-36);
+        Render(startup,Path.Combine(output,"StartupWindow-loading.png"),1048,824);
         ((StackPanel)startup.FindName("LoadingState")).Visibility=Visibility.Collapsed;
         typeof(StartupWindow).GetMethod("UpdateEmptyState",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(startup,null);
         ((TextBlock)startup.FindName("CountText")).Text="0 élément";
         ((TextBlock)startup.FindName("StatusText")).Text="Aucun élément de démarrage détecté.";
-        Render(startup,Path.Combine(output,"StartupWindow-empty.png"),startup.Width,startup.Height-36);
+        Render(startup,Path.Combine(output,"StartupWindow-empty.png"),1048,824);
     }
 
     static void SeedStartup(StartupWindow window)
@@ -101,9 +146,14 @@ internal class Program
         ((TextBlock)window.FindName("StatusText")).Text="Sélectionnez un élément pour l'activer ou le désactiver.";
     }
 
-    static void Render(Window window,string output,double width,double height)
+    static void Render(FrameworkElement window,string output,double width,double height)
     {
-        var view=(FrameworkElement)window.Content;view.Width=width;view.Height=height;
+        var view=window is Window shell ? (FrameworkElement)shell.Content : window;view.Width=width;view.Height=height;
+        if (view is UserControl control)
+        {
+            control.SetResourceReference(Control.ForegroundProperty, "TextPrimary");
+            control.SetResourceReference(Control.BackgroundProperty, "BgMain");
+        }
         view.Measure(new Size(width,height));view.Arrange(new Rect(0,0,width,height));view.UpdateLayout();
         var target=new RenderTargetBitmap((int)width,(int)height,96,96,PixelFormats.Pbgra32);target.Render(view);
         var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(target));using var stream=File.Create(output);encoder.Save(stream);

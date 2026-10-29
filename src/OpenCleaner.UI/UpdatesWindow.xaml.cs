@@ -1,9 +1,10 @@
+using System.Windows.Controls;
 using System.Windows;
 using OpenCleaner.Core.Tools;
 
 namespace OpenCleaner.UI;
 
-public partial class UpdatesWindow : Window
+public partial class UpdatesWindow : UserControl
 {
     private const string CheckArguments =
         "upgrade --accept-source-agreements --disable-interactivity";
@@ -14,7 +15,7 @@ public partial class UpdatesWindow : Window
 
     private async void Upgrade_Click(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show(this,
+        if (MessageBox.Show(Window.GetWindow(this),
                 "Mettre à jour les applications dont winget connaît la version ?\n\nWindows demandera une autorisation administrateur. Certaines applications peuvent être fermées ou nécessiter un redémarrage.",
                 "Mises à jour", MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
@@ -25,7 +26,7 @@ public partial class UpdatesWindow : Window
 
     private async Task RunAsync(bool upgrade)
     {
-        if (!UiOperation.TryBegin(this, out var operation)) return;
+        if (!UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using (operation)
         {
             SetBusy(true);

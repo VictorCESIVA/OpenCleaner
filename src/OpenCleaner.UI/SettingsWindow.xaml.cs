@@ -8,7 +8,7 @@ using System.Windows.Controls;
 
 namespace OpenCleaner.UI;
 
-public partial class SettingsWindow : Window
+public partial class SettingsWindow : UserControl
 {
     private readonly SchedulerService _scheduler;
 
@@ -155,7 +155,7 @@ public partial class SettingsWindow : Window
         catch (BackupKeyUnavailableException)
         {
             IBackupManager manager = App.Services.GetRequiredService<IBackupManager>();
-            MessageBox.Show(this,
+            MessageBox.Show(Window.GetWindow(this),
                 manager.HasRecoveryCode
                     ? "La clé de chiffrement est absente. Utilisez Restauration > Code de récupération pour saisir votre code."
                     : "La clé et le code de récupération sont absents. Il n'est pas possible de déverrouiller les sauvegardes existantes.",
@@ -163,7 +163,7 @@ public partial class SettingsWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Code de récupération", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "Code de récupération", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -174,7 +174,7 @@ public partial class SettingsWindow : Window
 
     private async void RegenerateRecovery_Click(object sender, RoutedEventArgs e)
     {
-        if (MessageBox.Show(this,
+        if (MessageBox.Show(Window.GetWindow(this),
                 "Régénérer le code invalide le précédent. Les sauvegardes restent accessibles avec la clé actuelle. Continuer ?",
                 "Régénérer le code", MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
@@ -188,7 +188,7 @@ public partial class SettingsWindow : Window
         }
         catch (Exception ex)
         {
-            MessageBox.Show(this, ex.Message, "Code de récupération", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Window.GetWindow(this), ex.Message, "Code de récupération", MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -201,7 +201,7 @@ public partial class SettingsWindow : Window
     {
         try { Clipboard.SetText(code); }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Clipboard unavailable: {ex}"); }
-        new RecoveryKeyWindow(code, enterMode: false) { Owner = this }.ShowDialog();
+        new RecoveryKeyWindow(code, enterMode: false) { Owner = Window.GetWindow(this) }.ShowDialog();
     }
 
     // ─── MISES À JOUR ────────────────────────────────────────────────────

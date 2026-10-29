@@ -26,6 +26,8 @@ public partial class MainWindow : Window
     private bool _isDarkTheme = true;
     private bool _loadingOptions = true;
     private SmartScanResult[]? _smartScanResults;
+    private readonly Dictionary<string, UserControl> _toolViews = [];
+    private Button? _activeToolButton;
 
     private static readonly Dictionary<string, (string Title, string Desc)> PluginMeta = new()
     {
@@ -64,8 +66,18 @@ public partial class MainWindow : Window
     private void SidebarPlugin_Click(object sender, RoutedEventArgs e)
     {
         if (UiOperation.IsBusy || sender is not Button { Tag: string tag }) return;
+        ShowCleaner(tag);
+    }
+
+    internal void ShowCleaner(string tag)
+    {
+        if (UiOperation.IsBusy || !PluginMeta.ContainsKey(tag)) return;
+        if (_activeToolButton != null) _activeToolButton.Style = (Style)FindResource("SidebarBtnStyle");
+        _activeToolButton = null;
+        ToolContent.Visibility = Visibility.Collapsed;
+        DashboardScroll.Visibility = Visibility.Visible;
+        if (_selectedPluginTag != tag) InvalidateAnalysis();
         _selectedPluginTag = tag;
-        InvalidateAnalysis();
         UpdateSidebarSelection(tag);
         UpdatePluginHeader(tag);
     }
@@ -147,7 +159,10 @@ public partial class MainWindow : Window
 
     private void SetBusy(bool busy)
     {
-        SidebarPanel.IsEnabled = BrowserOptionsPanel.IsEnabled = !busy;
+        NavigationScroll.IsEnabled = SettingsNav.IsEnabled = BrowserOptionsPanel.IsEnabled = !busy;
+        ToolCancelBtn.Visibility = busy && ToolContent.Visibility == Visibility.Visible ? Visibility.Visible : Visibility.Collapsed;
+        ToolCancelBtn.IsEnabled = busy;
+        ToolCancelBtn.Content = "Annuler l'opération";
         AnalyzeBtn.IsEnabled = SmartScanBtn.IsEnabled = !busy;
         SearchBox.IsEnabled = RiskFilterCombo.IsEnabled = !busy;
         CleanBtn.IsEnabled = !busy && _currentPlugin != null && _foundItems.Count > 0;
@@ -179,6 +194,8 @@ public partial class MainWindow : Window
     private void CancelOperation_Click(object sender, RoutedEventArgs e)
     {
         UiOperation.CancelCurrent();
+        ToolCancelBtn.IsEnabled = false;
+        ToolCancelBtn.Content = "Annulation en cours…";
         LoadingText.Text = "Annulation en cours…";
         LoadingSubText.Text = "L'opération en cours se termine proprement.";
     }
@@ -484,17 +501,48 @@ public partial class MainWindow : Window
     }
 
     private void ThemeToggle_Click(object sender, RoutedEventArgs e) => ApplyTheme(!_isDarkTheme);
-    private void OpenRestore_Click(object sender, RoutedEventArgs e) => new RestoreWindow { Owner = this }.ShowDialog();
-    private void OpenDuplicates_Click(object sender, RoutedEventArgs e) => new DuplicateWindow { Owner = this }.Show();
-    private void OpenSettings_Click(object sender, RoutedEventArgs e) => new SettingsWindow { Owner = this }.ShowDialog();
-    private void OpenDiskAnalyzer_Click(object sender, RoutedEventArgs e) => new DiskSpaceWindow { Owner = this }.Show();
-    private void OpenPrivacy_Click(object sender, RoutedEventArgs e) => new PrivacyWindow { Owner = this }.Show();
-    private void OpenDevCleaner_Click(object sender, RoutedEventArgs e) => new DevCleanerWindow { Owner = this }.Show();
-    private void OpenHealth_Click(object sender, RoutedEventArgs e) => new HealthWindow { Owner = this }.Show();
-    private void OpenUninstaller_Click(object sender, RoutedEventArgs e) => new UninstallerWindow { Owner = this }.Show();
-    private void OpenStartup_Click(object sender, RoutedEventArgs e) => new StartupWindow { Owner = this }.Show();
-    private void OpenUpdates_Click(object sender, RoutedEventArgs e) => new UpdatesWindow { Owner = this }.Show();
-    private void OpenShredder_Click(object sender, RoutedEventArgs e) => new ShredderWindow { Owner = this }.Show();
+    internal void ShowTool(string key, Button? button = null)
+    {
+        if (UiOperation.IsBusy) return;
+        if (!_toolViews.TryGetValue(key, out var view))
+        {
+            view = key switch
+            {
+                "restore" => new RestoreWindow(), "duplicates" => new DuplicateWindow(),
+                "settings" => new SettingsWindow(), "disk" => new DiskSpaceWindow(),
+                "privacy" => new PrivacyWindow(), "dev" => new DevCleanerWindow(),
+                "health" => new HealthWindow(), "uninstall" => new UninstallerWindow(),
+                "startup" => new StartupWindow(), "updates" => new UpdatesWindow(),
+                "shredder" => new ShredderWindow(), _ => throw new ArgumentException("Unknown tool", nameof(key))
+            };
+            _toolViews.Add(key, view);
+        }
+        if (_activeToolButton != null) _activeToolButton.Style = (Style)FindResource("SidebarBtnStyle");
+        _activeToolButton = button;
+        if (button != null) button.Style = (Style)FindResource("SidebarBtnActiveStyle");
+        UpdateSidebarSelection("");
+        DashboardScroll.Visibility = Visibility.Collapsed;
+        ToolContent.Content = view;
+        ToolContent.Visibility = Visibility.Visible;
+    }
+
+    private void OpenRestore_Click(object sender, RoutedEventArgs e) => ShowTool("restore", sender as Button);
+    private void OpenDuplicates_Click(object sender, RoutedEventArgs e) => ShowTool("duplicates", sender as Button);
+    private void OpenSettings_Click(object sender, RoutedEventArgs e) => ShowTool("settings", sender as Button);
+    private void OpenDiskAnalyzer_Click(object sender, RoutedEventArgs e) => ShowTool("disk", sender as Button);
+    private void OpenPrivacy_Click(object sender, RoutedEventArgs e) => ShowTool("privacy", sender as Button);
+    private void OpenDevCleaner_Click(object sender, RoutedEventArgs e) => ShowTool("dev", sender as Button);
+    private void OpenHealth_Click(object sender, RoutedEventArgs e) => ShowTool("health", sender as Button);
+    private void OpenUninstaller_Click(object sender, RoutedEventArgs e) => ShowTool("uninstall", sender as Button);
+    private void OpenStartup_Click(object sender, RoutedEventArgs e) => ShowTool("startup", sender as Button);
+    private void OpenUpdates_Click(object sender, RoutedEventArgs e) => ShowTool("updates", sender as Button);
+    private void OpenShredder_Click(object sender, RoutedEventArgs e) => ShowTool("shredder", sender as Button);
+
+    internal void ShowHealthTool(string key)
+    {
+        Button? button = key switch { "startup" => StartupNav, "updates" => UpdatesNav, "disk" => DiskNav, _ => null };
+        if (button != null) ShowTool(key, button);
+    }
 
     private async void SmartScan_Click(object sender, RoutedEventArgs e)
     {

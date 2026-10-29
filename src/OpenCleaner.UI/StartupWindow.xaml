@@ -1,9 +1,6 @@
-<Window Style="{StaticResource {x:Type Window}}" x:Class="OpenCleaner.UI.StartupWindow"
+<UserControl x:Class="OpenCleaner.UI.StartupWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="OpenCleaner · Démarrage Windows" Height="700" Width="1080"
-        MinHeight="540" MinWidth="840"
-        WindowStartupLocation="CenterOwner">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
     <Border Background="{DynamicResource BgMain}" Padding="28,26">
         <Grid>
             <Grid.RowDefinitions>
@@ -185,4 +182,4 @@
             </Border>
         </Grid>
     </Border>
-</Window>
+</UserControl>

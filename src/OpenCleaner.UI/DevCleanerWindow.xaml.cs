@@ -1,3 +1,4 @@
+using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
@@ -39,7 +40,7 @@ public sealed class DevItem : System.ComponentModel.INotifyPropertyChanged
 
 // ──── Code-behind ────────────────────────────────────────────────────────────
 
-public partial class DevCleanerWindow : System.Windows.Window
+public partial class DevCleanerWindow : UserControl
 {
     private readonly ObservableCollection<DevItem> _items = [];
     private List<CleanableItem> _allItems = [];
@@ -73,7 +74,7 @@ public partial class DevCleanerWindow : System.Windows.Window
 
     private async void Scan_Click(object sender, RoutedEventArgs e)
     {
-        if (!UiOperation.TryBegin(this, out var operation)) return;
+        if (!UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using var scope = operation;
         foreach (var option in Options) option.IsEnabled = false;
         ScanBtn.IsEnabled    = false;
@@ -162,7 +163,7 @@ public partial class DevCleanerWindow : System.Windows.Window
 
         if (confirm != MessageBoxResult.Yes) return;
 
-        if (_plugin == null || !UiOperation.TryBegin(this, out var operation)) return;
+        if (_plugin == null || !UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using var scope = operation;
         foreach (var option in Options) option.IsEnabled = false;
         SelectAllBtn.IsEnabled = false;

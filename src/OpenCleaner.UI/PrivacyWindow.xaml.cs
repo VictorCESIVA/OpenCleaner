@@ -1,3 +1,4 @@
+using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
@@ -32,7 +33,7 @@ public sealed class PrivacyAlert
 
 // ──── Code-behind ────────────────────────────────────────────────────────────
 
-public partial class PrivacyWindow : System.Windows.Window
+public partial class PrivacyWindow : UserControl
 {
     private readonly ObservableCollection<PrivacyAlert> _alerts = [];
     private List<CleanableItem> _currentItems = [];
@@ -48,7 +49,7 @@ public partial class PrivacyWindow : System.Windows.Window
 
     private async void Scan_Click(object sender, RoutedEventArgs e)
     {
-        if (!UiOperation.TryBegin(this, out var operation)) return;
+        if (!UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using var scope = operation;
         ScanBtn.IsEnabled   = false;
         SecureBtn.IsEnabled = false;
@@ -130,7 +131,7 @@ public partial class PrivacyWindow : System.Windows.Window
 
         if (confirm != MessageBoxResult.Yes) return;
 
-        if (_plugin == null || !UiOperation.TryBegin(this, out var operation)) return;
+        if (_plugin == null || !UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using var scope = operation;
         SecureBtn.IsEnabled = ScanBtn.IsEnabled = false;
         StatusText.Text     = "Suppression en cours…";

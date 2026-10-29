@@ -1,3 +1,4 @@
+using System.Windows.Controls;
 using Microsoft.Extensions.DependencyInjection;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
@@ -41,7 +42,7 @@ public sealed class DiskEntry
 
 // ──── Code-behind ───────────────────────────────────────────────────────────
 
-public partial class DiskSpaceWindow : System.Windows.Window
+public partial class DiskSpaceWindow : UserControl
 {
     private readonly ObservableCollection<DiskEntry> _entries = [];
     private IReadOnlyList<CleanableItem> _allItems = [];
@@ -79,7 +80,7 @@ public partial class DiskSpaceWindow : System.Windows.Window
 
     private async void Scan_Click(object sender, RoutedEventArgs e)
     {
-        if (!UiOperation.TryBegin(this, out var operation)) return;
+        if (!UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using var scope = operation;
         ScanBtn.IsEnabled  = false;
         DriveCombo.IsEnabled = ResultList.IsEnabled = GoUpBtn.IsEnabled = false;

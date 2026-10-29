@@ -1,6 +1,6 @@
 # OpenCleaner
 
-Utilitaire Windows gratuit et open source pour examiner les fichiers temporaires, les caches et l'occupation du disque. Interface WPF en français, thèmes sombre et clair.
+Utilitaire Windows gratuit et open source pour examiner les fichiers temporaires, les caches et l'occupation du disque. Interface WPF en français, thèmes sombre et clair, avec les outils accessibles dans une seule fenêtre.
 
 ## Utilisation
 
@@ -19,7 +19,7 @@ Les sauvegardes sont conservées localement : elles occupent de l'espace. Un net
 - **Doublons** : comparaison SHA-256 (avec seuil de taille configurable et pré-empreinte rapide) dans les dossiers personnels courants. L'original conservé est identifié et revérifié avant la suppression des copies.
 - **Confidentialité** : repérage de certaines traces locales et fichiers contenant potentiellement des secrets. Ces résultats exigent une vérification manuelle ; cet outil n'est pas un antivirus.
 - **Espace disque** : classement des enfants d'un dossier selon leur taille accessible. Les dossiers inaccessibles, liés et certains dossiers système sont exclus ; les totaux sont donc partiels.
-- **Santé du PC** : informations système, mémoire, disques, durée de fonctionnement, corbeille et vidage du cache DNS.
+- **Santé du PC** : espace disponible par disque avec signalement sous 10 %, mémoire, durée de fonctionnement et corbeille ; accès direct au nettoyage, à l'espace disque, au démarrage et aux mises à jour. L'espace libre n'est pas un diagnostic de l'état physique du disque.
 - **Désinstallation** : liste des applications installées et lancement du désinstalleur officiel après confirmation.
 - **Démarrage Windows** : consultation et activation/désactivation des éléments HKCU et du dossier Démarrage, avec sauvegarde OpenCleaner ; les éléments machine restent en lecture seule sans élévation.
 - **Mises à jour logicielles** : vérification et mise à jour groupée via Windows Package Manager (`winget`), avec sortie visible et annulation. La mise à jour demande une autorisation administrateur ; les applications dont la version installée est inconnue sont ignorées.
