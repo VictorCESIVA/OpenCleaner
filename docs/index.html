@@ -21,8 +21,8 @@
     <link rel="canonical" href="https://victorcesiva.github.io/OpenCleaner/" />
     <title>OpenCleaner — De l’air pour votre PC.</title>
     <link rel="icon" type="image/svg+xml" href="assets/mark.svg" />
-    <link rel="stylesheet" href="styles.css?v=20261029" />
-    <script src="script.js?v=20261029" defer></script>
+    <link rel="stylesheet" href="styles.css?v=1.6.0" />
+    <script src="script.js?v=1.6.0" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -136,7 +136,7 @@
               ><span data-icon="check"></span> Vous gardez la main</span
             >
           </div>
-          <p class="preview-disclaimer">Aperçu de la version en développement. L’apparence peut différer de la version téléchargée.</p>
+          <p class="preview-disclaimer">Interface 1.6 : sauvegarde à votre choix avant chaque nettoyage.</p>
           <div class="orbit-label" aria-hidden="true">
             <span data-icon="leaf"></span> Gardez l’essentiel.
           </div>
@@ -284,6 +284,12 @@
             </a>
             <figcaption><h3>Chaque dossier à sa place.</h3><p>Explorez les dossiers les plus volumineux, les gros fichiers et les applications associées, sans rien supprimer.</p><span>Espace disque · données d’exemple</span></figcaption>
           </figure>
+          <figure class="preview-card preview-card-wide" id="choix-sauvegarde">
+            <a href="preview/cleanup-choice.png" target="_blank" rel="noopener" aria-label="Agrandir le choix de sauvegarde avant nettoyage (nouvel onglet)">
+              <img src="preview/cleanup-choice.png" width="740" height="394" loading="lazy" decoding="async" alt="Confirmation du nettoyage : Annuler, Supprimer sans sauvegarde, ou Sauvegarder et supprimer.">
+            </a>
+            <figcaption><h3>La sauvegarde, c’est votre choix.</h3><p>Supprimez définitivement sans créer de copie, ou gardez une sauvegarde chiffrée pour pouvoir restaurer vos fichiers. Le choix est redemandé à chaque nettoyage manuel.</p><span>Confirmation du nettoyage · version 1.6</span></figcaption>
+          </figure>
         </div>
       </section>
       <section
@@ -335,10 +341,11 @@
             <li>
               <span class="step-number">03</span>
               <div>
-                <h3>Confirmez le nettoyage</h3>
+                <h3>Choisissez avec ou sans sauvegarde</h3>
                 <p>
-                  Les suppressions de fichiers passent par des contrôles et une
-                  sauvegarde locale vérifiée.
+                  « Sauvegarder et supprimer » conserve une copie chiffrée
+                  vérifiée. « Supprimer sans sauvegarde » supprime définitivement
+                  les fichiers hors de la corbeille, sans créer de copie.
                 </p>
               </div>
               <span data-icon="check"></span>
@@ -348,10 +355,11 @@
         <aside class="backup-note shell">
           <span data-icon="info"></span>
           <p>
-            <strong>Et les sauvegardes ?</strong> Elles restent sur votre disque
-            et occupent de l’espace jusqu’à leur suppression dans Restauration.
-            Avec une sauvegarde sur le même disque, le nettoyage ne libère donc
-            pas immédiatement le volume annoncé par l’analyse.
+            <strong>Avant de confirmer :</strong> sans sauvegarde, les fichiers
+            déjà supprimés ne peuvent pas être restaurés par OpenCleaner, même
+            en cas d’annulation ou d’erreur. Avec sauvegarde, les copies restent
+            dans Restauration et occupent de l’espace. Les anciennes sauvegardes
+            sont conservées ; aucune nouvelle copie n’est créée si vous refusez.
           </p>
         </aside>
       </section>
@@ -434,7 +442,9 @@
               Une analyse ne supprime rien. Vous examinez les résultats, puis
               confirmez le nettoyage. Si vous activez la planification dans
               l’application, elle se limite aux fichiers à faible risque des
-              catégories autorisées.
+              catégories autorisées. Vous choisissez dans les paramètres si ces
+              nettoyages planifiés doivent créer une sauvegarde. Les planifications
+              existantes la conservent tant que vous ne changez pas ce réglage.
             </p>
           </details>
           <details>
@@ -443,8 +453,10 @@
               <span aria-hidden="true">+</span>
             </summary>
             <p>
-              Ouvrez Restauration dans OpenCleaner pour retrouver les
-              sauvegardes encore conservées. Elles sont locales, chiffrées avec
+              Seuls les fichiers pour lesquels vous avez choisi et conservé une
+              sauvegarde peuvent être restaurés dans Restauration. Sans sauvegarde,
+              les fichiers sont supprimés définitivement et ne sont pas récupérables
+              ici. Les sauvegardes sont locales, chiffrées avec
               une clé liée à votre compte Windows, et un code de récupération
               permet de retrouver l’accès en cas de perte : conservez-le en lieu
               sûr. Ces copies ne remplacent pas une sauvegarde indépendante.
