@@ -98,32 +98,56 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
         }
 
         var hashes = new Dictionary<string, List<FileInfo>>(StringComparer.Ordinal);
+        var hashLock = new object();
         int done = 0;
-        foreach (var info in partialSuspects)
+        int total = partialSuspects.Count;
+        var parallelOptions = new ParallelOptions
         {
-            ct.ThrowIfCancellationRequested();
-            try
+            CancellationToken = ct,
+            MaxDegreeOfParallelism = Math.Clamp(Environment.ProcessorCount, 1, 4)
+        };
+        try
+        {
+            await Parallel.ForEachAsync(partialSuspects, parallelOptions, async (info, token) =>
             {
-                var length = info.Length;
-                var modified = info.LastWriteTimeUtc;
-                OnFileHashing?.Invoke(info.FullName);
-                var hash = await HashHelper.ComputeHashAsync(info.FullName, ct);
-                info.Refresh();
-                if (!info.Exists || info.Length != length || info.LastWriteTimeUtc != modified) continue;
-                if (!hashes.TryGetValue(hash, out var group)) hashes[hash] = group = [];
-                group.Add(info);
-            }
-            catch (OperationCanceledException) { throw; }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
-            {
-                _logger.LogDebug(ex, "Comparaison impossible : {Path}", info.FullName);
-            }
-            finally { progress?.Report(++done / (double)partialSuspects.Count); }
+                token.ThrowIfCancellationRequested();
+                try
+                {
+                    var length = info.Length;
+                    var modified = info.LastWriteTimeUtc;
+                    OnFileHashing?.Invoke(info.FullName);
+                    var hash = await HashHelper.ComputeHashAsync(info.FullName, token).ConfigureAwait(false);
+                    info.Refresh();
+                    if (!info.Exists || info.Length != length || info.LastWriteTimeUtc != modified) return;
+                    lock (hashLock)
+                    {
+                        if (!hashes.TryGetValue(hash, out var group)) hashes[hash] = group = [];
+                        group.Add(info);
+                    }
+                }
+                catch (OperationCanceledException) { throw; }
+                catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+                {
+                    _logger.LogDebug(ex, "Comparaison impossible : {Path}", info.FullName);
+                }
+                finally
+                {
+                    int current = Interlocked.Increment(ref done);
+                    if (total > 0) progress?.Report(current / (double)total);
+                }
+            });
         }
+        catch (AggregateException ex) when (ex.InnerExceptions.All(
+                   inner => inner is OperationCanceledException))
+        {
+            throw new OperationCanceledException(ct);
+        }
+        progress?.Report(1);
 
         var items = new List<CleanableItem>();
         var published = new List<(CleanableItem Item, DateTime LastWriteUtc)>();
-        foreach (var group in hashes.Where(g => g.Value.Count > 1))
+        foreach (var group in hashes.Where(group => group.Value.Count > 1)
+                     .OrderBy(group => group.Key, StringComparer.Ordinal))
         {
             ct.ThrowIfCancellationRequested();
             // Stable order designates a keeper, without pretending to infer which file is the original.

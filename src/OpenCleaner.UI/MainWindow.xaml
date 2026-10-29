@@ -63,7 +63,20 @@
             <Grid.Height><MultiBinding Converter="{x:Static local:DashboardHeightConverter.Instance}"><Binding ElementName="DashboardScroll" Path="ViewportHeight"/><Binding ElementName="BrowserOptionsPanel" Path="Visibility"/></MultiBinding></Grid.Height>
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <Grid Grid.Row="0" Margin="0,0,0,20">
-                <StackPanel><TextBlock Text="Nettoyage" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="Analysez les fichiers avant de choisir ce que vous souhaitez supprimer." FontSize="13" Foreground="{DynamicResource TextSecond}" Margin="0,5,0,0" TextWrapping="Wrap"/></StackPanel>
+                <StackPanel>
+                    <TextBlock Text="Nettoyage" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="Analysez les fichiers avant de choisir ce que vous souhaitez supprimer." FontSize="13" Foreground="{DynamicResource TextSecond}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                    <Border x:Name="LowSpaceBanner" Background="{DynamicResource WarnSoft}" BorderBrush="{DynamicResource WarnColor}"
+                            BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,12,0,0" Visibility="Collapsed">
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                            <StackPanel>
+                                <TextBlock x:Name="LowSpaceTitle" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource WarnColor}" TextWrapping="Wrap"/>
+                                <TextBlock x:Name="LowSpaceDetail" FontSize="11" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                            </StackPanel>
+                            <Button Grid.Column="1" Content="Voir la santé" Click="OpenHealth_Click" Margin="12,0,0,0" VerticalAlignment="Center"/>
+                        </Grid>
+                    </Border>
+                </StackPanel>
             </Grid>
             <Border Grid.Row="1" Style="{StaticResource Card}" Padding="20,16" Margin="0,0,0,24">
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>

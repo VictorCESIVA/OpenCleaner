@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -170,6 +171,34 @@ public sealed class PluginSafetyTests : IDisposable
         Assert.False((await scanner.CleanAsync([item], _backup)).Success);
         _guardian.Verify(g => g.SafeDeleteAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task ParallelHashingKeepsEveryDuplicateAndCompletesProgress()
+    {
+        string content = new string('p', 300 * 1024);
+        for (int index = 0; index < 6; index++) Write($"copy{index}.txt", content);
+        var hashed = new ConcurrentBag<string>();
+        var progress = new SynchronousProgress();
+        var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root])
+        {
+            MinFileSizeBytes = 100 * 1024
+        };
+        scanner.OnFileHashing += path => hashed.Add(path);
+
+        var items = await scanner.AnalyzeAsync(progress);
+
+        Assert.Equal(5, items.Count);
+        Assert.All(items, item => Assert.Equal(Path.Combine(_root, "copy0.txt"), item.OriginalPath));
+        Assert.Single(items.Select(item => item.DuplicateGroupId).Distinct());
+        Assert.Equal(6, hashed.Count);
+        Assert.Equal(1, progress.Last);
+    }
+
+    private sealed class SynchronousProgress : IProgress<double>
+    {
+        public double Last { get; private set; }
+        public void Report(double value) => Last = value;
     }
 
     private void CreateJunction(string link, string target)

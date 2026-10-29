@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core;
 using OpenCleaner.Core.Security;
+using OpenCleaner.Core.Tools;
 using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System.Plugins;
 using System.Collections.ObjectModel;
@@ -61,7 +62,38 @@ public partial class MainWindow : Window
                 StatusText.Text = "Annulation en cours… vous pourrez ensuite fermer l'application.";
             }
         };
+        Loaded += async (_, _) => await CheckLowSpaceAsync();
     }
+
+    private async Task CheckLowSpaceAsync()
+    {
+        try
+        {
+            SystemHealthInfo info = await Task.Run(SystemInfoService.Get);
+            DiskSpaceAlert? alert = DiskSpaceAlertService.FindLowSpace(info.Disks);
+            if (alert == null)
+            {
+                LowSpaceBanner.Visibility = Visibility.Collapsed;
+                return;
+            }
+            ShowLowSpace(alert);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            LowSpaceBanner.Visibility = Visibility.Collapsed;
+        }
+    }
+
+    private void ShowLowSpace(DiskSpaceAlert alert)
+    {
+        LowSpaceTitle.Text = $"Espace faible sur {alert.Drive.TrimEnd('\\')}";
+        LowSpaceDetail.Text = $"{SizeFormatter.Format(alert.FreeBytes)} libres sur " +
+                              $"{SizeFormatter.Format(alert.TotalBytes)} ({alert.FreePercent:0.#} %). " +
+                              "Analysez le contenu avant de supprimer des fichiers.";
+        LowSpaceBanner.Visibility = Visibility.Visible;
+    }
+
+    internal void ShowLowSpaceForPreview(DiskSpaceAlert alert) => ShowLowSpace(alert);
 
     private void OnOperationStateChanged() => SetBusy(UiOperation.IsBusy);
 

@@ -9,6 +9,8 @@ Utilitaire Windows gratuit et open source pour examiner les fichiers temporaires
 3. Confirmez **Nettoyer**. Chaque suppression de fichier passe par le gardien et une sauvegarde vérifiée.
 4. Consultez **Restauration** pour restaurer ou supprimer les sauvegardes.
 
+Au démarrage, un bandeau signale un disque sous 10 % d'espace libre avec un accès direct à **Santé du PC** ; il ne supprime rien.
+
 Les sauvegardes sont conservées localement : elles occupent de l'espace. Un nettoyage avec une sauvegarde sur le même disque ne libère pas immédiatement le volume affiché lors du scan. Supprimez seulement les sauvegardes dont vous n'avez plus besoin pour récupérer cet espace.
 
 ### Raccourcis clavier

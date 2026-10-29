@@ -120,6 +120,9 @@ internal class Program
             new CleanableItem("preview-expert",@"HKCU\Software\Exemple",0,"Clé à vérifier",RiskLevel.ExpertOnly,ItemType.RegistryKey)};
         ((StackPanel)main.FindName("EmptyState")).Visibility=Visibility.Collapsed;
         Render(main,Path.Combine(output,"MainWindow-example-data.png"),main.Width,main.Height-36);
+        main.ShowLowSpaceForPreview(new DiskSpaceAlert("C:\\", 42L*1024*1024*1024, 500L*1024*1024*1024, 42.0/500));
+        Render(main,Path.Combine(output,"MainWindow-low-space.png"),main.Width,main.Height-36);
+        ((Border)main.FindName("LowSpaceBanner")).Visibility=Visibility.Collapsed;
         main.ShowTool("health", (Button)main.FindName("HealthNav"));
         var integratedHealth = (HealthWindow)((ContentControl)main.FindName("ToolContent")).Content;
         if (Window.GetWindow(integratedHealth) != main) throw new InvalidOperationException("Tool owner is not the main window");

@@ -18,7 +18,7 @@ Comparaison établie à partir des fonctions publiques de CCleaner pour Windows 
 | Apps Uninstaller | Oui | Liste, recherche, portée, taille et lancement du désinstalleur officiel. |
 | Software Updater | Oui | Via `winget`, avec sortie visible, confirmation et annulation. |
 | Disk Analyzer | Oui | Carte proportionnelle, navigation instantanée dans l'arborescence scannée, liste, plus gros fichiers et vue Applications (taille mesurée ou estimée). |
-| Duplicate Finder | Oui | SHA-256 avec pré-empreinte, conservation vérifiée de l'original et refus des fichiers à plusieurs liens physiques. |
+| Duplicate Finder | Oui | SHA-256 avec pré-empreinte, hachage complet parallèle, conservation vérifiée de l'original et refus des fichiers à plusieurs liens physiques. |
 | Registry Cleaner | Partiel | Historiques HKCU ciblés, export avant suppression, liste blanche. |
 | Scheduled Cleaning | Oui | Tâche Windows dans le contexte utilisateur, limitée aux fichiers Safe de catégories autorisées, caches d'applications compris. |
 | Smart Clean | Partiel | Analyse rapide et nettoyage des fichiers Safe ; pas de déclenchement automatique à la fermeture du navigateur. |
