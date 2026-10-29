@@ -100,6 +100,7 @@
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="Auto"/>
                             <ColumnDefinition Width="*"/>
                         </Grid.ColumnDefinitions>
                         <Button x:Name="ViewMapBtn" Grid.Column="0" Content="Carte"
@@ -110,8 +111,11 @@
                                 Margin="0,0,6,0" Click="ViewList_Click"/>
                         <Button x:Name="ViewFilesBtn" Grid.Column="2" Content="Plus gros fichiers"
                                 Style="{StaticResource SecondBtnStyle}" Padding="14,6" MinHeight="32"
-                                Click="ViewFiles_Click"/>
-                        <TextBlock x:Name="MapHint" Grid.Column="3" Margin="14,0,0,0"
+                                Margin="0,0,6,0" Click="ViewFiles_Click"/>
+                        <Button x:Name="ViewAppsBtn" Grid.Column="3" Content="Applications"
+                                Style="{StaticResource SecondBtnStyle}" Padding="14,6" MinHeight="32"
+                                Click="ViewApps_Click"/>
+                        <TextBlock x:Name="MapHint" Grid.Column="4" Margin="14,0,0,0"
                                    VerticalAlignment="Center" FontSize="11"
                                    Foreground="{DynamicResource TextSecond}"
                                    TextTrimming="CharacterEllipsis"
@@ -229,6 +233,65 @@
                                             <TextBlock Text="{Binding Path}" ToolTip="{Binding Path}"
                                                        Foreground="{DynamicResource TextSecond}"
                                                        TextTrimming="CharacterEllipsis"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                            </GridView>
+                        </ListView.View>
+                    </ListView>
+
+                    <ListView x:Name="ApplicationsList"
+                              Background="Transparent"
+                              BorderThickness="0"
+                              Foreground="{DynamicResource TextPrimary}"
+                              FontSize="12"
+                              Visibility="Collapsed"
+                              VirtualizingPanel.IsVirtualizing="True"
+                              VirtualizingPanel.VirtualizationMode="Recycling"
+                              MouseDoubleClick="ApplicationsList_DoubleClick"
+                              AutomationProperties.Name="Applications et espace occupé">
+                        <ListView.View>
+                            <GridView>
+                                <GridViewColumn Header="Taille" Width="90">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding SizeLabel}"
+                                                       Foreground="{Binding SizeColor}"
+                                                       FontWeight="SemiBold"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Application" Width="230">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Name}" ToolTip="{Binding Name}"
+                                                       TextTrimming="CharacterEllipsis" FontWeight="SemiBold"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Éditeur" Width="140">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Publisher}"
+                                                       Foreground="{DynamicResource TextSecond}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Emplacement" Width="390">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Location}" ToolTip="{Binding Location}"
+                                                       Foreground="{DynamicResource TextSecond}"
+                                                       TextTrimming="CharacterEllipsis"/>
+                                        </DataTemplate>
+                                    </GridViewColumn.CellTemplate>
+                                </GridViewColumn>
+                                <GridViewColumn Header="Source" Width="100">
+                                    <GridViewColumn.CellTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding SourceLabel}"
+                                                       Foreground="{Binding SourceBrush}"/>
                                         </DataTemplate>
                                     </GridViewColumn.CellTemplate>
                                 </GridViewColumn>

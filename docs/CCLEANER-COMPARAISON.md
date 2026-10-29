@@ -7,7 +7,7 @@ Comparaison établie à partir des fonctions publiques de CCleaner pour Windows 
 | CCleaner | OpenCleaner | Détail |
 |---|---|---|
 | Custom Clean | Oui | Catégories système, navigateurs, applications, registre, analyse et sélection. |
-| Nettoyage des navigateurs | Oui | Chrome, Edge, Brave, Firefox, Opera, Vivaldi ; cookies et historique sur option. |
+| Nettoyage des navigateurs | Oui | Chrome, Edge, Brave, Firefox, Opera, Vivaldi, y compris les canaux bêta, dev et canary ; cookies et historique sur option. |
 | Health Check | Oui | Score sur 100, cinq sections mesurées, constats expliqués, actions directes et historique local des 30 derniers jours. Aucune correction silencieuse : chaque action destructive reste confirmée. |
 | Corbeille | Oui | Consultation du volume et vidage explicite et irréversible. |
 | Prefetch | Oui | Cible experte, fichiers de plus de 30 jours. |
@@ -16,7 +16,7 @@ Comparaison établie à partir des fonctions publiques de CCleaner pour Windows 
 | Startup Manager | Partiel | HKCU Run/RunOnce et dossier Démarrage avec sauvegarde, réactivation et impact estimé ; HKLM en lecture seule. |
 | Apps Uninstaller | Oui | Liste, recherche, portée, taille et lancement du désinstalleur officiel. |
 | Software Updater | Oui | Via `winget`, avec sortie visible, confirmation et annulation. |
-| Disk Analyzer | Oui | Carte proportionnelle, navigation instantanée dans l'arborescence scannée, liste et plus gros fichiers. |
+| Disk Analyzer | Oui | Carte proportionnelle, navigation instantanée dans l'arborescence scannée, liste, plus gros fichiers et vue Applications (taille mesurée ou estimée). |
 | Duplicate Finder | Oui | SHA-256 avec pré-empreinte, conservation vérifiée de l'original et refus des fichiers à plusieurs liens physiques. |
 | Registry Cleaner | Partiel | Historiques HKCU ciblés, export avant suppression, liste blanche. |
 | Scheduled Cleaning | Oui | Tâche Windows dans le contexte utilisateur. |

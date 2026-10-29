@@ -63,6 +63,11 @@ internal class Program
             DiskUsageResult result = liveDisk.CurrentResult ?? throw new InvalidOperationException("Live scan result is missing");
             Console.WriteLine($"Live disk scan root={result.Root.FullPath} size={SizeFormatter.Format(result.TotalSize)} " +
                               $"files={result.TotalFiles:N0} dirs={result.TotalDirectories:N0} skipped={result.SkippedEntries}");
+            IReadOnlyList<InstalledSpaceEntry> mapped = InstalledSpaceMapper.Map(result.Root,
+                InstalledProgramService.GetInstalledPrograms());
+            Console.WriteLine($"Live applications mapped={mapped.Count} measured={mapped.Count(entry => entry.Measured)}");
+            foreach (var entry in mapped.Take(3))
+                Console.WriteLine($"  app {entry.Name} {SizeFormatter.Format(entry.Size)} measured={entry.Measured}");
             if (result.TotalSize <= 0) throw new InvalidOperationException("Live scan returned no size");
             (App.Services as IDisposable)?.Dispose();
             return;
@@ -158,6 +163,8 @@ internal class Program
         Render(disk,Path.Combine(output,"DiskSpaceWindow-list.png"),1048,824);
         disk.ShowPreviewData(PreviewDiskUsage(), "files");
         Render(disk,Path.Combine(output,"DiskSpaceWindow-files.png"),1048,824);
+        disk.ShowPreviewData(PreviewDiskUsage(), "apps", PreviewApplications());
+        Render(disk,Path.Combine(output,"DiskSpaceWindow-apps.png"),1048,824);
         disk.ShowPreviewData(PreviewDiskUsage());
         Render(disk,Path.Combine(output,"DiskSpaceWindow-carte.png"),1048,824);
         if (((TreemapControl)disk.FindName("Treemap")).RenderedTileCount < 5)
@@ -184,6 +191,24 @@ internal class Program
         BrowserCacheBytes = 2L * 1024 * 1024 * 1024 + 100L * 1024 * 1024,
         BrowserCacheItems = 960
     };
+
+    static IReadOnlyList<InstalledSpaceEntry> PreviewApplications()
+    {
+        const long Gb = 1024L * 1024 * 1024;
+        return
+        [
+            new InstalledSpaceEntry("Google Chrome", "Google LLC",
+                @"C:\Program Files\Google\Chrome\Application", (long)(1.1 * Gb), Measured: true),
+            new InstalledSpaceEntry("Microsoft Office", "Microsoft Corporation",
+                @"C:\Program Files\Microsoft Office", (long)(4.8 * Gb), Measured: true),
+            new InstalledSpaceEntry("Steam", "Valve Corporation",
+                @"C:\Program Files (x86)\Steam", (long)(12.3 * Gb), Measured: true),
+            new InstalledSpaceEntry("Adobe Creative Cloud", "Adobe Inc.",
+                @"C:\Program Files\Adobe\Adobe Creative Cloud", (long)(2.4 * Gb), Measured: false),
+            new InstalledSpaceEntry("Jeu exemple", "Éditeur exemple",
+                @"C:\Program Files\Games", (long)(3.5 * Gb), Measured: false)
+        ];
+    }
 
     static DiskUsageResult PreviewDiskUsage()
     {

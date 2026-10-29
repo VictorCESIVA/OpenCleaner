@@ -50,17 +50,48 @@ public sealed class DiskEntry
         size >= 10_485_760 ? "SizeMed" : "SizeSmall";
 }
 
+public sealed class ApplicationSpaceRow
+{
+    public ApplicationSpaceRow(InstalledSpaceEntry entry)
+    {
+        Entry = entry;
+        SizeLabel = SizeFormatter.Format(entry.Size);
+        Publisher = string.IsNullOrWhiteSpace(entry.Publisher) ? "—" : entry.Publisher!;
+        SourceLabel = entry.Measured ? "Mesuré" : "Estimé";
+        SourceBrush = (Brush)Application.Current.FindResource(entry.Measured ? "TextSecond" : "WarnColor");
+        SizeColor = (Brush)Application.Current.FindResource(SizeColorKey(entry.Size));
+    }
+
+    public InstalledSpaceEntry Entry { get; }
+    public string Name => Entry.Name;
+    public string Publisher { get; }
+    public string Location => Entry.Location;
+    public long Size => Entry.Size;
+    public string SizeLabel { get; }
+    public string SourceLabel { get; }
+    public Brush SourceBrush { get; }
+    public Brush SizeColor { get; }
+
+    private static string SizeColorKey(long size) =>
+        size >= 1_073_741_824 ? "SizeHuge" :
+        size >= 104_857_600 ? "SizeLarge" :
+        size >= 10_485_760 ? "SizeMed" : "SizeSmall";
+}
+
 public partial class DiskSpaceWindow : UserControl, IThemeAware
 {
-    private enum DiskView { Map, List, Files }
+    private enum DiskView { Map, List, Files, Apps }
 
     private static readonly string DefaultHint = "Double-cliquez sur un dossier pour l'explorer.";
 
     private readonly ObservableCollection<DiskEntry> _entries = [];
     private readonly ObservableCollection<DiskEntry> _largest = [];
+    private readonly ObservableCollection<ApplicationSpaceRow> _applications = [];
     private readonly Stack<DiskUsageNode> _navStack = new();
     private DiskUsageResult? _result;
     private DiskUsageNode? _current;
+    private IReadOnlyList<InstalledSpaceEntry>? _previewApplications;
+    private CancellationTokenSource? _appsCancellation;
     private DiskView _view = DiskView.Map;
     private bool _busy;
     private string _currentRoot = Path.GetPathRoot(Environment.SystemDirectory) ?? @"C:\";
@@ -70,6 +101,7 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         InitializeComponent();
         ResultList.ItemsSource = _entries;
         LargestList.ItemsSource = _largest;
+        ApplicationsList.ItemsSource = _applications;
         Treemap.NodeActivated += OnTreemapActivated;
         Treemap.HoveredNodeChanged += OnTreemapHovered;
         LoadDrives();
@@ -93,13 +125,16 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
     }
 
     /// <summary>Alimente la fenêtre avec un résultat synthétique (aperçus, tests de rendu).</summary>
-    internal void ShowPreviewData(DiskUsageResult result, string view = "map")
+    internal void ShowPreviewData(DiskUsageResult result, string view = "map",
+        IReadOnlyList<InstalledSpaceEntry>? applications = null)
     {
         _result = result;
+        _previewApplications = applications;
         _view = view switch
         {
             "list" => DiskView.List,
             "files" => DiskView.Files,
+            "apps" => DiskView.Apps,
             _ => DiskView.Map
         };
         UpdateStats(result);
@@ -124,6 +159,9 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         _current = null;
         _entries.Clear();
         _largest.Clear();
+        _applications.Clear();
+        _previewApplications = null;
+        _appsCancellation?.Cancel();
         Treemap.Node = null;
         PathBreadcrumb.Text = _currentRoot;
         GoUpBtn.IsEnabled = false;
@@ -159,6 +197,9 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         EmptyState.Visibility = Visibility.Collapsed;
         _entries.Clear();
         _largest.Clear();
+        _applications.Clear();
+        _previewApplications = null;
+        _appsCancellation?.Cancel();
         Treemap.Node = null;
         ClearStats();
         StatusText.Text = "Analyse en cours… les dossiers protégés sont uniquement mesurés.";
@@ -205,10 +246,10 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         _busy = busy;
         ScanBtn.IsEnabled = !busy;
         DriveCombo.IsEnabled = !busy;
-        ResultList.IsEnabled = LargestList.IsEnabled = Treemap.IsEnabled = !busy;
+        ResultList.IsEnabled = LargestList.IsEnabled = ApplicationsList.IsEnabled = Treemap.IsEnabled = !busy;
         RevealBtn.IsEnabled = !busy;
         GoUpBtn.IsEnabled = !busy && _navStack.Count > 0;
-        ViewMapBtn.IsEnabled = ViewListBtn.IsEnabled = ViewFilesBtn.IsEnabled = !busy;
+        ViewMapBtn.IsEnabled = ViewListBtn.IsEnabled = ViewFilesBtn.IsEnabled = ViewAppsBtn.IsEnabled = !busy;
     }
 
     // ─── AFFICHAGE ──────────────────────────────────────────────────────
@@ -273,10 +314,12 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         ResultList.Visibility = _view == DiskView.List ? Visibility.Visible : Visibility.Collapsed;
         MapHost.Visibility = _view == DiskView.Map ? Visibility.Visible : Visibility.Collapsed;
         LargestList.Visibility = _view == DiskView.Files ? Visibility.Visible : Visibility.Collapsed;
+        ApplicationsList.Visibility = _view == DiskView.Apps ? Visibility.Visible : Visibility.Collapsed;
 
         ViewMapBtn.Style = (Style)FindResource(_view == DiskView.Map ? "AccentBtnStyle" : "SecondBtnStyle");
         ViewListBtn.Style = (Style)FindResource(_view == DiskView.List ? "AccentBtnStyle" : "SecondBtnStyle");
         ViewFilesBtn.Style = (Style)FindResource(_view == DiskView.Files ? "AccentBtnStyle" : "SecondBtnStyle");
+        ViewAppsBtn.Style = (Style)FindResource(_view == DiskView.Apps ? "AccentBtnStyle" : "SecondBtnStyle");
 
         if (_view == DiskView.Files)
         {
@@ -284,6 +327,13 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
             MapHint.Text = _result == null
                 ? "Lancez une analyse pour lister les plus gros fichiers."
                 : $"{_result.LargestFiles.Count:N0} fichier(s) les plus volumineux de l'analyse.";
+        }
+        else if (_view == DiskView.Apps)
+        {
+            if (_previewApplications != null)
+                PopulateApplications(_previewApplications);
+            else
+                _ = LoadApplicationsAsync();
         }
         else if (_current != null)
         {
@@ -293,13 +343,54 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         }
     }
 
+    private async Task LoadApplicationsAsync()
+    {
+        DiskUsageResult? result = _result;
+        if (result == null)
+        {
+            _applications.Clear();
+            MapHint.Text = "Lancez une analyse pour associer les applications aux dossiers.";
+            return;
+        }
+
+        _appsCancellation?.Cancel();
+        _appsCancellation?.Dispose();
+        var cancellation = _appsCancellation = new CancellationTokenSource();
+        MapHint.Text = "Association des applications aux dossiers analysés…";
+        try
+        {
+            var entries = await Task.Run(() =>
+                InstalledSpaceMapper.Map(result.Root, InstalledProgramService.GetInstalledPrograms()),
+                cancellation.Token);
+            if (cancellation.IsCancellationRequested || !ReferenceEquals(_result, result) ||
+                _view != DiskView.Apps) return;
+            PopulateApplications(entries);
+        }
+        catch (OperationCanceledException) { }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            MapHint.Text = "Lecture des applications impossible : " + ex.Message;
+        }
+    }
+
+    private void PopulateApplications(IReadOnlyList<InstalledSpaceEntry> entries)
+    {
+        _applications.Clear();
+        foreach (var entry in entries) _applications.Add(new ApplicationSpaceRow(entry));
+        MapHint.Text = entries.Count == 0
+            ? "Aucune application installée ne correspond aux dossiers analysés."
+            : $"{entries.Count:N0} application(s) • tailles mesurées ou estimées depuis le registre.";
+    }
+
     private void ViewMap_Click(object sender, RoutedEventArgs e) => SwitchView(DiskView.Map);
     private void ViewList_Click(object sender, RoutedEventArgs e) => SwitchView(DiskView.List);
     private void ViewFiles_Click(object sender, RoutedEventArgs e) => SwitchView(DiskView.Files);
+    private void ViewApps_Click(object sender, RoutedEventArgs e) => SwitchView(DiskView.Apps);
 
     private void SwitchView(DiskView view)
     {
         if (_busy) return;
+        if (_view == DiskView.Apps && view != DiskView.Apps) _appsCancellation?.Cancel();
         _view = view;
         UpdateView();
     }
@@ -348,6 +439,12 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
             ExplorerHelper.RevealInExplorer(entry.Path);
     }
 
+    private void ApplicationsList_DoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if (!_busy && ApplicationsList.SelectedItem is ApplicationSpaceRow row)
+            ExplorerHelper.RevealInExplorer(row.Location);
+    }
+
     private void GoUp_Click(object sender, RoutedEventArgs e)
     {
         if (_busy || _navStack.Count == 0) return;
@@ -359,6 +456,8 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
     {
         if (ResultList.SelectedItem is DiskEntry entry) ExplorerHelper.RevealInExplorer(entry.Path);
         else if (LargestList.SelectedItem is DiskEntry file) ExplorerHelper.RevealInExplorer(file.Path);
+        else if (ApplicationsList.SelectedItem is ApplicationSpaceRow application)
+            ExplorerHelper.RevealInExplorer(application.Location);
         else ExplorerHelper.RevealInExplorer(_current?.FullPath ?? _currentRoot);
     }
 }
