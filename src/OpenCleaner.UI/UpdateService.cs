@@ -1,3 +1,4 @@
+using OpenCleaner.UI.Localization;
 using Velopack;
 using Velopack.Sources;
 
@@ -8,6 +9,8 @@ namespace OpenCleaner.UI;
 /// </summary>
 public static class UpdateService
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     private const string RepoUrl = "https://github.com/VictorCESIVA/OpenCleaner";
 
     /// <summary>
@@ -50,38 +53,38 @@ public static class UpdateService
         {
             if (UiOperation.IsBusy)
             {
-                onStatus("Terminez l'opération en cours avant de mettre à jour OpenCleaner.");
+                onStatus(T("Update.Busy"));
                 return false;
             }
             var mgr = new UpdateManager(new GithubSource(RepoUrl, null!, false));
             if (!mgr.IsInstalled)
             {
-                onStatus("Mises à jour automatiques : installez OpenCleaner via Setup.exe pour les activer.");
+                onStatus(T("Update.NotInstalled"));
                 return false;
             }
 
-            onStatus("Vérification en cours…");
+            onStatus(T("Update.Checking"));
             var newVersion = await mgr.CheckForUpdatesAsync();
             if (newVersion == null)
             {
-                onStatus("Vous avez déjà la dernière version.");
+                onStatus(T("Update.Latest"));
                 return false;
             }
 
-            onStatus($"Téléchargement de la v{newVersion.TargetFullRelease?.Version}…");
+            onStatus(T("Update.Downloading", newVersion.TargetFullRelease?.Version));
             await mgr.DownloadUpdatesAsync(newVersion);
 
             if (UiOperation.IsBusy)
             {
-                onStatus("Mise à jour téléchargée. Terminez l'opération en cours avant de redémarrer.");
+                onStatus(T("Update.ReadyBusy"));
                 return false;
             }
-            if (!confirmRestart($"Une mise à jour (v{newVersion.TargetFullRelease?.Version}) est prête. Redémarrer maintenant ?"))
+            if (!confirmRestart(T("Update.RestartConfirm", newVersion.TargetFullRelease?.Version)))
                 return false;
 
             if (UiOperation.IsBusy)
             {
-                onStatus("Une opération a démarré. La mise à jour reste téléchargée ; vous pourrez redémarrer ensuite.");
+                onStatus(T("Update.Started"));
                 return false;
             }
             mgr.ApplyUpdatesAndRestart(newVersion);
@@ -89,7 +92,7 @@ public static class UpdateService
         }
         catch (Exception ex)
         {
-            onStatus($"Erreur : {ex.Message}");
+            onStatus(T("Update.Error", ex.Message));
             return false;
         }
     }

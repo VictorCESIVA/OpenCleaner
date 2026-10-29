@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Threading;
 using System.Windows;
+using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
@@ -25,8 +26,8 @@ internal sealed class UiOperation : IDisposable
     {
         if (_current != null)
         {
-            MessageBox.Show(owner, "Une opération est déjà en cours. Attendez sa fin ou annulez-la avant de continuer.",
-                "Opération en cours", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show(owner, LocalizationService.Instance.Get("App.Busy.Message"),
+                LocalizationService.Instance.Get("App.Busy.Title"), MessageBoxButton.OK, MessageBoxImage.Information);
             operation = null!;
             return false;
         }

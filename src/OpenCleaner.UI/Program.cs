@@ -1,4 +1,6 @@
 using System.Windows;
+using OpenCleaner.Core.Settings;
+using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
@@ -20,6 +22,8 @@ internal static class Program
             return;
         }
         Velopack.VelopackApp.Build().Run();
+        try { LocalizationService.Instance.SetLanguage(PreferencesStore.Load().Language); }
+        catch { /* Fall back to the default language. */ }
         var userId = System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value ?? Environment.UserName;
         using var mutex = new Mutex(false, @"Global\OpenCleaner-" + userId);
         bool ownsMutex;
@@ -28,7 +32,7 @@ internal static class Program
         if (!ownsMutex)
         {
             if (!args.Contains("--background"))
-                MessageBox.Show("OpenCleaner est déjà ouvert. Terminez l'opération dans la fenêtre existante.", "OpenCleaner");
+                MessageBox.Show(LocalizationService.Instance.Get("App.AlreadyRunning"), "OpenCleaner");
             else Environment.ExitCode = 1;
             return;
         }

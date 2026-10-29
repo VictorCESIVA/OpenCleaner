@@ -22,6 +22,7 @@ Migré :
 - Démarrage, Désinstallation et Mises à jour : en-têtes, recherche, tri, états, libellés de lignes, confirmations et statuts ;
 - Restauration, Confidentialité et Doublons : en-têtes, listes, aperçu, confirmations, progression, résultats et états vides ;
 - Caches développeur, Effacement sécurisé et code de récupération : catégories, avertissements, confirmations, progression et messages ;
+- messages applicatifs : récupération des nettoyages interrompus, sauvegardes corrompues/verrouillées, opération déjà en cours, mises à jour et instance déjà ouverte ;
 - libellés de risque, tailles, nombres, dates relatives et culture d'affichage (fr-FR / en-US) ;
 - sélecteur de langue dans les paramètres ;
 - préférence persistante et bascule immédiate.
@@ -29,8 +30,8 @@ Migré :
 Reste à migrer (le français reste affiché) :
 
 - descriptions générées par les plugins (alertes de confidentialité, messages de doublons, artefacts dev) et messages des services Core affichés dans l'interface ;
-- messages détaillés du service d'élévation HKLM et du helper de démarrage ;
-- textes des tâches planifiées et journaux secondaires.
+- messages détaillés du service d'élévation HKLM, du helper winget et de la gestion des tâches planifiées ;
+- journaux locaux et sorties externes (winget).
 
 ## Ajouter ou modifier une traduction
 

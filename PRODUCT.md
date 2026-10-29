@@ -45,7 +45,7 @@ Confirmed constraints: This is not an antivirus; privacy findings are leads, not
 ## Evidence on Hand
 
 - Product and security documentation: `README.md`.
-- Audits dated 2026-10-14, 2026-10-26, and 2026-10-29 in `docs/`, including the 292-test validation (247 Core, 28 plugins, 17 UI), the localization catalog tests, and the live read-only health, history, trend, and disk scans used for 1.4.0. Localization design and migration status: `docs/LOCALIZATION.md`.
+- Audits dated 2026-10-14, 2026-10-26, and 2026-10-29 in `docs/`, including the 293-test validation (247 Core, 28 plugins, 18 UI), the localization catalog tests, and the live read-only health, history, trend, and disk scans used for 1.4.0. Localization design and migration status: `docs/LOCALIZATION.md`.
 - Feature comparison with CCleaner: `docs/CCLEANER-COMPARAISON.md`.
 - Release notes for 1.1.0 through 1.3.0 in `docs/releases/`.
 - Real UI captures in `docs/preview/` and `artifacts/ui-preview/`.

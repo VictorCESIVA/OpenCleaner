@@ -101,6 +101,8 @@ public partial class App : System.Windows.Application
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Transaction purge failed: {ex}"); }
     }
 
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     private static async Task InitializeAsync()
     {
         await UpgradeBackupStorageAsync();
@@ -109,8 +111,8 @@ public partial class App : System.Windows.Application
             var transactions = Services.GetRequiredService<ITransactionManager>();
             var pending = await transactions.GetUnfinishedTransactionsAsync();
             if (pending.Count > 0 && MessageBox.Show(
-                    $"{pending.Count} nettoyage(s) interrompu(s) ou incomplets ont été détectés. Restaurer les fichiers manquants ? Les fichiers existants seront conservés.",
-                    "Récupération des nettoyages", MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+                    T("App.Recovery.Pending", pending.Count),
+                    T("App.Recovery.Title"), MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
             {
                 if (UiOperation.TryBegin(Current.MainWindow, out var operation))
                     using (operation)
@@ -120,8 +122,8 @@ public partial class App : System.Windows.Application
         }
         catch (Exception ex)
         {
-            MessageBox.Show($"La récupération est incomplète. Les sauvegardes restent disponibles dans Restauration.\n\n{ex.Message}",
-                "Récupération", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(T("App.Recovery.Incomplete", ex.Message),
+                T("App.Recovery.ErrorTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         _ = UpdateService.CheckForUpdatesOnStartupAsync();
     }
@@ -135,18 +137,16 @@ public partial class App : System.Windows.Application
             if (upgrade.Quarantined > 0)
             {
                 MessageBox.Show(
-                    $"{upgrade.Quarantined} sauvegarde(s) historique(s) corrompue(s) ont été isolées dans :\n\n{manager.QuarantineRoot}",
-                    "Sauvegardes corrompues", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    T("App.Backup.Corrupt", upgrade.Quarantined, manager.QuarantineRoot),
+                    T("App.Backup.CorruptTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             string? recoveryCode;
             try { recoveryCode = await manager.EnsureRecoveryCodeAsync(); }
             catch (BackupKeyUnavailableException)
             {
                 MessageBox.Show(
-                    manager.HasRecoveryCode
-                        ? "Les sauvegardes chiffrées sont verrouillées. Ouvrez Restauration puis « Code de récupération » pour saisir votre code."
-                        : "La clé de chiffrement est absente et aucun code de récupération n'a été configuré. Les sauvegardes existantes ne peuvent pas être déverrouillées.",
-                    "Sauvegardes verrouillées", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    manager.HasRecoveryCode ? T("App.Backup.Locked") : T("App.Backup.KeyMissing"),
+                    T("App.Backup.LockedTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             if (recoveryCode != null) ShowRecoveryCode(recoveryCode);
