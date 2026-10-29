@@ -2,9 +2,11 @@ using System.Diagnostics;
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core;
 using OpenCleaner.Core.Health;
@@ -65,6 +67,7 @@ public partial class HealthWindow : UserControl, IThemeAware
     private HealthMetrics? _metrics;
     private CleanupHistorySummary? _history;
     private IReadOnlyList<SpaceTrendPoint> _trendPoints = [];
+    private SpaceTrendResult? _trendResult;
 
     public HealthWindow()
     {
@@ -294,6 +297,7 @@ public partial class HealthWindow : UserControl, IThemeAware
 
     internal void PopulateTrend(SpaceTrendResult trend)
     {
+        _trendResult = trend;
         _trendPoints = trend.Points;
         TrendTitle.Text = $"Espace libre · {trend.Drive.TrimEnd('\\')}";
         TrendStart.Text = trend.Points.Count > 0
@@ -395,6 +399,14 @@ public partial class HealthWindow : UserControl, IThemeAware
 
     internal HealthReport? CurrentReport => _report;
     internal CleanupHistorySummary? CurrentHistory => _history;
+
+    /// <summary>Sérialise le diagnostic courant pour les contrôles de rendu (aucun fichier écrit).</summary>
+    internal string? BuildExportJsonForPreview()
+    {
+        if (_report == null || _metrics == null) return null;
+        return HealthExportService.ToJson(HealthExportService.Create(
+            _report, _metrics, _history, _trendResult, DateTime.UtcNow, "OpenCleaner"));
+    }
 
     /// <summary>Exécute la collecte réelle et le rendu (validation locale, hors CI).</summary>
     internal Task RunLiveCheckAsync() => LoadAsync();
@@ -499,9 +511,9 @@ public partial class HealthWindow : UserControl, IThemeAware
     private void SetBusy(bool busy)
     {
         _busy = busy;
-        RefreshBtn.IsEnabled = FlushDnsBtn.IsEnabled = !busy;
+        RefreshBtn.IsEnabled = FlushDnsBtn.IsEnabled = ExportHealthBtn.IsEnabled = !busy;
         EmptyRecycleBtn.IsEnabled = !busy && _hasRecycleItems;
-        Cursor = busy ? System.Windows.Input.Cursors.Wait : null;
+        Cursor = busy ? System.Windows.Input.Cursors.Wait : System.Windows.Input.Cursors.Arrow;
     }
 
     public void ApplyTheme(bool dark)
@@ -513,6 +525,42 @@ public partial class HealthWindow : UserControl, IThemeAware
     }
 
     private void Refresh_Click(object sender, RoutedEventArgs e) => _ = LoadAsync();
+
+    private void Health_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.F5 || _busy) return;
+        Refresh_Click(sender, e);
+        e.Handled = true;
+    }
+
+    private async void ExportHealth_Click(object sender, RoutedEventArgs e)
+    {
+        if (_report == null || _metrics == null)
+        {
+            StatusText.Text = "Diagnostic non disponible : actualisez d'abord.";
+            return;
+        }
+
+        var dialog = new SaveFileDialog
+        {
+            Title = "Exporter le diagnostic",
+            Filter = "Rapport JSON (*.json)|*.json",
+            FileName = $"OpenCleaner-Diagnostic-{DateTime.Now:yyyyMMdd-HHmm}.json"
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        try
+        {
+            string version = typeof(HealthWindow).Assembly.GetName().Version?.ToString(3) ?? "";
+            string json = HealthExportService.ToJson(HealthExportService.Create(
+                _report, _metrics, _history, _trendResult, DateTime.UtcNow, "OpenCleaner " + version));
+            await File.WriteAllTextAsync(dialog.FileName, json);
+            StatusText.Text = "Diagnostic exporté : " + Path.GetFileName(dialog.FileName);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            StatusText.Text = "Échec de l'export : " + ex.Message;
+        }
+    }
 
     private void FindingAction_Click(object sender, RoutedEventArgs e)
     {

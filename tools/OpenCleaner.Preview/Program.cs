@@ -85,6 +85,10 @@ internal class Program
         if (((TextBlock)health.FindName("ScoreValue")).Text == "—" ||
             ((ItemsControl)health.FindName("FindingsList")).Items.Count == 0)
             throw new InvalidOperationException("Health diagnostic is not rendered");
+        string? healthExport = health.BuildExportJsonForPreview();
+        if (healthExport == null || !healthExport.Contains("\"Score\"", StringComparison.Ordinal) ||
+            !healthExport.Contains("\"Trend\"", StringComparison.Ordinal))
+            throw new InvalidOperationException("Health diagnostic export is incomplete");
         var unavailable = new HealthWindow();
         unavailable.Populate(new SystemHealthInfo("Windows", "", "", "", 0, 0, 0, TimeSpan.Zero, "", [new SystemDiskInfo("C:\\", "", 0, 0)]));
         if (((TextBlock)unavailable.FindName("MemoryText")).Text != "Indisponible" ||

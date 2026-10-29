@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Media;
 using OpenCleaner.Contracts;
@@ -26,22 +27,35 @@ public sealed class TreemapControl : FrameworkElement
 
     private List<Tile> _tiles = [];
     private Tile? _hovered;
+    private DiskUsageNode? _selectedNode;
 
     public TreemapControl()
     {
         Focusable = true;
         SnapsToDevicePixels = true;
         ClipToBounds = true;
+        AutomationProperties.SetHelpText(this,
+            "Flèches : parcourir les zones. Entrée : ouvrir le dossier ou le fichier.");
         MouseMove += OnMouseMove;
         MouseLeave += OnMouseLeave;
         MouseLeftButtonDown += OnMouseLeftButtonDown;
         LostKeyboardFocus += (_, _) => SetHovered(null);
+        IsKeyboardFocusWithinChanged += (_, _) =>
+        {
+            if (IsKeyboardFocusWithin && _selectedNode == null && _tiles.Count > 0)
+            {
+                _selectedNode = _tiles[0].Node;
+                HoveredNodeChanged?.Invoke(this, _selectedNode);
+            }
+            InvalidateVisual();
+        };
         Loaded += (_, _) => InvalidateVisual();
     }
 
     public static readonly DependencyProperty NodeProperty = DependencyProperty.Register(
         nameof(Node), typeof(DiskUsageNode), typeof(TreemapControl),
-        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender));
+        new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender,
+            (d, _) => ((TreemapControl)d)._selectedNode = null));
 
     public DiskUsageNode? Node
     {
@@ -63,6 +77,9 @@ public sealed class TreemapControl : FrameworkElement
     {
         base.OnRender(drawingContext);
         _tiles = BuildTiles(ActualWidth, ActualHeight);
+        if (IsKeyboardFocusWithin &&
+            (_selectedNode == null || !_tiles.Any(tile => ReferenceEquals(tile.Node, _selectedNode))))
+            _selectedNode = _tiles.Count > 0 ? _tiles[0].Node : null;
         var bounds = new Rect(0, 0, Math.Max(0, ActualWidth), Math.Max(0, ActualHeight));
 
         if (Node == null)
@@ -130,6 +147,10 @@ public sealed class TreemapControl : FrameworkElement
                 drawingContext.DrawRectangle(null, new Pen(Brush(WithAlpha(
                     tile.Node.IsProtected ? warning : border, tile.Node.IsProtected ? 0.8 : 0.9)),
                     tile.Node.IsProtected ? 2 : 1), tile.Rect);
+
+            if (IsKeyboardFocusWithin && ReferenceEquals(_selectedNode, tile.Node))
+                drawingContext.DrawRectangle(null, new Pen(Brush(WithAlpha(text, 0.95)), 2),
+                    Rect.Inflate(tile.Rect, -3, -3));
         }
     }
 
@@ -213,17 +234,51 @@ public sealed class TreemapControl : FrameworkElement
         Focus();
         var tile = FindTile(e.GetPosition(this));
         if (tile == null) return;
+        _selectedNode = tile.Node;
         SetHovered(tile);
+        InvalidateVisual();
         if (e.ClickCount >= 2 && tile.Navigable) NodeActivated?.Invoke(this, tile.Node);
     }
 
     protected override void OnKeyDown(KeyEventArgs e)
     {
         base.OnKeyDown(e);
-        if (e.Key is Key.Enter or Key.Space && _hovered is { Navigable: true })
+        if (_tiles.Count == 0) return;
+
+        if (e.Key is Key.Left or Key.Right or Key.Up or Key.Down)
         {
-            NodeActivated?.Invoke(this, _hovered.Node);
-            e.Handled = true;
+            var bounds = _tiles
+                .Select(tile => new TreemapBounds(tile.Rect.X, tile.Rect.Y, tile.Rect.Width, tile.Rect.Height))
+                .ToList();
+            int current = _selectedNode == null
+                ? -1
+                : _tiles.FindIndex(tile => ReferenceEquals(tile.Node, _selectedNode));
+            TreemapDirection direction = e.Key switch
+            {
+                Key.Left => TreemapDirection.Left,
+                Key.Right => TreemapDirection.Right,
+                Key.Up => TreemapDirection.Up,
+                _ => TreemapDirection.Down
+            };
+            int next = TreemapNavigator.Move(bounds, current, direction);
+            if (next >= 0 && next < _tiles.Count)
+            {
+                _selectedNode = _tiles[next].Node;
+                HoveredNodeChanged?.Invoke(this, _selectedNode);
+                InvalidateVisual();
+                e.Handled = true;
+            }
+            return;
+        }
+
+        if (e.Key is Key.Enter or Key.Space)
+        {
+            DiskUsageNode? node = _selectedNode ?? _hovered?.Node;
+            if (node != null)
+            {
+                NodeActivated?.Invoke(this, node);
+                e.Handled = true;
+            }
         }
     }
 

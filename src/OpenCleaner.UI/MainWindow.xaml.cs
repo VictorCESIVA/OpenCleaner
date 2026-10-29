@@ -12,6 +12,7 @@ using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
 
@@ -63,6 +64,35 @@ public partial class MainWindow : Window
     }
 
     private void OnOperationStateChanged() => SetBusy(UiOperation.IsBusy);
+
+    private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.F)
+        {
+            if (DashboardScroll.Visibility != Visibility.Visible) return;
+            SearchBox.Focus();
+            SearchBox.SelectAll();
+            e.Handled = true;
+            return;
+        }
+        if (Keyboard.Modifiers == ModifierKeys.Control && e.Key == Key.E)
+        {
+            if (!ExportReportBtn.IsEnabled) return;
+            ExportReport_Click(sender, e);
+            e.Handled = true;
+            return;
+        }
+        if (e.Key == Key.F5 && DashboardScroll.Visibility == Visibility.Visible && !UiOperation.IsBusy)
+        {
+            Analyze_Click(sender, e);
+            e.Handled = true;
+        }
+        else if (e.Key == Key.Escape && UiOperation.IsBusy)
+        {
+            CancelOperation_Click(sender, e);
+            e.Handled = true;
+        }
+    }
 
     private void SidebarPlugin_Click(object sender, RoutedEventArgs e)
     {

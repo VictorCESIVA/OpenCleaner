@@ -3,7 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:OpenCleaner.UI"
         Title="OpenCleaner" Icon="Assets/OpenCleaner.ico" Height="860" Width="1280"
-        MinHeight="740" MinWidth="1040" WindowStartupLocation="CenterScreen" x:Name="RootWindow">
+        MinHeight="740" MinWidth="1040" WindowStartupLocation="CenterScreen" x:Name="RootWindow"
+        PreviewKeyDown="Window_PreviewKeyDown">
     <Window.Resources>
         <Storyboard x:Key="FadeInStory"><DoubleAnimation Storyboard.TargetName="ResultsPanel" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.25"/></Storyboard>
         <Style x:Key="NavIcon" TargetType="TextBlock">

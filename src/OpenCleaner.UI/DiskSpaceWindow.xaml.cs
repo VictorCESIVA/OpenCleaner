@@ -383,7 +383,13 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
     }
 
     private void ViewMap_Click(object sender, RoutedEventArgs e) => SwitchView(DiskView.Map);
-    private void ViewList_Click(object sender, RoutedEventArgs e) => SwitchView(DiskView.List);
+
+    private void Disk_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.F5 || _busy) return;
+        Scan_Click(sender, e);
+        e.Handled = true;
+    }    private void ViewList_Click(object sender, RoutedEventArgs e) => SwitchView(DiskView.List);
     private void ViewFiles_Click(object sender, RoutedEventArgs e) => SwitchView(DiskView.Files);
     private void ViewApps_Click(object sender, RoutedEventArgs e) => SwitchView(DiskView.Apps);
 

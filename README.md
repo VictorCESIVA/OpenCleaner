@@ -11,6 +11,14 @@ Utilitaire Windows gratuit et open source pour examiner les fichiers temporaires
 
 Les sauvegardes sont conservées localement : elles occupent de l'espace. Un nettoyage avec une sauvegarde sur le même disque ne libère pas immédiatement le volume affiché lors du scan. Supprimez seulement les sauvegardes dont vous n'avez plus besoin pour récupérer cet espace.
 
+### Raccourcis clavier
+
+- `F5` : relancer l'analyse ou actualiser la page ouverte (Nettoyage, Espace disque, Santé, Démarrage).
+- `Échap` : annuler l'opération en cours.
+- `Ctrl+F` : placer le curseur dans le filtre des résultats.
+- `Ctrl+E` : exporter le rapport d'analyse en JSON.
+- Dans la carte d'espace disque : flèches pour parcourir les zones, `Entrée` pour ouvrir un dossier ou révéler un fichier.
+
 ## Fonctions disponibles
 
 - **Nettoyage rapide** : analyse des caches à faible risque, puis confirmation avant suppression.
@@ -19,7 +27,7 @@ Les sauvegardes sont conservées localement : elles occupent de l'espace. Un net
 - **Doublons** : comparaison SHA-256 (avec seuil de taille configurable et pré-empreinte rapide) dans les dossiers personnels courants. L'original conservé est identifié et revérifié avant la suppression des copies. Les fichiers à plusieurs liens physiques sont ignorés : leur suppression ne libère aucun octet.
 - **Confidentialité** : repérage de certaines traces locales et fichiers contenant potentiellement des secrets. Ces résultats exigent une vérification manuelle ; cet outil n'est pas un antivirus.
 - **Espace disque** : carte proportionnelle (treemap), navigation instantanée dans l'arborescence analysée, liste par dossier, plus gros fichiers et vue **Applications** qui associe les programmes installés aux dossiers mesurés. Une taille estimée à partir du registre est signalée lorsque le dossier n'a pas été mesuré. Un seul parcours, liens et jonctions ignorés ; les zones protégées sont signalées en ambre. Les tailles peuvent être approximatives pour les liens physiques, les fichiers compressés ou les dossiers système. L'outil est en lecture seule.
-- **Santé du PC** : score sur 100 en cinq sections (stockage, mémoire, démarrage, entretien, propreté), constats expliqués et boutons d'action. Un historique des 30 derniers jours résume les nettoyages (nombre, fichiers, volume supprimé) sans afficher de chemins, et un relevé quotidien local trace l'évolution de l'espace libre. Les tailles de caches sont mesurées en lecture seule avec un délai maximal ; une mesure partielle est signalée. L'espace libre n'est pas un diagnostic de l'état physique du disque.
+- **Santé du PC** : score sur 100 en cinq sections (stockage, mémoire, démarrage, entretien, propreté), constats expliqués et boutons d'action. Un historique des 30 derniers jours résume les nettoyages (nombre, fichiers, volume supprimé) sans afficher de chemins, un relevé quotidien local trace l'évolution de l'espace libre et le diagnostic peut être exporté en JSON sans chemins de fichiers. Les tailles de caches sont mesurées en lecture seule avec un délai maximal ; une mesure partielle est signalée. L'espace libre n'est pas un diagnostic de l'état physique du disque.
 - **Désinstallation** : liste des applications installées et lancement du désinstalleur officiel après confirmation.
 - **Démarrage Windows** : consultation, activation/désactivation des éléments HKCU, du dossier Démarrage et des clés machine `HKLM\...\Run` / `RunOnce` avec sauvegarde dans le registre et autorisation administrateur. Tri par impact estimé. L'impact est une heuristique fondée sur la taille de l'exécutable et son emplacement, pas une mesure du temps de démarrage. Le dossier Démarrage commun reste en lecture seule.
 - **Mises à jour logicielles** : vérification et mise à jour groupée via Windows Package Manager (`winget`), avec sortie visible et annulation. La mise à jour demande une autorisation administrateur ; les applications dont la version installée est inconnue sont ignorées.

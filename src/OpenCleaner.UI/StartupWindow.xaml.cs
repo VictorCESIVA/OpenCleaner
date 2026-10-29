@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using OpenCleaner.Core.Tools;
 
 namespace OpenCleaner.UI;
@@ -145,6 +146,13 @@ public partial class StartupWindow : UserControl
     private void StartupList_SelectionChanged(object sender, SelectionChangedEventArgs e) => UpdateSelection();
 
     private async void Refresh_Click(object sender, RoutedEventArgs e) => await LoadAsync();
+
+    private async void Startup_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.F5 || _busy) return;
+        e.Handled = true;
+        await LoadAsync();
+    }
 
     private async void Disable_Click(object sender, RoutedEventArgs e)
     {

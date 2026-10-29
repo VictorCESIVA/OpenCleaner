@@ -1,7 +1,8 @@
 <UserControl x:Class="OpenCleaner.UI.DiskSpaceWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="clr-namespace:OpenCleaner.UI">
+        xmlns:local="clr-namespace:OpenCleaner.UI"
+        PreviewKeyDown="Disk_PreviewKeyDown">
 
     <Border Background="{DynamicResource BgMain}">
         <Grid Margin="28,26">
