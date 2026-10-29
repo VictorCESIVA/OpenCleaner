@@ -64,6 +64,7 @@ public partial class HealthWindow : UserControl, IThemeAware
     private HealthReport? _report;
     private HealthMetrics? _metrics;
     private CleanupHistorySummary? _history;
+    private IReadOnlyList<SpaceTrendPoint> _trendPoints = [];
 
     public HealthWindow()
     {
@@ -107,6 +108,18 @@ public partial class HealthWindow : UserControl, IThemeAware
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
                 HistoryCaption.Text = "Historique indisponible : " + ex.Message;
+            }
+
+            try
+            {
+                string primaryDrive = Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\";
+                SpaceTrendResult trend = await Task.Run(() =>
+                    new SpaceTrendService().RecordAndGet(info.Disks, DateTime.UtcNow, primaryDrive, 30));
+                PopulateTrend(trend);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                TrendCaption.Text = "Historique d'espace indisponible : " + ex.Message;
             }
 
             StatusText.Text = "Indicateurs de base actualisés. Mesure des caches à faible risque…";
@@ -279,6 +292,81 @@ public partial class HealthWindow : UserControl, IThemeAware
                 : $"{rows.Count} point(s) à vérifier";
     }
 
+    internal void PopulateTrend(SpaceTrendResult trend)
+    {
+        _trendPoints = trend.Points;
+        TrendTitle.Text = $"Espace libre · {trend.Drive.TrimEnd('\\')}";
+        TrendStart.Text = trend.Points.Count > 0
+            ? trend.Points[0].DateUtc.ToLocalTime().ToString("d MMM")
+            : "";
+        TrendEnd.Text = trend.Points.Count > 0
+            ? trend.Points[^1].DateUtc.ToLocalTime().ToString("d MMM")
+            : "";
+        TrendEmpty.Visibility = trend.HasEnoughData ? Visibility.Collapsed : Visibility.Visible;
+
+        if (!trend.HasEnoughData)
+        {
+            TrendDelta.Text = trend.LatestFreeBytes is long latest
+                ? $"{SizeFormatter.Format(latest)} libres"
+                : "—";
+            TrendDelta.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimary");
+            TrendCaption.Text = trend.LatestFreeBytes == null
+                ? "Aucun relevé disponible pour ce volume."
+                : "Premier relevé enregistré aujourd'hui. Le graphique apparaîtra après quelques jours.";
+            RenderTrendChart();
+            return;
+        }
+
+        long delta = trend.DeltaBytes ?? 0;
+        if (delta == 0)
+        {
+            TrendDelta.Text = "stable";
+            TrendDelta.SetResourceReference(TextBlock.ForegroundProperty, "Accent");
+        }
+        else
+        {
+            TrendDelta.Text = (delta > 0 ? "+" : "−") + SizeFormatter.Format(Math.Abs(delta));
+            TrendDelta.SetResourceReference(TextBlock.ForegroundProperty, delta > 0 ? "Accent" : "Danger");
+        }
+        TrendCaption.Text = $"{SizeFormatter.Format(trend.LatestFreeBytes ?? 0)} libres aujourd'hui • " +
+                            $"{trend.Points.Count} relevés sur 30 jours";
+        RenderTrendChart();
+    }
+
+    private void RenderTrendChart()
+    {
+        TrendLine.Points = [];
+        TrendArea.Points = [];
+        if (_trendPoints.Count < 2) return;
+
+        double width = TrendChartHost.ActualWidth;
+        double height = TrendChartHost.ActualHeight;
+        if (width < 20 || height < 20) return;
+
+        long minimum = _trendPoints.Min(point => point.FreeBytes);
+        long maximum = _trendPoints.Max(point => point.FreeBytes);
+        if (maximum <= minimum) maximum = minimum + 1;
+        double top = 5;
+        double bottom = Math.Max(top + 1, height - 5);
+
+        var line = new PointCollection();
+        for (int index = 0; index < _trendPoints.Count; index++)
+        {
+            double x = width * index / (_trendPoints.Count - 1);
+            double ratio = (double)(_trendPoints[index].FreeBytes - minimum) / (maximum - minimum);
+            line.Add(new Point(x, bottom - ratio * (bottom - top)));
+        }
+        var area = new PointCollection(line)
+        {
+            new Point(width, bottom),
+            new Point(0, bottom)
+        };
+        TrendLine.Points = line;
+        TrendArea.Points = area;
+    }
+
+    private void TrendChart_SizeChanged(object sender, SizeChangedEventArgs e) => RenderTrendChart();
+
     private void PopulateHistory(CleanupHistorySummary history)
     {
         _history = history;
@@ -322,7 +410,19 @@ public partial class HealthWindow : UserControl, IThemeAware
         EmptyRecycleBtn.IsEnabled = _hasRecycleItems;
         PopulateHistory(new CleanupHistorySummary(8, 12_400, 34L * 1024 * 1024 * 1024,
             DateTime.UtcNow.AddDays(-1), []));
+        PopulateTrend(PreviewTrend());
         StatusText.Text = "Aperçu du diagnostic. Aucune analyse ni suppression exécutée.";
+    }
+
+    private static SpaceTrendResult PreviewTrend()
+    {
+        const long Gb = 1024L * 1024 * 1024;
+        var points = new List<SpaceTrendPoint>();
+        DateTime start = DateTime.UtcNow.Date.AddDays(-28);
+        for (int index = 0; index < 15; index++)
+            points.Add(new SpaceTrendPoint(start.AddDays(index * 2), (long)(52.0 * Gb - index * 0.65 * Gb)));
+        return new SpaceTrendResult("C:\\", points[^1].FreeBytes,
+            points[^1].FreeBytes - points[0].FreeBytes, points);
     }
 
     private void PopulateDisks(SystemHealthInfo info)

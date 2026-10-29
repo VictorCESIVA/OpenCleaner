@@ -123,6 +123,46 @@
                 </Grid>
             </Border>
 
+            <!-- TENDANCE D'ESPACE -->
+            <Border Style="{StaticResource Card}" Padding="20,16" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="300"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Margin="0,0,20,0" VerticalAlignment="Center">
+                        <TextBlock Text="ÉVOLUTION DE L'ESPACE LIBRE" Style="{StaticResource Eyebrow}"/>
+                        <TextBlock x:Name="TrendTitle" Text="Relevé quotidien local" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="TrendDelta" Text="—" FontSize="21" FontWeight="Bold"
+                                   Foreground="{DynamicResource Accent}" Margin="0,5,0,0"/>
+                        <TextBlock x:Name="TrendCaption" Text="Le relevé commence aujourd'hui ; il reste sur ce PC."
+                                   Foreground="{DynamicResource TextSecond}" FontSize="11"
+                                   TextWrapping="Wrap" Margin="0,3,0,0"/>
+                    </StackPanel>
+                    <Grid Grid.Column="1">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <Grid x:Name="TrendChartHost" Height="72" ClipToBounds="True"
+                              SizeChanged="TrendChart_SizeChanged">
+                            <Polygon x:Name="TrendArea" Fill="{DynamicResource AccentSoft}" Stretch="None"/>
+                            <Polyline x:Name="TrendLine" Stroke="{DynamicResource Accent}" StrokeThickness="2"
+                                      Stretch="None" StrokeLineJoin="Round"/>
+                            <TextBlock x:Name="TrendEmpty" Text="Pas encore assez de relevés"
+                                       FontSize="11" Foreground="{DynamicResource TextSecond}"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Grid>
+                        <Grid Grid.Row="1" Margin="0,4,0,0">
+                            <TextBlock x:Name="TrendStart" HorizontalAlignment="Left" FontSize="10"
+                                       Foreground="{DynamicResource TextSecond}"/>
+                            <TextBlock x:Name="TrendEnd" HorizontalAlignment="Right" FontSize="10"
+                                       Foreground="{DynamicResource TextSecond}"/>
+                        </Grid>
+                    </Grid>
+                </Grid>
+            </Border>
+
             <!-- DÉTAILS -->
             <Grid Margin="0,0,0,14">
                 <Grid.ColumnDefinitions>
