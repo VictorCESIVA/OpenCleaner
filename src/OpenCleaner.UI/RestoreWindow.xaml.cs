@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
+using OpenCleaner.UI.Localization;
 using System.IO;
 using System.Security.Cryptography;
 using System.Windows;
@@ -10,12 +11,15 @@ namespace OpenCleaner.UI;
 
 public partial class RestoreWindow : UserControl
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     private bool _isBusy;
     private IReadOnlyList<BackupInfo> _allBackups = [];
 
     public RestoreWindow()
     {
         InitializeComponent();
+        LocalizationService.Instance.LanguageChanged += (_, _) => _ = LoadBackupsAsync();
         _ = LoadBackupsAsync();
     }
 
@@ -27,8 +31,8 @@ public partial class RestoreWindow : UserControl
             _allBackups = await manager.GetAllBackupsAsync();
             var totalBytes = _allBackups.Sum(b => b.Size);
             BackupSummaryText.Text = _allBackups.Count == 0
-                ? "0 sauvegarde (0 o)"
-                : $"{_allBackups.Count:N0} sauvegarde(s) • {SizeFormatter.Format(totalBytes)}";
+                ? T("Restore.SummaryNone")
+                : T("Restore.Summary", _allBackups.Count.ToString("N0"), SizeFormatter.Format(totalBytes));
             int quarantined = 0;
             try
             {
@@ -38,7 +42,7 @@ public partial class RestoreWindow : UserControl
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             { System.Diagnostics.Debug.WriteLine($"Quarantine listing failed: {ex}"); }
             if (quarantined > 0)
-                BackupSummaryText.Text += $" • {quarantined:N0} corrompue(s) isolée(s)";
+                BackupSummaryText.Text += T("Restore.QuarantinedSuffix", quarantined.ToString("N0"));
             ApplyFilter();
         }
         catch (ObjectDisposedException)
@@ -49,8 +53,8 @@ public partial class RestoreWindow : UserControl
         {
             if (IsLoaded && IsVisible)
             {
-                MessageBox.Show(Window.GetWindow(this), $"Impossible de lire les sauvegardes :\n{ex.Message}", "Restauration",
-                    MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Window.GetWindow(this), T("Restore.ReadFailed", ex.Message),
+                    T("Restore.Title"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
     }
@@ -90,10 +94,10 @@ public partial class RestoreWindow : UserControl
         var selected = BackupsListView.SelectedItems.Cast<BackupInfo>().ToList();
         if (selected.Count == 0 || UiOperation.IsBusy) return;
         var prompt = selected.Count == 1
-            ? $"Restaurer ce fichier ?\n\n{selected[0].OriginalPath}\n\nLe fichier existant sera conservé puis sauvegardé."
-            : $"Restaurer {selected.Count} fichiers sélectionnés ?\n\nTout fichier existant sera conservé puis sauvegardé.";
+            ? T("Restore.ConfirmOne", selected[0].OriginalPath)
+            : T("Restore.ConfirmMany", selected.Count);
         if (MessageBox.Show(Window.GetWindow(this), prompt,
-            "Confirmer la restauration", MessageBoxButton.YesNo, MessageBoxImage.Question,
+            T("Restore.ConfirmTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question,
             MessageBoxResult.No) != MessageBoxResult.Yes) return;
         if (!UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using (operation)
@@ -111,10 +115,10 @@ public partial class RestoreWindow : UserControl
                 }
                 var allOk = restoredCount == selected.Count;
                 var msg = selected.Count == 1
-                    ? (allOk ? "Fichier restauré." : "La restauration a échoué. La sauvegarde est conservée.")
-                    : $"{restoredCount}/{selected.Count} fichier(s) restauré(s).";
+                    ? (allOk ? T("Restore.RestoredOne") : T("Restore.RestoreFailedOne"))
+                    : T("Restore.RestoredMany", restoredCount, selected.Count);
                 MessageBox.Show(Window.GetWindow(this), msg,
-                    "Restauration", MessageBoxButton.OK, allOk ? MessageBoxImage.Information : MessageBoxImage.Warning);
+                    T("Restore.Title"), MessageBoxButton.OK, allOk ? MessageBoxImage.Information : MessageBoxImage.Warning);
                 await LoadBackupsAsync();
             }
             catch (OperationCanceledException) { }
@@ -134,22 +138,22 @@ public partial class RestoreWindow : UserControl
             IBackupManager manager = App.Services.GetRequiredService<IBackupManager>();
             if (!await manager.RecoverKeyAsync(dialog.Code))
             {
-                MessageBox.Show(Window.GetWindow(this), "Code de récupération invalide.", "Sauvegardes",
-                    MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Window.GetWindow(this), T("Restore.InvalidCode"),
+                    T("Restore.BackupsTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             await LoadBackupsAsync();
-            MessageBox.Show(Window.GetWindow(this), "Sauvegardes déverrouillées.", "Sauvegardes",
+            MessageBox.Show(Window.GetWindow(this), T("Restore.Unlocked"), T("Restore.BackupsTitle"),
                 MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (BackupKeyUnavailableException)
         {
-            MessageBox.Show(Window.GetWindow(this), "Aucun code de récupération n'a encore été configuré.",
-                "Sauvegardes", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(Window.GetWindow(this), T("Restore.NoCode"),
+                T("Restore.BackupsTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         catch (Exception ex) when (ex is CryptographicException or FormatException)
         {
-            MessageBox.Show(Window.GetWindow(this), "Code de récupération invalide.", "Sauvegardes",
+            MessageBox.Show(Window.GetWindow(this), T("Restore.InvalidCode"), T("Restore.BackupsTitle"),
                 MessageBoxButton.OK, MessageBoxImage.Warning);
         }
         catch (Exception ex) { ShowError(ex); }
@@ -166,9 +170,8 @@ public partial class RestoreWindow : UserControl
     {
         var backups = BackupsListView.SelectedItems.Cast<BackupInfo>().ToList();
         if (backups.Count == 0 || UiOperation.IsBusy) return;
-        if (MessageBox.Show(Window.GetWindow(this), $"Supprimer définitivement {backups.Count} sauvegarde(s) ?\n\n" +
-            "Les fichiers correspondants ne pourront plus être restaurés avec ces sauvegardes.",
-            "Supprimer les sauvegardes", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+        if (MessageBox.Show(Window.GetWindow(this), T("Restore.ConfirmDelete", backups.Count),
+            T("Restore.DeleteTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
             MessageBoxResult.No) != MessageBoxResult.Yes) return;
         if (!UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using (operation)
@@ -183,8 +186,8 @@ public partial class RestoreWindow : UserControl
                     operation.Token.ThrowIfCancellationRequested();
                     if (await manager.DeleteBackupAsync(backup.BackupId, operation.Token)) deleted++;
                 }
-                MessageBox.Show(Window.GetWindow(this), $"{deleted}/{backups.Count} sauvegarde(s) supprimée(s).", "Sauvegardes",
-                    MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Window.GetWindow(this), T("Restore.Deleted", deleted, backups.Count),
+                    T("Restore.BackupsTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex) { ShowError(ex); }
@@ -200,8 +203,8 @@ public partial class RestoreWindow : UserControl
     private async void DeleteOld_Click(object sender, RoutedEventArgs e)
     {
         if (UiOperation.IsBusy) return;
-        if (MessageBox.Show(Window.GetWindow(this), "Supprimer définitivement les sauvegardes de plus de 30 jours ?",
-            "Supprimer les anciennes sauvegardes", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+        if (MessageBox.Show(Window.GetWindow(this), T("Restore.DeleteOldConfirm"),
+            T("Restore.DeleteOldTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
             MessageBoxResult.No) != MessageBoxResult.Yes) return;
         if (!UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using (operation)
@@ -214,6 +217,6 @@ public partial class RestoreWindow : UserControl
         }
     }
 
-    private void ShowError(Exception ex) => MessageBox.Show(Window.GetWindow(this), ex.Message, "Erreur",
+    private void ShowError(Exception ex) => MessageBox.Show(Window.GetWindow(this), ex.Message, T("Restore.ErrorTitle"),
         MessageBoxButton.OK, MessageBoxImage.Error);
 }

@@ -151,12 +151,18 @@ internal class Program
             var uninstallerEn = new UninstallerWindow();
             SeedUninstaller(uninstallerEn);
             var updatesEn = new UpdatesWindow();
+            var restoreEn = new RestoreWindow();
+            var privacyEn = new PrivacyWindow();
+            var duplicateEn = new DuplicateWindow();
             Render(diskEn,Path.Combine(output,"DiskSpaceWindow-apps-en.png"),1048,824);
             Render(healthEn,Path.Combine(output,"HealthWindow-en.png"),1048,824);
             Render(healthEn,Path.Combine(output,"HealthWindow-en-full.png"),1048,1600);
             Render(startupEn,Path.Combine(output,"StartupWindow-en.png"),1048,824);
             Render(uninstallerEn,Path.Combine(output,"UninstallerWindow-en.png"),1048,824);
             Render(updatesEn,Path.Combine(output,"UpdatesWindow-en.png"),1048,824);
+            Render(restoreEn,Path.Combine(output,"RestoreWindow-en.png"),1048,824);
+            Render(privacyEn,Path.Combine(output,"PrivacyWindow-en.png"),1048,824);
+            Render(duplicateEn,Path.Combine(output,"DuplicateWindow-en.png"),1048,824);
             OpenCleaner.UI.Localization.LocalizationService.Instance.SetLanguage("fr");
         }
         main.ShowLowSpaceForPreview(new DiskSpaceAlert("C:\\", 42L*1024*1024*1024, 500L*1024*1024*1024, 42.0/500));

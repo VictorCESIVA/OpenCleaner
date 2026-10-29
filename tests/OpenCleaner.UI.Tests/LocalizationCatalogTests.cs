@@ -65,6 +65,23 @@ public sealed class LocalizationCatalogTests
     }
 
     [Fact]
+    public void CatalogsCoverTheDataToolKeys()
+    {
+        var french = French();
+        var english = English();
+        foreach (string key in new[]
+                 {
+                     "Restore.Title", "Restore.ConfirmDelete", "Restore.SummaryNone",
+                     "Privacy.Title", "Privacy.ConfirmDelete", "Privacy.Progress",
+                     "Dup.Title", "Dup.GroupLabel", "Dup.ConfirmDelete", "Dup.PreviewNone"
+                 })
+        {
+            Assert.True(french.TryGet(key, out _), "Clé absente du français : " + key);
+            Assert.True(english.TryGet(key, out _), "Clé absente de l'anglais : " + key);
+        }
+    }
+
+    [Fact]
     public void ValuesAreFormattedWithTheCatalogCulture()
     {
         Assert.Contains("3", French().Format("Main.ItemsFound", 3, "1 Mo"));

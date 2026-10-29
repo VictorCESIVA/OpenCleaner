@@ -1,6 +1,7 @@
 <UserControl x:Class="OpenCleaner.UI.PrivacyWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:OpenCleaner.UI.Localization">
 
     <Border Background="{DynamicResource BgMain}">
         <Grid Margin="28,26">
@@ -13,10 +14,10 @@
 
             <!-- EN-TÊTE -->
             <StackPanel Grid.Row="0" Margin="0,0,0,14">
-                <TextBlock Text="Confidentialité"
+                <TextBlock Text="{loc:Translate Privacy.Title}"
                            FontSize="26" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimary}"/>
-                <TextBlock TextWrapping="Wrap" Text="Repérez les indices de données sensibles : mots de passe, jetons ou clés API. Vérifiez chaque résultat."
+                <TextBlock TextWrapping="Wrap" Text="{loc:Translate Privacy.Subtitle}"
                            FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,4,0,0"/>
             </StackPanel>
 
@@ -32,19 +33,19 @@
                     <StackPanel Grid.Column="0">
                         <TextBlock x:Name="StatCritical" Text="—" FontSize="20" FontWeight="Bold"
                                    Foreground="{DynamicResource RiskExpert}"/>
-                        <TextBlock Text="Contenu à vérifier" FontSize="11"
+                        <TextBlock Text="{loc:Translate Privacy.StatCritical}" FontSize="11"
                                    Foreground="{DynamicResource TextSecond}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1">
                         <TextBlock x:Name="StatMedium" Text="—" FontSize="20" FontWeight="Bold"
                                    Foreground="{DynamicResource RiskRecommended}"/>
-                        <TextBlock Text="Nom à vérifier" FontSize="11"
+                        <TextBlock Text="{loc:Translate Privacy.StatMedium}" FontSize="11"
                                    Foreground="{DynamicResource TextSecond}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2">
                         <TextBlock x:Name="StatTotal" Text="—" FontSize="20" FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimary}"/>
-                        <TextBlock Text="Total alertes" FontSize="11"
+                        <TextBlock Text="{loc:Translate Privacy.StatTotal}" FontSize="11"
                                    Foreground="{DynamicResource TextSecond}"/>
                     </StackPanel>
                 </Grid>
@@ -64,7 +65,7 @@
                           SelectionMode="Multiple">
                     <ListView.View>
                         <GridView>
-                            <GridViewColumn Header="Risque" Width="80">
+                            <GridViewColumn Header="{loc:Translate Privacy.ColRisk}" Width="80">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding RiskIcon}" FontSize="14"
@@ -72,7 +73,7 @@
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
-                            <GridViewColumn Header="Alerte" Width="280">
+                            <GridViewColumn Header="{loc:Translate Privacy.ColAlert}" Width="280">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Alert}" ToolTip="{Binding Alert}"
@@ -82,7 +83,7 @@
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
-                            <GridViewColumn Header="Chemin" Width="380">
+                            <GridViewColumn Header="{loc:Translate Privacy.ColPath}" Width="380">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
                                         <TextBlock Text="{Binding Path}" ToolTip="{Binding Path}"
@@ -93,7 +94,7 @@
                             </GridViewColumn>
                         </GridView>
                     </ListView.View>
-                </ListView><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24,44,24,0" IsHitTestVisible="False"><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=AlertList}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="26" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center" Margin="0,0,0,16"/><TextBlock Text="Un premier regard sur vos données." FontSize="15" FontWeight="SemiBold" TextAlignment="Center"/><TextBlock Text="Lancez une analyse pour vérifier les fichiers potentiellement sensibles." FontSize="12" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"/></StackPanel></Grid>
+                </ListView><StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" Margin="24,44,24,0" IsHitTestVisible="False"><StackPanel.Style><Style TargetType="StackPanel"><Setter Property="Visibility" Value="Collapsed"/><Style.Triggers><DataTrigger Binding="{Binding HasItems, ElementName=AlertList}" Value="False"><Setter Property="Visibility" Value="Visible"/></DataTrigger></Style.Triggers></Style></StackPanel.Style><TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="26" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center" Margin="0,0,0,16"/><TextBlock Text="{loc:Translate Privacy.EmptyTitle}" FontSize="15" FontWeight="SemiBold" TextAlignment="Center"/><TextBlock Text="{loc:Translate Privacy.EmptyDescription}" FontSize="12" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"/></StackPanel></Grid>
             </Border>
 
             <!-- ACTIONS -->
@@ -107,18 +108,18 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <TextBlock TextWrapping="Wrap" Margin="0,0,16,0" Grid.Column="0" x:Name="StatusText"
-                               Text="Lancez une analyse, puis vérifiez les alertes."
+                               Text="{loc:Translate Privacy.Hint}"
                                Foreground="{DynamicResource TextSecond}"
                                VerticalAlignment="Center" FontSize="12"/>
-                    <Button Grid.Column="1" Content="Ouvrir l'emplacement"
+                    <Button Grid.Column="1" Content="{loc:Translate Privacy.OpenLocation}"
                             Style="{StaticResource SecondBtn}"
                             Click="Reveal_Click" x:Name="RevealBtn"
                             IsEnabled="False" Margin="0,0,10,0"/>
-                    <Button Grid.Column="2" Content="Analyser"
+                    <Button Grid.Column="2" Content="{loc:Translate Privacy.Analyze}"
                             Style="{StaticResource AccentBtn}"
                             Click="Scan_Click" x:Name="ScanBtn"
                             Margin="0,0,10,0"/>
-                    <Button Grid.Column="3" Content="Supprimer la sélection"
+                    <Button Grid.Column="3" Content="{loc:Translate Privacy.DeleteSelection}"
                             Style="{StaticResource AccentBtn}"
                             Click="SecureSelected_Click"
                             x:Name="SecureBtn" IsEnabled="False"/>

@@ -4,6 +4,7 @@ using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
 using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System.Plugins;
+using OpenCleaner.UI.Localization;
 using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Media;
@@ -35,6 +36,8 @@ public sealed class PrivacyAlert
 
 public partial class PrivacyWindow : UserControl
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     private readonly ObservableCollection<PrivacyAlert> _alerts = [];
     private List<CleanableItem> _currentItems = [];
     private PrivacyScannerPlugin? _plugin;
@@ -57,7 +60,7 @@ public partial class PrivacyWindow : UserControl
         _alerts.Clear();
         _currentItems.Clear();
         StatCritical.Text = StatMedium.Text = StatTotal.Text = "—";
-        StatusText.Text   = "Analyse en cours…";
+        StatusText.Text   = T("Privacy.Scanning");
 
         try
         {
@@ -65,7 +68,7 @@ public partial class PrivacyWindow : UserControl
             var logger       = App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<PrivacyScannerPlugin>>();
             var plugin       = _plugin = new PrivacyScannerPlugin(fileGuardian, logger);
 
-            var progress = operation.CreateProgress<double>(p => StatusText.Text = $"Scan… {p:P0}");
+            var progress = operation.CreateProgress<double>(p => StatusText.Text = T("Privacy.Progress", p));
             _currentItems = (await Task.Run(() => plugin.AnalyzeAsync(progress, operation.Token), operation.Token)).ToList();
 
             foreach (var item in _currentItems)
@@ -79,12 +82,12 @@ public partial class PrivacyWindow : UserControl
             StatTotal.Text    = _currentItems.Count.ToString();
 
             StatusText.Text = _currentItems.Count == 0
-                ? "✅ Aucune alerte détectée."
-                : $"⚠️ {_currentItems.Count} alerte(s) — sélectionnez et cliquez Sécuriser.";
+                ? T("Privacy.NoAlerts")
+                : T("Privacy.Alerts", _currentItems.Count);
 
             SecureBtn.IsEnabled = _currentItems.Count > 0;
         }
-        catch (OperationCanceledException) { StatusText.Text = "Opération annulée — relancez lʼanalyse."; _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T("Privacy.Cancelled"); _plugin = null; }
         catch (Exception ex)
         {
             StatusText.Text = "❌ " + ex.Message;
@@ -120,13 +123,13 @@ public partial class PrivacyWindow : UserControl
 
         if (selected.Count == 0)
         {
-            StatusText.Text = "Sélectionnez explicitement les fichiers à supprimer.";
+            StatusText.Text = T("Privacy.SelectExplicit");
             return;
         }
 
         var confirm = MessageBox.Show(
-            $"Supprimer {selected.Count} fichier(s) sensible(s) ? Un backup sera créé.",
-            "Confirmer la sécurisation",
+            T("Privacy.ConfirmDelete", selected.Count),
+            T("Privacy.ConfirmTitle"),
             MessageBoxButton.YesNo, MessageBoxImage.Warning);
 
         if (confirm != MessageBoxResult.Yes) return;
@@ -134,7 +137,7 @@ public partial class PrivacyWindow : UserControl
         if (_plugin == null || !UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using var scope = operation;
         SecureBtn.IsEnabled = ScanBtn.IsEnabled = false;
-        StatusText.Text     = "Suppression en cours…";
+        StatusText.Text     = T("Privacy.Deleting");
 
         try
         {
@@ -143,7 +146,7 @@ public partial class PrivacyWindow : UserControl
             var logger        = App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<PrivacyScannerPlugin>>();
             var plugin        = _plugin;
 
-            var progress = operation.CreateProgress<double>(p => StatusText.Text = $"Suppression… {p:P0}");
+            var progress = operation.CreateProgress<double>(p => StatusText.Text = T("Privacy.DeleteProgress", p));
             OperationResult result;
             await using (var transaction = new CleanupTransactionScope(
                              App.Services.GetRequiredService<ITransactionManager>()))
@@ -157,7 +160,7 @@ public partial class PrivacyWindow : UserControl
             StatusText.Text = (result.Success ? "✅ " : "⚠️ ") + result.Message;
             _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
-        catch (OperationCanceledException) { StatusText.Text = "Opération annulée — relancez lʼanalyse."; _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T("Privacy.Cancelled"); _plugin = null; }
         catch (Exception ex) { StatusText.Text = "❌ " + ex.Message; }
         finally { ScanBtn.IsEnabled = true; }
     }

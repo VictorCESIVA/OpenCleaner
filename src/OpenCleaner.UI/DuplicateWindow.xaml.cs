@@ -3,7 +3,9 @@ using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
 using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System.Plugins;
+using OpenCleaner.UI.Localization;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media.Imaging;
@@ -13,16 +15,23 @@ namespace OpenCleaner.UI;
 // ─── Modèles de vue pour le TreeView ───────────────────────────────────────
 
 /// <summary>Nœud-groupe représentant un hash (x fichiers identiques).</summary>
-public sealed class DuplicateGroup
+public sealed class DuplicateGroup : INotifyPropertyChanged
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     public string Hash      { get; }
     public long   Size      { get; }
     public int    Count     => Files.Count;
-    public string Label     => $"{Count} copie(s) • {SizeFormatter.Format(Size)} par fichier • original conservé : {Files.FirstOrDefault()?.Item.OriginalPath}";
+    public string Label     => T("Dup.GroupLabel", Count, SizeFormatter.Format(Size),
+        Files.FirstOrDefault()?.Item.OriginalPath ?? "");
     public ObservableCollection<DuplicateFile> Files { get; } = [];
 
     public DuplicateGroup(string hash, long size) { Hash = hash; Size = size; }
 
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    internal void RefreshLocalization() =>
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Label)));
 }
 
 /// <summary>Feuille représentant un fichier dans un groupe.</summary>
@@ -42,6 +51,8 @@ public sealed class DuplicateFile
 
 public partial class DuplicateWindow : UserControl
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     private readonly ObservableCollection<DuplicateGroup> _groups = [];
     private List<CleanableItem> _allItems = [];
     private DuplicateFinderPlugin? _plugin;
@@ -55,6 +66,12 @@ public partial class DuplicateWindow : UserControl
     public DuplicateWindow()
     {
         InitializeComponent();
+        LocalizationService.Instance.LanguageChanged += OnLanguageChanged;
+    }
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        foreach (DuplicateGroup group in _groups) group.RefreshLocalization();
     }
 
     // ─── SCAN ───────────────────────────────────────────────────────────
@@ -71,7 +88,7 @@ public partial class DuplicateWindow : UserControl
         DupTree.Items.Clear();
         _groups.Clear();
         _allItems.Clear();
-        StatusText.Text = "Collecte des fichiers...";
+        StatusText.Text = T("Dup.StatusCollecting");
         CurrentFileText.Text = "";
         DupGroups.Text = "—";
         DupFiles.Text  = "—";
@@ -87,13 +104,13 @@ public partial class DuplicateWindow : UserControl
             var plugin       = _plugin = new DuplicateFinderPlugin(fileGuardian, logger) { MinFileSizeBytes = minBytes };
 
             var progress = operation.CreateProgress<double>(p =>
-                ScanProgress.Text = $"{p:P0}");
+                ScanProgress.Text = T("Dup.Progress", p));
 
             _hashingProgress = operation.CreateProgress<string>(path => CurrentFileText.Text = path);
             _hashThrottle.Restart();
             plugin.OnFileHashing += Plugin_OnFileHashing;
 
-            StatusText.Text = "Analyse des empreintes...";
+            StatusText.Text = T("Dup.StatusHashing");
 
             _allItems = (await Task.Run(() => plugin.AnalyzeAsync(progress, operation.Token), operation.Token)).ToList();
 
@@ -114,13 +131,13 @@ public partial class DuplicateWindow : UserControl
             CurrentFileText.Text = "";
 
             StatusText.Text = files == 0
-                ? "✅ Aucun doublon détecté dans vos dossiers."
-                : $"🔁 {files} copies trouvées dans {groups} groupes.";
+                ? T("Dup.NoDuplicates")
+                : T("Dup.Found", files, groups);
 
             AutoSelectBtn.IsEnabled = files > 0;
             UnselectAllBtn.IsEnabled = files > 0;
         }
-        catch (OperationCanceledException) { StatusText.Text = "Opération annulée — relancez lʼanalyse."; _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T("Dup.Cancelled"); _plugin = null; }
         catch (Exception ex)
         {
             StatusText.Text = "❌ " + ex.Message;
@@ -214,8 +231,9 @@ public partial class DuplicateWindow : UserControl
         var checkedItems = GetCheckedItems();
         DeleteBtn.IsEnabled = checkedItems.Count > 0;
         StatusText.Text = checkedItems.Count > 0
-            ? $"{checkedItems.Count} fichier(s) sélectionné(s) ({SizeFormatter.Format(checkedItems.Sum(i => i.Size))}) pour suppression."
-            : "Sélectionnez des fichiers puis cliquez Supprimer.";
+            ? T("Dup.Selected", checkedItems.Count,
+                SizeFormatter.Format(checkedItems.Sum(i => i.Size)))
+            : T("Dup.SelectPrompt");
     }
 
     // ─── SUPPRESSION ────────────────────────────────────────────────────
@@ -226,8 +244,8 @@ public partial class DuplicateWindow : UserControl
         if (toDelete.Count == 0) return;
 
         var confirm = MessageBox.Show(
-            $"Supprimer {toDelete.Count} fichier(s) ? Un backup sera créé automatiquement.",
-            "Confirmer la suppression",
+            T("Dup.ConfirmDelete", toDelete.Count),
+            T("Dup.ConfirmTitle"),
             MessageBoxButton.YesNo,
             MessageBoxImage.Warning);
 
@@ -238,7 +256,7 @@ public partial class DuplicateWindow : UserControl
         AutoSelectBtn.IsEnabled = false;
         DeleteBtn.IsEnabled = false;
         ScanBtn.IsEnabled   = false;
-        StatusText.Text     = "Suppression en cours…";
+        StatusText.Text     = T("Dup.Deleting");
 
         try
         {
@@ -247,7 +265,7 @@ public partial class DuplicateWindow : UserControl
             var logger        = App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<DuplicateFinderPlugin>>();
             var plugin        = _plugin;
 
-            var progress = operation.CreateProgress<double>(p => StatusText.Text = $"Suppression… {p:P0}");
+            var progress = operation.CreateProgress<double>(p => StatusText.Text = T("Dup.DeleteProgress", p));
             OperationResult result;
             await using (var transaction = new CleanupTransactionScope(
                              App.Services.GetRequiredService<ITransactionManager>()))
@@ -262,7 +280,7 @@ public partial class DuplicateWindow : UserControl
             // Relancer l'analyse pour mettre à jour l'arbre
             _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
-        catch (OperationCanceledException) { StatusText.Text = "Opération annulée — relancez lʼanalyse."; _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T("Dup.Cancelled"); _plugin = null; }
         catch (Exception ex)
         {
             StatusText.Text = "❌ " + ex.Message;
@@ -297,12 +315,12 @@ public partial class DuplicateWindow : UserControl
         var ext = System.IO.Path.GetExtension(file.Path).TrimStart('.');
         if (!ImageExts.Contains(ext))
         {
-            PreviewPlaceholder.Text = "📄\nAucun aperçu disponible pour ce type de fichier";
+            PreviewPlaceholder.Text = T("Dup.PreviewNone");
             PreviewPlaceholder.FontSize = 12;
             return;
         }
 
-        PreviewPlaceholder.Text = "📷\nChargement...";
+        PreviewPlaceholder.Text = T("Dup.PreviewLoading");
         PreviewPlaceholder.FontSize = 12;
 
         try
@@ -320,7 +338,7 @@ public partial class DuplicateWindow : UserControl
         catch
         {
             PreviewImage.Source = null;
-            PreviewPlaceholder.Text = "⚠️\nImpossible de charger l'aperçu";
+            PreviewPlaceholder.Text = T("Dup.PreviewError");
             PreviewPlaceholder.Visibility = Visibility.Visible;
         }
     }
@@ -332,7 +350,7 @@ public partial class DuplicateWindow : UserControl
         PreviewName.Text = "—";
         PreviewSize.Text = "";
         PreviewImage.Source = null;
-        PreviewPlaceholder.Text = "Sélectionnez un fichier pour voir l'aperçu";
+        PreviewPlaceholder.Text = T("Dup.PreviewHint");
         PreviewPlaceholder.Visibility = Visibility.Visible;
     }
 

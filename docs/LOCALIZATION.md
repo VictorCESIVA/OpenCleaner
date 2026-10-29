@@ -20,14 +20,15 @@ Migré :
 - Espace disque complet : statistiques, lecteurs, barre d'outils, carte proportionnelle, liste, plus gros fichiers, applications, légendes et infobulles ;
 - Santé du PC complète : score, sections, constats du moteur, recommandations, historique, tendance, disques, mémoire, actions rapides et export ;
 - Démarrage, Désinstallation et Mises à jour : en-têtes, recherche, tri, états, libellés de lignes, confirmations et statuts ;
+- Restauration, Confidentialité et Doublons : en-têtes, listes, aperçu, confirmations, progression, résultats et états vides ;
 - libellés de risque, tailles, nombres, dates relatives et culture d'affichage (fr-FR / en-US) ;
 - sélecteur de langue dans les paramètres ;
 - préférence persistante et bascule immédiate.
 
 Reste à migrer (le français reste affiché) :
 
-- Restauration, Confidentialité, Doublons, Caches développeur, Effacement sécurisé, code de récupération ;
-- descriptions générées par les plugins et messages des services Core affichés dans l'interface ;
+- Caches développeur, Effacement sécurisé, code de récupération ;
+- descriptions générées par les plugins (alertes de confidentialité, messages de doublons) et messages des services Core affichés dans l'interface ;
 - messages détaillés du service d'élévation HKLM et du helper de démarrage ;
 - textes des tâches planifiées et journaux secondaires.
 
@@ -59,6 +60,12 @@ Reste à migrer (le français reste affiché) :
 ![Désinstallation en anglais](preview/uninstaller-en.png)
 
 ![Mises à jour en anglais](preview/updates-en.png)
+
+![Restauration en anglais](preview/restore-en.png)
+
+![Confidentialité en anglais](preview/privacy-en.png)
+
+![Doublons en anglais](preview/duplicate-en.png)
 
 ## Limites
 
