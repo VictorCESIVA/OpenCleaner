@@ -8,12 +8,14 @@ using Microsoft.Extensions.DependencyInjection;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
 using OpenCleaner.Core.Tools;
+using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
 /// <summary>Ligne affichée dans la liste des enfants ou dans celle des plus gros fichiers.</summary>
 public sealed class DiskEntry
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
     public DiskEntry(DiskUsageNode node, long maxSize, bool isAggregate = false)
     {
         Node = node;
@@ -21,11 +23,12 @@ public sealed class DiskEntry
         SizeLabel = SizeFormatter.Format(node.Size);
         TypeIcon = isAggregate ? "🗂" : node.IsFile ? "📄" : "📁";
         Detail = isAggregate
-            ? "Éléments non listés individuellement"
+            ? T("Disk.AggregateDetail")
             : node.IsFile
-                ? "Fichier"
-                : $"{node.FileCount:N0} fichiers • {Math.Max(0, node.DirectoryCount - 1):N0} dossiers" +
-                  (node.IsProtected ? " • protégé" : "");
+                ? T("Disk.File")
+                : T("Disk.FilesDirs", node.FileCount.ToString("N0"),
+                    Math.Max(0, node.DirectoryCount - 1).ToString("N0")) +
+                  (node.IsProtected ? T("Disk.ProtectedSuffix") : "");
         ModifiedLabel = node.LastWriteTime == DateTime.MinValue ? "—" : node.LastWriteTime.ToLocalTime().ToString("g");
         BarPercent = maxSize > 0 ? Math.Clamp(node.Size * 100.0 / maxSize, 0, 100) : 0;
         SizeColor = (Brush)Application.Current.FindResource(SizeColorKey(node.Size));
@@ -52,12 +55,14 @@ public sealed class DiskEntry
 
 public sealed class ApplicationSpaceRow
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     public ApplicationSpaceRow(InstalledSpaceEntry entry)
     {
         Entry = entry;
         SizeLabel = SizeFormatter.Format(entry.Size);
         Publisher = string.IsNullOrWhiteSpace(entry.Publisher) ? "—" : entry.Publisher!;
-        SourceLabel = entry.Measured ? "Mesuré" : "Estimé";
+        SourceLabel = T(entry.Measured ? "Disk.Measured" : "Disk.Estimated");
         SourceBrush = (Brush)Application.Current.FindResource(entry.Measured ? "TextSecond" : "WarnColor");
         SizeColor = (Brush)Application.Current.FindResource(SizeColorKey(entry.Size));
     }
@@ -82,7 +87,9 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
 {
     private enum DiskView { Map, List, Files, Apps }
 
-    private static readonly string DefaultHint = "Double-cliquez sur un dossier pour l'explorer.";
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
+    private static string DefaultHint => LocalizationService.Instance.Get("Disk.DefaultHint");
 
     private readonly ObservableCollection<DiskEntry> _entries = [];
     private readonly ObservableCollection<DiskEntry> _largest = [];
@@ -140,7 +147,7 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         UpdateStats(result);
         ShowNode(result.Root);
         UpdateView();
-        StatusText.Text = "Aperçu avec des données synthétiques — aucune analyse exécutée.";
+        StatusText.Text = T("Disk.PreviewStatus");
         EmptyState.Visibility = Visibility.Collapsed;
     }
 
@@ -149,7 +156,7 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         if (_busy) return;
         _currentRoot = (string?)DriveCombo.SelectedItem ?? @"C:\";
         ResetScan();
-        StatusText.Text = "Sélectionnez un lecteur et cliquez Analyser.";
+        StatusText.Text = T("Disk.StatusReady");
     }
 
     private void ResetScan()
@@ -202,7 +209,7 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         _appsCancellation?.Cancel();
         Treemap.Node = null;
         ClearStats();
-        StatusText.Text = "Analyse en cours… les dossiers protégés sont uniquement mesurés.";
+        StatusText.Text = T("Disk.Scanning");
         try
         {
             var guardian = App.Services.GetRequiredService<IFileGuardian>();
@@ -210,7 +217,7 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
             var options = new DiskUsageOptions { IsProtected = guardian.IsSystemCriticalPath };
             var progress = new Progress<double>(value =>
             {
-                if (_busy) StatusText.Text = $"Analyse… {value:P0}";
+                if (_busy) StatusText.Text = T("Disk.Progress", value);
             });
             DiskUsageResult result = await Task.Run(
                 () => service.Scan(root, options, progress, ct), ct);
@@ -221,18 +228,19 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
             UpdateStats(result);
             ShowNode(result.Root);
             StatusText.Text = result.SkippedEntries > 0
-                ? $"{result.TotalDirectories:N0} dossiers, {result.TotalFiles:N0} fichiers • " +
-                  $"{result.SkippedEntries:N0} lien(s) ou élément(s) illisible(s) ignoré(s)"
-                : $"{result.TotalDirectories:N0} dossiers, {result.TotalFiles:N0} fichiers accessibles";
+                ? T("Disk.ScanSummary", result.TotalDirectories.ToString("N0"),
+                    result.TotalFiles.ToString("N0"), result.SkippedEntries.ToString("N0"))
+                : T("Disk.ScanSummaryClean", result.TotalDirectories.ToString("N0"),
+                    result.TotalFiles.ToString("N0"));
         }
         catch (OperationCanceledException)
         {
-            StatusText.Text = "Analyse annulée.";
+            StatusText.Text = T("Disk.Cancelled");
             ResetScan();
         }
         catch (Exception ex)
         {
-            StatusText.Text = "L'analyse a échoué : " + ex.Message;
+            StatusText.Text = T("Disk.Failed", ex.Message);
             ResetScan();
         }
         finally
@@ -291,12 +299,12 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         long remaining = Math.Max(0, node.Size - listed);
         if (remaining > 0)
             _entries.Add(new DiskEntry(
-                new DiskUsageNode("Autres éléments", node.FullPath, isFile: false, size: remaining,
+                new DiskUsageNode(T("Disk.Aggregate"), node.FullPath, isFile: false, size: remaining,
                     isProtected: node.IsProtected),
                 maxSize, isAggregate: true));
 
         MapHint.Text = node.Size > 0
-            ? $"{SizeFormatter.Format(node.Size)} • {node.FileCount:N0} fichiers • double-cliquez pour explorer"
+            ? T("Disk.MapHint", SizeFormatter.Format(node.Size), node.FileCount.ToString("N0"))
             : DefaultHint;
     }
 
@@ -325,8 +333,8 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         {
             ReloadLargest();
             MapHint.Text = _result == null
-                ? "Lancez une analyse pour lister les plus gros fichiers."
-                : $"{_result.LargestFiles.Count:N0} fichier(s) les plus volumineux de l'analyse.";
+                ? T("Disk.FilesHintNone")
+                : T("Disk.FilesHint", _result.LargestFiles.Count.ToString("N0"));
         }
         else if (_view == DiskView.Apps)
         {
@@ -338,8 +346,8 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         else if (_current != null)
         {
             MapHint.Text = _view == DiskView.Map
-                ? $"{SizeFormatter.Format(_current.Size)} • double-cliquez sur un dossier pour l'explorer"
-                : "Double-cliquez sur un dossier pour l'explorer.";
+                ? T("Disk.MapHintSize", SizeFormatter.Format(_current.Size))
+                : T("Disk.DefaultHint");
         }
     }
 
@@ -349,14 +357,14 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         if (result == null)
         {
             _applications.Clear();
-            MapHint.Text = "Lancez une analyse pour associer les applications aux dossiers.";
+            MapHint.Text = T("Disk.AppsHintNone");
             return;
         }
 
         _appsCancellation?.Cancel();
         _appsCancellation?.Dispose();
         var cancellation = _appsCancellation = new CancellationTokenSource();
-        MapHint.Text = "Association des applications aux dossiers analysés…";
+        MapHint.Text = T("Disk.AppsLoading");
         try
         {
             var entries = await Task.Run(() =>
@@ -369,7 +377,7 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         catch (OperationCanceledException) { }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
-            MapHint.Text = "Lecture des applications impossible : " + ex.Message;
+            MapHint.Text = T("Disk.AppsFailed", ex.Message);
         }
     }
 
@@ -378,8 +386,8 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         _applications.Clear();
         foreach (var entry in entries) _applications.Add(new ApplicationSpaceRow(entry));
         MapHint.Text = entries.Count == 0
-            ? "Aucune application installée ne correspond aux dossiers analysés."
-            : $"{entries.Count:N0} application(s) • tailles mesurées ou estimées depuis le registre.";
+            ? T("Disk.AppsNone")
+            : T("Disk.AppsSummary", entries.Count.ToString("N0"));
     }
 
     private void ViewMap_Click(object sender, RoutedEventArgs e) => SwitchView(DiskView.Map);
@@ -407,7 +415,8 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
     {
         if (_current != null) _navStack.Push(_current);
         ShowNode(node);
-        StatusText.Text = $"{node.FullPath} • {SizeFormatter.Format(node.Size)} • {node.FileCount:N0} fichiers";
+        StatusText.Text = T("Disk.NodeSummary", node.FullPath, SizeFormatter.Format(node.Size),
+            node.FileCount.ToString("N0"));
     }
 
     private void OnTreemapActivated(object? sender, DiskUsageNode node)
@@ -425,11 +434,13 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
     {
         MapHint.Text = node == null
             ? _current != null
-                ? $"{SizeFormatter.Format(_current.Size)} • double-cliquez sur un dossier pour l'explorer"
+                ? T("Disk.MapHintSize", SizeFormatter.Format(_current.Size))
                 : DefaultHint
-            : $"{node.Name} • {SizeFormatter.Format(node.Size)}" +
-              (node.IsFile ? "" : $" • {node.FileCount:N0} fichiers") +
-              (node.IsProtected ? " • protégé" : "");
+            : node.IsFile
+                ? T("Disk.HoverFile", node.Name, SizeFormatter.Format(node.Size))
+                : T("Disk.HoverDir", node.Name, SizeFormatter.Format(node.Size),
+                    node.FileCount.ToString("N0")) +
+                  (node.IsProtected ? T("Disk.ProtectedSuffix") : "");
     }
 
     private void ResultList_DoubleClick(object sender, MouseButtonEventArgs e)

@@ -138,8 +138,13 @@ internal class Program
             settingsEn.ShowScheduleForPreview(
                 new ScheduledRunRecord(DateTime.UtcNow.AddDays(-1), 1_240, 512L * 1024 * 1024, 0),
                 DateTime.Now.Date.AddDays(2).AddHours(3));
+            var diskEn = new DiskSpaceWindow();
+            diskEn.ShowPreviewData(PreviewDiskUsage());
             Render(mainEn,Path.Combine(output,"MainWindow-en.png"),mainEn.Width,mainEn.Height-36);
             Render(settingsEn,Path.Combine(output,"SettingsWindow-en.png"),1048,824);
+            Render(diskEn,Path.Combine(output,"DiskSpaceWindow-en.png"),1048,824);
+            diskEn.ShowPreviewData(PreviewDiskUsage(), "apps", PreviewApplications());
+            Render(diskEn,Path.Combine(output,"DiskSpaceWindow-apps-en.png"),1048,824);
             OpenCleaner.UI.Localization.LocalizationService.Instance.SetLanguage("fr");
         }
         main.ShowLowSpaceForPreview(new DiskSpaceAlert("C:\\", 42L*1024*1024*1024, 500L*1024*1024*1024, 42.0/500));

@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Tools;
+using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
@@ -35,7 +36,7 @@ public sealed class TreemapControl : FrameworkElement
         SnapsToDevicePixels = true;
         ClipToBounds = true;
         AutomationProperties.SetHelpText(this,
-            "Flèches : parcourir les zones. Entrée : ouvrir le dossier ou le fichier.");
+            LocalizationService.Instance.Get("Tree.Help"));
         MouseMove += OnMouseMove;
         MouseLeave += OnMouseLeave;
         MouseLeftButtonDown += OnMouseLeftButtonDown;
@@ -84,12 +85,12 @@ public sealed class TreemapControl : FrameworkElement
 
         if (Node == null)
         {
-            DrawCentered(drawingContext, bounds, "Lancez une analyse pour afficher la carte.");
+            DrawCentered(drawingContext, bounds, LocalizationService.Instance.Get("Tree.Placeholder"));
             return;
         }
         if (Node.Size <= 0 || _tiles.Count == 0)
         {
-            DrawCentered(drawingContext, bounds, "Ce dossier est vide ou inaccessible.");
+            DrawCentered(drawingContext, bounds, LocalizationService.Instance.Get("Tree.Empty"));
             return;
         }
 
@@ -171,8 +172,9 @@ public sealed class TreemapControl : FrameworkElement
         long listed = segments.Sum(segment => segment.Value);
         long remaining = Math.Max(0, Node.Size - listed);
         if (remaining > 0)
-            segments.Add((ResidualKey, "Autres éléments",
-                $"{SizeFormatter.Format(remaining)} non détaillés", Aggregate(Node, remaining), remaining, false));
+            segments.Add((ResidualKey, LocalizationService.Instance.Get("Tree.Other"),
+                LocalizationService.Instance.Get("Tree.Undetailed", SizeFormatter.Format(remaining)),
+                Aggregate(Node, remaining), remaining, false));
 
         // Au-delà d'une centaine de pavés, la carte devient illisible : on regroupe le reste.
         const int maxTiles = 80;
@@ -181,8 +183,8 @@ public sealed class TreemapControl : FrameworkElement
         {
             long restValue = ordered.Skip(maxTiles - 1).Sum(segment => segment.Value);
             ordered = ordered.Take(maxTiles - 1).ToList();
-            ordered.Add((AggregateKey, "Autres éléments", SizeFormatter.Format(restValue),
-                Aggregate(Node, restValue), restValue, false));
+            ordered.Add((AggregateKey, LocalizationService.Instance.Get("Tree.Other"),
+                SizeFormatter.Format(restValue), Aggregate(Node, restValue), restValue, false));
         }
 
         var layout = TreemapLayout.Squarify(
@@ -203,12 +205,14 @@ public sealed class TreemapControl : FrameworkElement
     }
 
     private static DiskUsageNode Aggregate(DiskUsageNode parent, long value) =>
-        new("Autres éléments", parent.FullPath, isFile: false, size: value, isProtected: parent.IsProtected);
+        new(LocalizationService.Instance.Get("Tree.Other"), parent.FullPath, isFile: false, size: value,
+            isProtected: parent.IsProtected);
 
     private static string Prefix(DiskUsageNode node)
     {
-        if (node.IsProtected) return "protégé · ";
-        if (node.SkippedEntries > 0) return $"{node.SkippedEntries} ignoré(s) · ";
+        if (node.IsProtected) return LocalizationService.Instance.Get("Tree.ProtectedPrefix");
+        if (node.SkippedEntries > 0)
+            return LocalizationService.Instance.Get("Tree.SkippedPrefix", node.SkippedEntries);
         return "";
     }
 

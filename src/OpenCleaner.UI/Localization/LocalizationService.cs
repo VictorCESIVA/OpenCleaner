@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Globalization;
 using System.IO;
 using System.Reflection;
 using System.Windows;
@@ -30,8 +31,22 @@ public sealed class LocalizationService : INotifyPropertyChanged
     {
         LoadEmbeddedCatalog("fr");
         LoadEmbeddedCatalog("en");
+        ApplyCulture(_language);
         ApplySizeUnits();
         InstallResourceDictionary();
+    }
+
+    /// <summary>Culture d'affichage associée à une langue (nombres, dates, devises).</summary>
+    public static CultureInfo CultureFor(string language) =>
+        CultureInfo.GetCultureInfo(NormalizeLanguage(language) == "en" ? "en-US" : "fr-FR");
+
+    private static void ApplyCulture(string language)
+    {
+        CultureInfo culture = CultureFor(language);
+        CultureInfo.CurrentCulture = culture;
+        CultureInfo.CurrentUICulture = culture;
+        CultureInfo.DefaultThreadCurrentCulture = culture;
+        CultureInfo.DefaultThreadCurrentUICulture = culture;
     }
 
     private void ApplySizeUnits() =>
@@ -92,6 +107,7 @@ public sealed class LocalizationService : INotifyPropertyChanged
         string normalized = NormalizeLanguage(language);
         if (string.Equals(_language, normalized, StringComparison.Ordinal)) return false;
         _language = normalized;
+        ApplyCulture(normalized);
         ApplySizeUnits();
         InstallResourceDictionary();
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Language)));

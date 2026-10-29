@@ -17,13 +17,14 @@ Migré :
 
 - fenêtre principale complète : navigation, tableau de bord, en-têtes de catégories, filtres, colonnes, états vides, chargement, confirmations de nettoyage, export, bandeau d'espace faible ;
 - fenêtre Paramètres complète : planification, exécutions, langue, exclusions, seuil d'alerte, sauvegardes, mises à jour, messages et dialogues ;
-- libellés de risque, tailles, dates relatives ;
+- Espace disque complet : statistiques, lecteurs, barre d'outils, carte proportionnelle, liste, plus gros fichiers, applications, légendes et infobulles ;
+- libellés de risque, tailles, nombres, dates relatives et culture d'affichage (fr-FR / en-US) ;
 - sélecteur de langue dans les paramètres ;
 - préférence persistante et bascule immédiate.
 
 Reste à migrer (le français reste affiché) :
 
-- Santé du PC, Espace disque et sa carte, Démarrage, Désinstallation, Mises à jour ;
+- Santé du PC, Démarrage, Désinstallation, Mises à jour ;
 - Restauration, Confidentialité, Doublons, Caches développeur, Effacement sécurisé, code de récupération ;
 - descriptions générées par les plugins et messages des services Core affichés dans l'interface ;
 - textes des tâches planifiées et journaux secondaires.
@@ -44,6 +45,10 @@ Reste à migrer (le français reste affiché) :
 ![Fenêtre principale en anglais](preview/main-en.png)
 
 ![Sélecteur de langue](preview/settings-language-en.png)
+
+![Espace disque en anglais](preview/disk-en.png)
+
+![Applications et espace occupé en anglais](preview/disk-apps-en.png)
 
 ## Limites
 
