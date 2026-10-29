@@ -8,7 +8,7 @@ Comparaison établie à partir des fonctions publiques de CCleaner pour Windows 
 |---|---|---|
 | Custom Clean | Oui | Catégories système, navigateurs, applications, registre, analyse et sélection. |
 | Nettoyage des navigateurs | Oui | Chrome, Edge, Brave, Firefox, Opera, Vivaldi ; cookies et historique sur option. |
-| Health Check | Oui | Score sur 100, cinq sections mesurées, constats expliqués et actions directes. Aucune correction silencieuse : chaque action destructive reste confirmée. |
+| Health Check | Oui | Score sur 100, cinq sections mesurées, constats expliqués, actions directes et historique local des 30 derniers jours. Aucune correction silencieuse : chaque action destructive reste confirmée. |
 | Corbeille | Oui | Consultation du volume et vidage explicite et irréversible. |
 | Prefetch | Oui | Cible experte, fichiers de plus de 30 jours. |
 | Applications (Office, Thunderbird, caches dev) | Oui | Office, Thunderbird, npm, Yarn, NuGet, pip, Gradle, VS Code, Teams, Discord, Spotify, JetBrains. |

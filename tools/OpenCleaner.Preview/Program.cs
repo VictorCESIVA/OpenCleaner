@@ -37,6 +37,9 @@ internal class Program
             if (report == null) throw new InvalidOperationException("Live health report is missing");
             Console.WriteLine($"Live health score={report.Score}/{report.MaxScore} grade={report.Grade} " +
                               $"findings={report.Findings.Count} reclaimable={SizeFormatter.Format(report.ReclaimableBytes)}");
+            if (liveHealth.CurrentHistory is { } history)
+                Console.WriteLine($"Live history cleanups={history.Cleanups} files={history.Files} " +
+                                  $"bytes={SizeFormatter.Format(history.Bytes)}");
             (App.Services as IDisposable)?.Dispose();
             return;
         }
@@ -92,6 +95,7 @@ internal class Program
             Render(window,Path.Combine(output,name+"-minimum.png"),window is Window mw ? mw.MinWidth : 808,window is Window mh ? mh.MinHeight-36 : 704);
             Console.WriteLine(name+" instantiated and rendered");
         }
+        Render(health,Path.Combine(output,"HealthWindow-full.png"),1048,1500);
         ((Border)main.FindName("BrowserOptionsPanel")).Visibility=Visibility.Visible;
         ((TextBlock)main.FindName("PluginTitle")).Text="Navigateurs Chrome / Edge / Brave";
         Render(main,Path.Combine(output,"MainWindow-browser-minimum.png"),main.MinWidth,main.MinHeight-36);

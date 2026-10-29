@@ -89,6 +89,40 @@
                 </StackPanel>
             </Border>
 
+            <!-- HISTORIQUE -->
+            <Border Style="{StaticResource Card}" Padding="20,16" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Center">
+                        <TextBlock Text="HISTORIQUE DES NETTOYAGES" Style="{StaticResource Eyebrow}"/>
+                        <TextBlock Text="30 derniers jours" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="HistoryCaption" Text="Lecture de l'historique…"
+                                   Foreground="{DynamicResource TextSecond}" FontSize="11"
+                                   TextWrapping="Wrap" Margin="0,4,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Margin="0,0,26,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="HistoryCleanups" Text="—" FontSize="20" FontWeight="Bold"
+                                   Foreground="{DynamicResource Accent}"/>
+                        <TextBlock Text="nettoyages" FontSize="11" Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Margin="0,0,26,0" VerticalAlignment="Center">
+                        <TextBlock x:Name="HistoryFiles" Text="—" FontSize="20" FontWeight="Bold"
+                                   Foreground="{DynamicResource TextPrimary}"/>
+                        <TextBlock Text="fichiers" FontSize="11" Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="3" VerticalAlignment="Center">
+                        <TextBlock x:Name="HistoryBytes" Text="—" FontSize="20" FontWeight="Bold"
+                                   Foreground="{DynamicResource SizeLarge}"/>
+                        <TextBlock Text="volume traité" FontSize="11" Foreground="{DynamicResource TextSecond}"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
             <!-- DÉTAILS -->
             <Grid Margin="0,0,0,14">
                 <Grid.ColumnDefinitions>

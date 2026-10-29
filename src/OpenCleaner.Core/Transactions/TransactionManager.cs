@@ -21,12 +21,15 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
     {
         _backupManager = backupManager;
         _logger = logger;
-        string path = Path.GetFullPath(databasePath ?? Path.Combine(
-            Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenCleaner", "transactions.db"));
+        string path = Path.GetFullPath(databasePath ?? DefaultDatabasePath);
         Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         _connectionString = new SqliteConnectionStringBuilder { DataSource = path, ForeignKeys = true }.ToString();
         InitializeDatabase();
     }
+
+    /// <summary>Emplacement partagé du journal local des nettoyages.</summary>
+    public static string DefaultDatabasePath { get; } = Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenCleaner", "transactions.db");
 
     private SqliteConnection OpenConnection()
     {

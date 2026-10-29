@@ -10,6 +10,7 @@ using OpenCleaner.Core;
 using OpenCleaner.Core.Health;
 using OpenCleaner.Core.Security;
 using OpenCleaner.Core.Tools;
+using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System.Plugins;
 
 namespace OpenCleaner.UI;
@@ -62,6 +63,7 @@ public partial class HealthWindow : UserControl, IThemeAware
     private bool _hasRecycleItems;
     private HealthReport? _report;
     private HealthMetrics? _metrics;
+    private CleanupHistorySummary? _history;
 
     public HealthWindow()
     {
@@ -94,6 +96,19 @@ public partial class HealthWindow : UserControl, IThemeAware
 
             HealthMetrics baseMetrics = HealthCheckService.Collect(info, bin, startup);
             ShowReport(HealthScoreCalculator.Evaluate(baseMetrics), baseMetrics, info);
+            StatusText.Text = "Indicateurs de base actualisés. Lecture de l'historique…";
+
+            try
+            {
+                CleanupHistorySummary history = await Task.Run(
+                    () => new CleanupHistoryService().GetSummary(TimeSpan.FromDays(30)));
+                PopulateHistory(history);
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+            {
+                HistoryCaption.Text = "Historique indisponible : " + ex.Message;
+            }
+
             StatusText.Text = "Indicateurs de base actualisés. Mesure des caches à faible risque…";
 
             CacheSnapshot cache = CacheSnapshot.Empty;
@@ -249,8 +264,7 @@ public partial class HealthWindow : UserControl, IThemeAware
         }
     }
 
-    private void RenderFindings(HealthReport report)
-    {
+    private void RenderFindings(HealthReport report)    {
         var rows = report.Findings
             .Where(finding => finding.Severity != HealthSeverity.Ok)
             .Select(finding => new HealthFindingRow(finding))
@@ -265,6 +279,26 @@ public partial class HealthWindow : UserControl, IThemeAware
                 : $"{rows.Count} point(s) à vérifier";
     }
 
+    private void PopulateHistory(CleanupHistorySummary history)
+    {
+        _history = history;
+        if (!history.HasData)
+        {
+            HistoryCleanups.Text = HistoryFiles.Text = HistoryBytes.Text = "0";
+            HistoryCaption.Text = "Aucun nettoyage enregistré sur la période. " +
+                                  "Cette carte se remplit après un nettoyage confirmé.";
+            return;
+        }
+
+        HistoryCleanups.Text = history.Cleanups.ToString("N0");
+        HistoryFiles.Text = history.Files.ToString("N0");
+        HistoryBytes.Text = SizeFormatter.Format(history.Bytes);
+        string suffix = "Volume des fichiers supprimés ; les sauvegardes conservées occupent encore de l'espace.";
+        HistoryCaption.Text = history.LastCleanupUtc is DateTime last
+            ? $"Dernier nettoyage : {last.ToLocalTime():g}. {suffix}"
+            : suffix;
+    }
+
     internal void Populate(SystemHealthInfo info)
     {
         HealthMetrics metrics = HealthCheckService.Collect(info, null, null);
@@ -272,6 +306,7 @@ public partial class HealthWindow : UserControl, IThemeAware
     }
 
     internal HealthReport? CurrentReport => _report;
+    internal CleanupHistorySummary? CurrentHistory => _history;
 
     /// <summary>Exécute la collecte réelle et le rendu (validation locale, hors CI).</summary>
     internal Task RunLiveCheckAsync() => LoadAsync();
@@ -285,6 +320,8 @@ public partial class HealthWindow : UserControl, IThemeAware
             : "Corbeille : vide.";
         _hasRecycleItems = metrics.RecycleBinItems > 0;
         EmptyRecycleBtn.IsEnabled = _hasRecycleItems;
+        PopulateHistory(new CleanupHistorySummary(8, 12_400, 34L * 1024 * 1024 * 1024,
+            DateTime.UtcNow.AddDays(-1), []));
         StatusText.Text = "Aperçu du diagnostic. Aucune analyse ni suppression exécutée.";
     }
 
