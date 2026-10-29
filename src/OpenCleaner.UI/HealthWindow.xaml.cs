@@ -121,6 +121,8 @@ public partial class HealthWindow : UserControl, IThemeAware
         };
     }
 
+    internal void InvalidateAfterCleanup() => _loaded = false;
+
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
         if (_report == null || _metrics == null || _info == null) return;

@@ -515,29 +515,9 @@ public partial class MainWindow : Window
                 }
                 ActionStatus.Text = PluginMessageLocalizer.Localize(result.Message);
                 StatusText.Text = result.Success ? T("Main.CleanDone") : T("Main.CleanDoneSkipped");
-                // Re-analyze registry paths; File.Exists cannot represent a registry key.
-                if (_selectedPluginTag == "registry")
-                {
-                    var remaining = await Task.Run(() => plugin.AnalyzeAsync(ct: operation.Token), operation.Token);
-                    _allAnalyzedItems = remaining.ToList();
-                }
-                else
-                {
-                    var removedIds = await Task.Run(() => items
-                        .Where(i => !File.Exists(i.Path) && !Directory.Exists(i.Path))
-                        .Select(i => i.Id)
-                        .ToHashSet(StringComparer.Ordinal), operation.Token);
-                    if (removedIds.Count > 0)
-                        _allAnalyzedItems = _allAnalyzedItems.Where(i => !removedIds.Contains(i.Id)).ToList();
-                }
-                ApplyFilter();
-                UpdateStats(_allAnalyzedItems);
-                _smartScanResults = null;
-                SmartCleanResult.Visibility = Visibility.Collapsed;
             }
             catch (OperationCanceledException)
             {
-                InvalidateAnalysis();
                 StatusText.Text = T(createBackup.Value ? "Main.CleanCancelled" : "Cleanup.PermanentInterrupted");
                 if (_selectedPluginTag == "registry")
                     MessageBox.Show(this, T("Main.RegistryManual"),
@@ -550,8 +530,49 @@ public partial class MainWindow : Window
                     ? T("Main.RegistryErrorSuffix")
                     : "");
             }
-            finally { HideLoading(); }
+            finally
+            {
+                if (_selectedPluginTag == "registry")
+                {
+                    try { _allAnalyzedItems = (await Task.Run(() => plugin.AnalyzeAsync())).ToList(); }
+                    catch (Exception) { InvalidateAnalysis(); }
+                }
+                string status = StatusText.Text;
+                await RefreshCleanupResultsAsync();
+                StatusText.Text = status;
+                HideLoading();
+            }
         }
+    }
+
+    internal async Task RefreshCleanupResultsAsync()
+    {
+        _allAnalyzedItems = await Task.Run(() => CleanupResults.GetRemainingItems(_allAnalyzedItems));
+        ApplyFilter();
+        if (_currentPlugin != null)
+        {
+            UpdateStats(_allAnalyzedItems);
+            StatusText.Text = _allAnalyzedItems.Count == 0 ? T("Main.NothingToClean")
+                : T("Main.ItemsFound", _allAnalyzedItems.Count, SizeFormatter.Format(_allAnalyzedItems.Sum(i => i.Size)));
+        }
+        else ResetStats();
+        if (_smartScanResults != null)
+        {
+            _smartScanResults = await Task.Run(() => _smartScanResults.Select(scan =>
+            {
+                var remaining = CleanupResults.GetRemainingItems(scan.Items);
+                return scan with { Items = remaining, TotalSize = remaining.Sum(item => item.Size) };
+            }).ToArray());
+            UpdateSmartScanResult();
+        }
+        if (_toolViews.TryGetValue("health", out var health)) ((HealthWindow)health).InvalidateAfterCleanup();
+        foreach (var view in _toolViews.Values)
+        {
+            if (view is DevCleanerWindow dev) await dev.RefreshCleanupResultsAsync();
+            else if (view is PrivacyWindow privacy) await privacy.RefreshCleanupResultsAsync();
+            else if (view is DuplicateWindow duplicates) await duplicates.RefreshCleanupResultsAsync();
+        }
+        await CheckLowSpaceAsync();
     }
 
     private void UpdateStats(IReadOnlyList<CleanableItem> items)
@@ -694,23 +715,29 @@ public partial class MainWindow : Window
                     .Select(tag => CreatePlugin(tag)!).ToArray();
                 var service = new SmartCleanService(App.Services.GetRequiredService<IBackupManager>());
                 _smartScanResults = await Task.Run(() => service.QuickScanAsync(plugins, operation.Token), operation.Token);
-                var total = _smartScanResults.Sum(r => r.TotalSize);
                 var failed = _smartScanResults.Count(r => r.Error != null);
                 SmartCleanDesc.Text = T("Main.SmartCategories",
                     _smartScanResults.Length - failed, _smartScanResults.Length);
                 if (failed > 0) SmartCleanDesc.Text += T("Main.SmartIncomplete", failed);
-                SmartCleanResult.Text = total == 0
-                    ? failed > 0 ? T("Main.SmartPartial") : T("Main.SmartNone")
-                    : T("Main.SmartDetected", SizeFormatter.Format(total));
-                SmartCleanResult.ToolTip = string.Join(Environment.NewLine, _smartScanResults.Where(r => r.Error != null)
-                    .Select(r => PluginDescriptionLocalizer.Localize(r.Plugin.Name) + " : " +
-                         PluginMessageLocalizer.Localize(r.Error)));
-                SmartCleanResult.Visibility = Visibility.Visible;
+                UpdateSmartScanResult();
             }
             catch (OperationCanceledException) { SmartCleanDesc.Text = T("Main.SmartCancelled"); }
             catch (Exception ex) { SmartCleanDesc.Text = ex.Message; }
             finally { HideLoading(); }
         }
+    }
+
+    private void UpdateSmartScanResult()
+    {
+        if (_smartScanResults == null) return;
+        var total = _smartScanResults.Sum(r => r.TotalSize);
+        SmartCleanResult.Text = total == 0
+            ? _smartScanResults.Any(r => r.Error != null) ? T("Main.SmartPartial") : T("Main.SmartNone")
+            : T("Main.SmartDetected", SizeFormatter.Format(total));
+        SmartCleanResult.ToolTip = string.Join(Environment.NewLine, _smartScanResults.Where(r => r.Error != null)
+            .Select(r => PluginDescriptionLocalizer.Localize(r.Plugin.Name) + " : " +
+                 PluginMessageLocalizer.Localize(r.Error)));
+        SmartCleanResult.Visibility = Visibility.Visible;
     }
 
     private async void SmartClean_Click(object sender, RoutedEventArgs e)
@@ -747,16 +774,14 @@ public partial class MainWindow : Window
                 SmartCleanDesc.Text = T("Main.SmartResult", result.ItemsCleaned,
                     SizeFormatter.Format(result.BytesFreed));
                 if (!result.Success) SmartCleanDesc.Text += T("Main.SmartErrors", result.Errors.Count);
-                _smartScanResults = null;
-                _currentPlugin = null;
-                _foundItems.Clear();
-                ResetStats();
-                EmptyState.Visibility = Visibility.Visible;
-                SmartCleanResult.Visibility = Visibility.Collapsed;
             }
-            catch (OperationCanceledException) { SmartCleanDesc.Text = T(createBackup.Value ? "Main.SmartInterrupted" : "Cleanup.PermanentInterrupted"); _smartScanResults = null; }
-            catch (Exception ex) { SmartCleanDesc.Text = ex.Message; _smartScanResults = null; }
-            finally { HideLoading(); }
+            catch (OperationCanceledException) { SmartCleanDesc.Text = T(createBackup.Value ? "Main.SmartInterrupted" : "Cleanup.PermanentInterrupted"); }
+            catch (Exception ex) { SmartCleanDesc.Text = ex.Message; }
+            finally
+            {
+                await RefreshCleanupResultsAsync();
+                HideLoading();
+            }
         }
     }
 

@@ -9,6 +9,10 @@ using OpenCleaner.Contracts;
 using OpenCleaner.Core.Health;
 using OpenCleaner.Core.Scheduler;
 using OpenCleaner.Core.Tools;
+using OpenCleaner.Core;
+using Microsoft.Extensions.DependencyInjection;
+using OpenCleaner.Core.Security;
+using OpenCleaner.Plugins.System.Plugins;
 
 internal class Program
 {
@@ -75,6 +79,7 @@ internal class Program
         }
         var main=new MainWindow();
         CheckCleanupConfirmation();
+        CheckCleanupResults(output);
         if (args.Contains("--interactive"))
         {
             main.Loaded += (_, _) => CheckMotion((ScrollViewer)main.FindName("DashboardScroll"));
@@ -252,6 +257,94 @@ internal class Program
             throw new InvalidOperationException("Treemap did not render its tiles");
         Console.WriteLine("Read-only WPF constructor and rendering smoke passed; no startup, scans, cleaning or scheduling invoked.");
         (App.Services as IDisposable)?.Dispose();
+    }
+
+    static void CheckCleanupResults(string output)
+    {
+        var dispatcher = System.Windows.Threading.Dispatcher.CurrentDispatcher;
+        var previousContext = System.Threading.SynchronizationContext.Current;
+        System.Threading.SynchronizationContext.SetSynchronizationContext(
+            new System.Windows.Threading.DispatcherSynchronizationContext(dispatcher));
+        try
+        {
+            Task check = CheckAsync();
+            var frame = new System.Windows.Threading.DispatcherFrame();
+            _ = check.ContinueWith(_ => dispatcher.BeginInvoke(new Action(() => frame.Continue = false)));
+            System.Windows.Threading.Dispatcher.PushFrame(frame);
+            check.GetAwaiter().GetResult();
+        }
+        finally { System.Threading.SynchronizationContext.SetSynchronizationContext(previousContext); }
+
+        async Task CheckAsync()
+        {
+            string root = Path.Combine(Path.GetTempPath(), "OpenCleaner-refresh-preview-" + Guid.NewGuid());
+            Directory.CreateDirectory(root);
+            var window = new MainWindow();
+            try
+            {
+                var deleted = new CleanableItem("deleted", Path.Combine(root, "deleted.tmp"), 6L * 1024 * 1024 * 1024,
+                    "Cache — deleted", RiskLevel.Safe, ItemType.File);
+                var remaining = deleted with { Id = "remaining", Path = Path.Combine(root, "locked.tmp"), Size = 64 };
+                File.WriteAllBytes(remaining.Path, new byte[64]);
+                var items = new List<CleanableItem> { deleted, remaining };
+                var guardian = App.Services.GetRequiredService<IFileGuardian>();
+                var plugin = new SystemTempPlugin(guardian,
+                    App.Services.GetRequiredService<Microsoft.Extensions.Logging.ILogger<SystemTempPlugin>>());
+                Set(window, "_currentPlugin", plugin);
+                Set(window, "_allAnalyzedItems", items.ToList());
+                Set(window, "_smartScanResults", new[] { new SmartScanResult(plugin, items.ToList(), items.Sum(i => i.Size)) });
+                window.ShowTool("dev");
+                var dev = (DevCleanerWindow)((ContentControl)window.FindName("ToolContent")).Content;
+                Set(dev, "_allItems", items.ToList());
+                window.ShowTool("privacy");
+                var privacy = (PrivacyWindow)((ContentControl)window.FindName("ToolContent")).Content;
+                Set(privacy, "_currentItems", items.ToList());
+                window.ShowTool("duplicates");
+                var duplicates = (DuplicateWindow)((ContentControl)window.FindName("ToolContent")).Content;
+                Set(duplicates, "_allItems", items.ToList());
+                window.ShowCleaner("system");
+                using var locked = new FileStream(remaining.Path, FileMode.Open, FileAccess.Read, FileShare.None);
+                await window.RefreshCleanupResultsAsync();
+                Expect(window, "StatFiles", "1");
+                Expect(window, "StatSize", SizeFormatter.Format(64));
+                Expect(window, "StatusText", Loc("Main.ItemsFound", 1, SizeFormatter.Format(64)));
+                Expect(dev, "EstimateText", SizeFormatter.Format(64));
+                Expect(privacy, "StatTotal", "1");
+                Expect(duplicates, "DupFiles", "1");
+                if (((ListView)window.FindName("FilesListView")).Items.Count != 1 ||
+                    !((TextBlock)window.FindName("SmartCleanResult")).Text.Contains(SizeFormatter.Format(64)))
+                    throw new InvalidOperationException("Partial cleanup results are stale");
+                locked.Dispose();
+                File.Delete(remaining.Path);
+                await window.RefreshCleanupResultsAsync();
+                Expect(window, "StatFiles", "0");
+                Expect(window, "StatSize", SizeFormatter.Format(0));
+                Expect(window, "StatusText", Loc("Main.NothingToClean"));
+                Expect(dev, "EstimateText", SizeFormatter.Format(0));
+                Expect(privacy, "StatTotal", "0");
+                Expect(duplicates, "DupFiles", "0");
+                Expect(window, "SmartCleanResult", Loc("Main.SmartNone"));
+                if (((Button)window.FindName("CleanBtn")).IsEnabled ||
+                    ((Button)window.FindName("ExportReportBtn")).IsEnabled ||
+                    ((ListView)window.FindName("FilesListView")).Items.Count != 0)
+                    throw new InvalidOperationException("Empty cleanup results still allow cleaning or export");
+                Render(window, Path.Combine(output, "MainWindow-after-cleanup.png"), window.Width, window.Height);
+                Console.WriteLine("Cleanup results refreshed across all cached cleaner views, including partial cleanup and zero bytes");
+            }
+            finally
+            {
+                window.Close();
+                Directory.Delete(root, recursive: true);
+            }
+        }
+
+        static void Set(object target, string field, object value) =>
+            target.GetType().GetField(field, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(target, value);
+        static void Expect(FrameworkElement view, string name, string expected)
+        {
+            if (((TextBlock)view.FindName(name)).Text != expected)
+                throw new InvalidOperationException($"Stale cleanup counter: {view.GetType().Name}.{name}");
+        }
     }
 
     static SystemHealthInfo PreviewSystemInfo() => new("Windows 11", "24H2", "26100", "Processeur exemple", 8,

@@ -118,24 +118,16 @@ public partial class DuplicateWindow : UserControl
 
             // Regroupe par hash (contenu de la Description pour récupérer le hash est dans Item.Id)
             // On re-groupe en cherchant les doublons avec le même nom de fichier d'original
-            BuildTree(_allItems);
-
-            long totalSize = _allItems.Sum(i => i.Size);
+            ShowResults();
             var groups     = _groups.Count;
             var files      = _allItems.Count;
 
-            DupGroups.Text = groups.ToString();
-            DupFiles.Text  = files.ToString();
-            DupSize.Text   = SizeFormatter.Format(totalSize);
             ScanProgress.Text = "";
             CurrentFileText.Text = "";
 
             StatusText.Text = files == 0
                 ? T("Dup.NoDuplicates")
                 : T("Dup.Found", files, groups);
-
-            AutoSelectBtn.IsEnabled = files > 0;
-            UnselectAllBtn.IsEnabled = files > 0;
         }
         catch (OperationCanceledException) { StatusText.Text = T("Dup.Cancelled"); _plugin = null; }
         catch (Exception ex)
@@ -149,6 +141,27 @@ public partial class DuplicateWindow : UserControl
             ScanBtn.IsEnabled = true;
             MinSizeCombo.IsEnabled = true;
         }
+    }
+
+    private void ShowResults()
+    {
+        DupTree.Items.Clear();
+        _groups.Clear();
+        BuildTree(_allItems);
+        DupGroups.Text = _groups.Count.ToString();
+        DupFiles.Text = _allItems.Count.ToString();
+        DupSize.Text = SizeFormatter.Format(_allItems.Sum(item => item.Size));
+        AutoSelectBtn.IsEnabled = UnselectAllBtn.IsEnabled = _plugin != null && _allItems.Count > 0;
+        DeleteBtn.IsEnabled = false;
+        ClearPreview();
+    }
+
+    internal async Task RefreshCleanupResultsAsync()
+    {
+        _allItems = await Task.Run(() => CleanupResults.GetRemainingItems(_allItems));
+        ShowResults();
+        if (!IsVisible && _plugin != null)
+            StatusText.Text = _allItems.Count == 0 ? T("Dup.NoDuplicates") : T("Dup.Found", _allItems.Count, _groups.Count);
     }
 
     private void Plugin_OnFileHashing(string path)
@@ -275,17 +288,16 @@ public partial class DuplicateWindow : UserControl
             StatusText.Text = result.Success
                 ? "✅ " + PluginMessageLocalizer.Localize(result.Message)
                 : "⚠️ " + PluginMessageLocalizer.Localize(result.Message);
-            // Relancer l'analyse pour mettre à jour l'arbre
-            _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
-        catch (OperationCanceledException) { StatusText.Text = T(createBackup.Value ? "Dup.Cancelled" : "Cleanup.PermanentInterrupted"); _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T(createBackup.Value ? "Dup.Cancelled" : "Cleanup.PermanentInterrupted"); }
         catch (Exception ex)
         {
             StatusText.Text = "❌ " + ex.Message;
         }
         finally
         {
-            DeleteBtn.IsEnabled = false;
+            if (Window.GetWindow(this) is MainWindow main) await main.RefreshCleanupResultsAsync();
+            else await RefreshCleanupResultsAsync();
             ScanBtn.IsEnabled   = true;
         }
     }

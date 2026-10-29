@@ -79,21 +79,10 @@ public partial class PrivacyWindow : UserControl
             var progress = operation.CreateProgress<double>(p => StatusText.Text = T("Privacy.Progress", p));
             _currentItems = (await Task.Run(() => plugin.AnalyzeAsync(progress, operation.Token), operation.Token)).ToList();
 
-            foreach (var item in _currentItems)
-                _alerts.Add(PrivacyAlert.From(item));
-
-            int crit   = _currentItems.Count(i => i.RiskLevel == RiskLevel.ExpertOnly);
-            int medium  = _currentItems.Count(i => i.RiskLevel == RiskLevel.Recommended);
-
-            StatCritical.Text = crit.ToString();
-            StatMedium.Text   = medium.ToString();
-            StatTotal.Text    = _currentItems.Count.ToString();
-
+            ShowResults();
             StatusText.Text = _currentItems.Count == 0
                 ? T("Privacy.NoAlerts")
                 : T("Privacy.Alerts", _currentItems.Count);
-
-            SecureBtn.IsEnabled = _currentItems.Count > 0;
         }
         catch (OperationCanceledException) { StatusText.Text = T("Privacy.Cancelled"); _plugin = null; }
         catch (Exception ex)
@@ -104,6 +93,25 @@ public partial class PrivacyWindow : UserControl
         {
             ScanBtn.IsEnabled = true;
         }
+    }
+
+    private void ShowResults()
+    {
+        _alerts.Clear();
+        foreach (var item in _currentItems) _alerts.Add(PrivacyAlert.From(item));
+        StatCritical.Text = _currentItems.Count(i => i.RiskLevel == RiskLevel.ExpertOnly).ToString();
+        StatMedium.Text = _currentItems.Count(i => i.RiskLevel == RiskLevel.Recommended).ToString();
+        StatTotal.Text = _currentItems.Count.ToString();
+        SecureBtn.IsEnabled = _plugin != null && _currentItems.Count > 0;
+        RevealBtn.IsEnabled = false;
+    }
+
+    internal async Task RefreshCleanupResultsAsync()
+    {
+        _currentItems = await Task.Run(() => CleanupResults.GetRemainingItems(_currentItems));
+        ShowResults();
+        if (!IsVisible && _plugin != null)
+            StatusText.Text = _currentItems.Count == 0 ? T("Privacy.NoAlerts") : T("Privacy.Alerts", _currentItems.Count);
     }
 
     // ─── SÉCURISER ──────────────────────────────────────────────────────
@@ -163,10 +171,14 @@ public partial class PrivacyWindow : UserControl
             }
 
             StatusText.Text = (result.Success ? "✅ " : "⚠️ ") + PluginMessageLocalizer.Localize(result.Message);
-            _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
-        catch (OperationCanceledException) { StatusText.Text = T(createBackup.Value ? "Privacy.Cancelled" : "Cleanup.PermanentInterrupted"); _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T(createBackup.Value ? "Privacy.Cancelled" : "Cleanup.PermanentInterrupted"); }
         catch (Exception ex) { StatusText.Text = "❌ " + ex.Message; }
-        finally { ScanBtn.IsEnabled = true; }
+        finally
+        {
+            if (Window.GetWindow(this) is MainWindow main) await main.RefreshCleanupResultsAsync();
+            else await RefreshCleanupResultsAsync();
+            ScanBtn.IsEnabled = true;
+        }
     }
 }

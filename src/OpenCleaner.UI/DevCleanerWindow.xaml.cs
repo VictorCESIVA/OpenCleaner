@@ -122,28 +122,37 @@ public partial class DevCleanerWindow : UserControl
             var progress = operation.CreateProgress<double>(p => StatusText.Text = T("Dev.Progress", p));
             _allItems = (await Task.Run(() => plugin.AnalyzeAsync(progress, operation.Token), operation.Token)).ToList();
 
-            foreach (var item in _allItems)
-                _items.Add(DevItem.From(item));
-
+            ShowResults();
             long total = _allItems.Sum(i => i.Size);
-            EstimateText.Text = SizeFormatter.Format(total);
-
-            var byCategory = _allItems
-                .GroupBy(i => i.Description.Split('—')[0].Trim())
-                .Select(g => $"{g.Key}: {SizeFormatter.Format(g.Sum(i => i.Size))}")
-                .ToList();
-            EstimateDetail.Text = string.Join("\n", byCategory.Take(6));
-
             StatusText.Text = _allItems.Count == 0
                 ? T("Dev.NoArtifacts")
                 : T("Dev.Found", _allItems.Count, SizeFormatter.Format(total));
-
-            CleanBtn.IsEnabled    = _allItems.Count > 0;
-            SelectAllBtn.IsEnabled = _allItems.Count > 0;
         }
         catch (OperationCanceledException) { StatusText.Text = T("Dev.Cancelled"); _plugin = null; }
         catch (Exception ex) { StatusText.Text = "❌ " + ex.Message; }
         finally { ScanBtn.IsEnabled = true; foreach (var option in Options) option.IsEnabled = true; }
+    }
+
+    private void ShowResults()
+    {
+        _items.Clear();
+        foreach (var item in _allItems) _items.Add(DevItem.From(item));
+        EstimateText.Text = SizeFormatter.Format(_allItems.Sum(i => i.Size));
+        EstimateDetail.Text = string.Join("\n", _allItems
+            .GroupBy(i => i.Description.Split('—')[0].Trim())
+            .Select(g => $"{g.Key}: {SizeFormatter.Format(g.Sum(i => i.Size))}").Take(6));
+        CleanBtn.IsEnabled = SelectAllBtn.IsEnabled = _plugin != null && _allItems.Count > 0;
+    }
+
+    internal async Task RefreshCleanupResultsAsync()
+    {
+        var selectedIds = _items.Where(item => item.IsSelected).Select(item => item.Item.Id).ToHashSet();
+        _allItems = await Task.Run(() => CleanupResults.GetRemainingItems(_allItems));
+        ShowResults();
+        foreach (var item in _items) item.IsSelected = selectedIds.Contains(item.Item.Id);
+        if (!IsVisible && _plugin != null)
+            StatusText.Text = _allItems.Count == 0 ? T("Dev.NoArtifacts")
+                : T("Dev.Found", _allItems.Count, SizeFormatter.Format(_allItems.Sum(i => i.Size)));
     }
 
     // ─── SÉLECTION ──────────────────────────────────────────────────────
@@ -196,10 +205,15 @@ public partial class DevCleanerWindow : UserControl
             }
 
             StatusText.Text = (result.Success ? "✅ " : "⚠️ ") + PluginMessageLocalizer.Localize(result.Message);
-            _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
-        catch (OperationCanceledException) { StatusText.Text = T(createBackup.Value ? "Dev.Cancelled" : "Cleanup.PermanentInterrupted"); _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T(createBackup.Value ? "Dev.Cancelled" : "Cleanup.PermanentInterrupted"); }
         catch (Exception ex) { StatusText.Text = "❌ " + ex.Message; }
-        finally { ScanBtn.IsEnabled = true; foreach (var option in Options) option.IsEnabled = true; }
+        finally
+        {
+            if (Window.GetWindow(this) is MainWindow main) await main.RefreshCleanupResultsAsync();
+            else await RefreshCleanupResultsAsync();
+            ScanBtn.IsEnabled = true;
+            foreach (var option in Options) option.IsEnabled = true;
+        }
     }
 }
