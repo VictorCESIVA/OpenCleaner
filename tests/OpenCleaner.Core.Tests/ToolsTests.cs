@@ -117,6 +117,39 @@ public sealed class ToolsTests
         finally { Directory.Delete(directory, recursive: true); }
     }
 
+    [Fact]
+    public void HardLinkInspectorCountsPhysicalNames()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        string directory = Path.Combine(Path.GetTempPath(), "OpenCleaner-Links-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        string file = Path.Combine(directory, "original.txt");
+        string link = Path.Combine(directory, "alias.txt");
+        try
+        {
+            File.WriteAllText(file, "contenu");
+            Assert.True(CreateHardLink(link, file, IntPtr.Zero),
+                $"CreateHardLink failed: {Marshal.GetLastWin32Error()}");
+
+            Assert.Equal(2, HardLinkInspector.CountHardLinks(file));
+            Assert.Equal(2, HardLinkInspector.CountHardLinks(link));
+            Assert.False(HardLinkInspector.HasSingleLink(file));
+
+            File.Delete(link);
+            Assert.Equal(1, HardLinkInspector.CountHardLinks(file));
+            Assert.True(HardLinkInspector.HasSingleLink(file));
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void HardLinkInspectorReturnsUnknownForMissingFile() =>
+        Assert.Equal(-1, HardLinkInspector.CountHardLinks(
+            Path.Combine(Path.GetTempPath(), "OpenCleaner-Absent-" + Guid.NewGuid().ToString("N"))));
+
     [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     private static extern bool CreateHardLink(string newFileName, string existingFileName, IntPtr securityAttributes);

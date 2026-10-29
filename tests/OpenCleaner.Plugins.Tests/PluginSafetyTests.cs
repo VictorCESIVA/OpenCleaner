@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using OpenCleaner.Contracts;
@@ -130,6 +131,45 @@ public sealed class PluginSafetyTests : IDisposable
         CreateJunction(source, target);
         Assert.False((await cleaner.CleanAsync([item], _backup)).Success);
         _guardian.Verify(g => g.SafeDeleteAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DuplicateFinderSkipsHardLinkedCopies()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        string content = new string('h', 1024 * 1024);
+        Write("a-keeper.txt", content);
+        string linkedCopy = Write("b-linked.txt", content);
+        string secondName = Path.Combine(_root, "c-second-name.txt");
+        Assert.True(CreateHardLink(secondName, linkedCopy, IntPtr.Zero),
+            $"CreateHardLink failed: {Marshal.GetLastWin32Error()}");
+        Write("d-real-copy.txt", content);
+
+        var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
+        var items = await scanner.AnalyzeAsync();
+
+        // a-keeper is retained; b-linked and c-second-name share one physical file and free nothing;
+        // only the independent copy remains a proposal.
+        Assert.Equal(Path.Combine(_root, "d-real-copy.txt"), Assert.Single(items).Path);
+    }
+
+    [Fact]
+    public async Task DuplicateCleanRefusesCopyThatBecameHardLinked()
+    {
+        if (!OperatingSystem.IsWindows()) return;
+        string content = new string('i', 1024 * 1024);
+        Write("a.txt", content);
+        string copy = Write("b.txt", content);
+        var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
+        var item = Assert.Single(await scanner.AnalyzeAsync());
+
+        string extraName = Path.Combine(_root, "b-alias.txt");
+        Assert.True(CreateHardLink(extraName, copy, IntPtr.Zero),
+            $"CreateHardLink failed: {Marshal.GetLastWin32Error()}");
+
+        Assert.False((await scanner.CleanAsync([item], _backup)).Success);
+        _guardian.Verify(g => g.SafeDeleteAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     private void CreateJunction(string link, string target)
@@ -269,4 +309,8 @@ public sealed class PluginSafetyTests : IDisposable
         public override RiskLevel MaxRiskLevel => RiskLevel.Safe;
         protected override IEnumerable<ScanTarget> GetTargets() => [new(root, "fixture", MinAge: age)];
     }
+
+    [DllImport("kernel32.dll", CharSet = CharSet.Unicode, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    private static extern bool CreateHardLink(string newFileName, string existingFileName, IntPtr securityAttributes);
 }

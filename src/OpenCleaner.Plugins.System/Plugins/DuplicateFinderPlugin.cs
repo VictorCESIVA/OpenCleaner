@@ -134,6 +134,12 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
             {
                 copy.Refresh();
                 if (!copy.Exists) continue;
+                // A second name for the same data frees nothing when removed: never propose it.
+                if (!HardLinkInspector.HasSingleLink(copy.FullName))
+                {
+                    _logger.LogDebug("Doublon ignoré : plusieurs liens physiques ({Path})", copy.FullName);
+                    continue;
+                }
                 var item = new CleanableItem(Guid.NewGuid().ToString(), copy.FullName, copy.Length,
                     $"Identique à « {Path.GetFileName(original)} » — copie conservée : {original}",
                     RiskLevel.ExpertOnly, ItemType.File, copy.LastAccessTime, Id, groupId, original);
@@ -158,6 +164,8 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
             {
                 if (!_evidence.TryGetValue(item.Id, out var evidence) ||
                     !PluginFileSafety.IsRegularPath(evidence.OriginalPath)) return false;
+                // Recheck the physical names: a hard link added after the scan frees nothing.
+                if (!HardLinkInspector.HasSingleLink(item.Path)) return false;
                 if (!keepers.TryGetValue(evidence.OriginalPath, out var keeper))
                 {
                     // Keep the surviving copy open without write/delete sharing throughout the cleanup,
