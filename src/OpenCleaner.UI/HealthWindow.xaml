@@ -2,19 +2,20 @@
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:local="clr-namespace:OpenCleaner.UI"
+             xmlns:loc="clr-namespace:OpenCleaner.UI.Localization"
              PreviewKeyDown="Health_PreviewKeyDown">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32,26,32,28">
             <Grid Margin="0,0,0,18">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel>
-                    <TextBlock Text="Santé du PC" FontSize="27" FontWeight="SemiBold"/>
-                    <TextBlock Text="Un score expliqué, des constats vérifiables et des actions sûres." Foreground="{DynamicResource TextSecond}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                    <TextBlock Text="{loc:Translate Health.Title}" FontSize="27" FontWeight="SemiBold"/>
+                    <TextBlock Text="{loc:Translate Health.Subtitle}" Foreground="{DynamicResource TextSecond}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                    <Button x:Name="ExportHealthBtn" Content="Exporter le diagnostic" Click="ExportHealth_Click"
-                            Margin="0,0,8,0" ToolTip="Enregistrer le diagnostic en JSON, sans chemins de fichiers"/>
-                    <Button x:Name="RefreshBtn" Content="Actualiser" Click="Refresh_Click"/>
+                    <Button x:Name="ExportHealthBtn" Content="{loc:Translate Health.Export}" Click="ExportHealth_Click"
+                            Margin="0,0,8,0" ToolTip="{loc:Translate Health.ExportTip}"/>
+                    <Button x:Name="RefreshBtn" Content="{loc:Translate Health.Refresh}" Click="Refresh_Click"/>
                 </StackPanel>
             </Grid>
 
@@ -30,18 +31,18 @@
                         <local:ScoreRing x:Name="ScoreRing" Score="0" MaxScore="100" RingThickness="12"/>
                         <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                             <TextBlock x:Name="ScoreValue" Text="—" FontSize="38" FontWeight="SemiBold" HorizontalAlignment="Center"/>
-                            <TextBlock Text="sur 100" FontSize="11" Foreground="{DynamicResource TextSecond}" HorizontalAlignment="Center" Margin="0,-2,0,0"/>
+                            <TextBlock Text="{loc:Translate Health.OutOf}" FontSize="11" Foreground="{DynamicResource TextSecond}" HorizontalAlignment="Center" Margin="0,-2,0,0"/>
                         </StackPanel>
                     </Grid>
                     <StackPanel Grid.Column="2" VerticalAlignment="Center">
                         <StackPanel Orientation="Horizontal">
-                            <TextBlock x:Name="GradeText" Text="Évaluation…" FontSize="23" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="GradeText" Text="{loc:Translate Health.Grade.Loading}" FontSize="23" FontWeight="SemiBold" VerticalAlignment="Center"/>
                             <Border x:Name="GradeBadge" CornerRadius="5" Padding="8,3" Margin="10,0,0,0" VerticalAlignment="Center" Visibility="Collapsed">
                                 <TextBlock x:Name="GradeBadgeText" FontSize="10" FontWeight="SemiBold"/>
                             </Border>
                         </StackPanel>
                         <TextBlock x:Name="ScoreCaption" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" Margin="0,5,0,12"
-                                   Text="Lecture des indicateurs locaux en cours…"/>
+                                   Text="{loc:Translate Health.Loading}"/>
                         <StackPanel x:Name="SectionsPanel"/>
                     </StackPanel>
                 </Grid>
@@ -50,10 +51,10 @@
             <!-- RECOMMANDATIONS -->
             <Border Style="{StaticResource Card}" Padding="20,18" Margin="0,0,0,14">
                 <StackPanel>
-                    <TextBlock Text="RECOMMANDATIONS" Style="{StaticResource Eyebrow}"/>
+                    <TextBlock Text="{loc:Translate Health.Recommendations}" Style="{StaticResource Eyebrow}"/>
                     <Grid Margin="0,4,0,0">
                         <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                        <TextBlock Text="Ce qui mérite votre attention" FontSize="17" FontWeight="SemiBold"/>
+                        <TextBlock Text="{loc:Translate Health.Attention}" FontSize="17" FontWeight="SemiBold"/>
                         <TextBlock x:Name="FindingsSummary" Grid.Column="1" Foreground="{DynamicResource TextSecond}" FontSize="11" VerticalAlignment="Center"/>
                     </Grid>
                     <ItemsControl x:Name="FindingsList" Margin="0,10,0,0">
@@ -90,7 +91,7 @@
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
                     <TextBlock x:Name="FindingsEmpty" Visibility="Collapsed" Foreground="{DynamicResource TextSecond}" FontSize="12"
-                               Text="Aucun point à traiter : les indicateurs mesurés sont sains." TextWrapping="Wrap" Margin="0,6,0,0"/>
+                               Text="{loc:Translate Health.EmptyFindings}" TextWrapping="Wrap" Margin="0,6,0,0"/>
                 </StackPanel>
             </Border>
 
@@ -104,26 +105,26 @@
                         <ColumnDefinition Width="Auto"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Grid.Column="0" Margin="0,0,20,0" VerticalAlignment="Center">
-                        <TextBlock Text="HISTORIQUE DES NETTOYAGES" Style="{StaticResource Eyebrow}"/>
-                        <TextBlock Text="30 derniers jours" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
-                        <TextBlock x:Name="HistoryCaption" Text="Lecture de l'historique…"
+                        <TextBlock Text="{loc:Translate Health.History}" Style="{StaticResource Eyebrow}"/>
+                        <TextBlock Text="{loc:Translate Health.Last30Days}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock x:Name="HistoryCaption" Text="{loc:Translate Health.HistoryLoading}"
                                    Foreground="{DynamicResource TextSecond}" FontSize="11"
                                    TextWrapping="Wrap" Margin="0,4,0,0"/>
                     </StackPanel>
                     <StackPanel Grid.Column="1" Margin="0,0,26,0" VerticalAlignment="Center">
                         <TextBlock x:Name="HistoryCleanups" Text="—" FontSize="20" FontWeight="Bold"
                                    Foreground="{DynamicResource Accent}"/>
-                        <TextBlock Text="nettoyages" FontSize="11" Foreground="{DynamicResource TextSecond}"/>
+                        <TextBlock Text="{loc:Translate Health.Cleanups}" FontSize="11" Foreground="{DynamicResource TextSecond}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Margin="0,0,26,0" VerticalAlignment="Center">
                         <TextBlock x:Name="HistoryFiles" Text="—" FontSize="20" FontWeight="Bold"
                                    Foreground="{DynamicResource TextPrimary}"/>
-                        <TextBlock Text="fichiers" FontSize="11" Foreground="{DynamicResource TextSecond}"/>
+                        <TextBlock Text="{loc:Translate Health.Files}" FontSize="11" Foreground="{DynamicResource TextSecond}"/>
                     </StackPanel>
                     <StackPanel Grid.Column="3" VerticalAlignment="Center">
                         <TextBlock x:Name="HistoryBytes" Text="—" FontSize="20" FontWeight="Bold"
                                    Foreground="{DynamicResource SizeLarge}"/>
-                        <TextBlock Text="volume traité" FontSize="11" Foreground="{DynamicResource TextSecond}"/>
+                        <TextBlock Text="{loc:Translate Health.Volume}" FontSize="11" Foreground="{DynamicResource TextSecond}"/>
                     </StackPanel>
                 </Grid>
             </Border>
@@ -136,11 +137,11 @@
                         <ColumnDefinition Width="300"/>
                     </Grid.ColumnDefinitions>
                     <StackPanel Margin="0,0,20,0" VerticalAlignment="Center">
-                        <TextBlock Text="ÉVOLUTION DE L'ESPACE LIBRE" Style="{StaticResource Eyebrow}"/>
-                        <TextBlock x:Name="TrendTitle" Text="Relevé quotidien local" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
+                        <TextBlock Text="{loc:Translate Health.TrendTitle}" Style="{StaticResource Eyebrow}"/>
+                        <TextBlock x:Name="TrendTitle" Text="{loc:Translate Health.TrendDaily}" FontSize="16" FontWeight="SemiBold" Margin="0,4,0,0"/>
                         <TextBlock x:Name="TrendDelta" Text="—" FontSize="21" FontWeight="Bold"
                                    Foreground="{DynamicResource Accent}" Margin="0,5,0,0"/>
-                        <TextBlock x:Name="TrendCaption" Text="Le relevé commence aujourd'hui ; il reste sur ce PC."
+                        <TextBlock x:Name="TrendCaption" Text="{loc:Translate Health.TrendStart}"
                                    Foreground="{DynamicResource TextSecond}" FontSize="11"
                                    TextWrapping="Wrap" Margin="0,3,0,0"/>
                     </StackPanel>
@@ -154,7 +155,7 @@
                             <Polygon x:Name="TrendArea" Fill="{DynamicResource AccentSoft}" Stretch="None"/>
                             <Polyline x:Name="TrendLine" Stroke="{DynamicResource Accent}" StrokeThickness="2"
                                       Stretch="None" StrokeLineJoin="Round"/>
-                            <TextBlock x:Name="TrendEmpty" Text="Pas encore assez de relevés"
+                            <TextBlock x:Name="TrendEmpty" Text="{loc:Translate Health.TrendEmpty}"
                                        FontSize="11" Foreground="{DynamicResource TextSecond}"
                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Grid>
@@ -177,27 +178,27 @@
                 </Grid.ColumnDefinitions>
                 <Border Style="{StaticResource Card}" Padding="20,18">
                     <StackPanel>
-                        <TextBlock Text="STOCKAGE" Style="{StaticResource Eyebrow}"/>
-                        <TextBlock Text="Espace disponible sur vos disques" FontSize="16" FontWeight="SemiBold" Margin="0,5,0,12" TextWrapping="Wrap"/>
+                        <TextBlock Text="{loc:Translate Health.StorageTitle}" Style="{StaticResource Eyebrow}"/>
+                        <TextBlock Text="{loc:Translate Health.StorageSubtitle}" FontSize="16" FontWeight="SemiBold" Margin="0,5,0,12" TextWrapping="Wrap"/>
                         <StackPanel x:Name="DisksPanel"/>
-                        <TextBlock Text="L'espace libre ne mesure pas l'état physique du disque." FontSize="11" Foreground="{DynamicResource TextSecond}" Margin="0,8,0,0" TextWrapping="Wrap"/>
-                        <Button Content="Explorer l'espace disque" Style="{StaticResource SecondBtnStyle}" Click="Disk_Click" HorizontalAlignment="Left" Margin="0,12,0,0"/>
+                        <TextBlock Text="{loc:Translate Health.StorageNote}" FontSize="11" Foreground="{DynamicResource TextSecond}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                        <Button Content="{loc:Translate Health.ExploreDisk}" Style="{StaticResource SecondBtnStyle}" Click="Disk_Click" HorizontalAlignment="Left" Margin="0,12,0,0"/>
                     </StackPanel>
                 </Border>
                 <StackPanel Grid.Column="2">
                     <Border Style="{StaticResource Card}" Padding="20,16" Margin="0,0,0,14">
                         <StackPanel>
-                            <TextBlock Text="MÉMOIRE" Style="{StaticResource Eyebrow}"/>
+                            <TextBlock Text="{loc:Translate Health.MemoryTitle}" Style="{StaticResource Eyebrow}"/>
                             <TextBlock x:Name="MemoryText" Text="—" FontSize="20" FontWeight="SemiBold" Margin="0,6,0,3"/>
-                            <TextBlock x:Name="MemoryDetail" Text="Lecture en cours…" Foreground="{DynamicResource TextSecond}" FontSize="12" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="MemoryDetail" Text="{loc:Translate Health.Reading}" Foreground="{DynamicResource TextSecond}" FontSize="12" TextWrapping="Wrap"/>
                             <ProgressBar x:Name="MemoryBar" Style="{StaticResource ModernProgressBar}" Height="6" Minimum="0" Maximum="100" Margin="0,10,0,0"/>
                         </StackPanel>
                     </Border>
                     <Border Style="{StaticResource Card}" Padding="20,16">
                         <StackPanel>
-                            <TextBlock Text="WINDOWS EN COURS DEPUIS" Style="{StaticResource Eyebrow}"/>
+                            <TextBlock Text="{loc:Translate Health.UptimeTitle}" Style="{StaticResource Eyebrow}"/>
                             <TextBlock x:Name="UptimeText" Text="—" FontSize="20" FontWeight="SemiBold" Margin="0,6,0,3"/>
-                            <TextBlock x:Name="SystemText" Text="Lecture en cours…" Foreground="{DynamicResource TextSecond}" FontSize="12" TextWrapping="Wrap"/>
+                            <TextBlock x:Name="SystemText" Text="{loc:Translate Health.Reading}" Foreground="{DynamicResource TextSecond}" FontSize="12" TextWrapping="Wrap"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -206,16 +207,16 @@
             <!-- RACCOURCIS -->
             <Border Style="{StaticResource Card}" Padding="20,18" Margin="0,0,0,10">
                 <StackPanel>
-                    <TextBlock Text="ACTIONS RAPIDES" Style="{StaticResource Eyebrow}"/>
-                    <TextBlock Text="Prenez la main" FontSize="17" FontWeight="SemiBold" Margin="0,5,0,4"/>
+                    <TextBlock Text="{loc:Translate Health.Actions}" Style="{StaticResource Eyebrow}"/>
+                    <TextBlock Text="{loc:Translate Health.TakeControl}" FontSize="17" FontWeight="SemiBold" Margin="0,5,0,4"/>
                     <TextBlock x:Name="AdviceText" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" Margin="0,0,0,4"/>
-                    <TextBlock x:Name="RecycleText" Text="Corbeille : lecture en cours…" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" Margin="0,0,0,12"/>
+                    <TextBlock x:Name="RecycleText" Text="{loc:Translate Health.RecycleReading}" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" Margin="0,0,0,12"/>
                     <WrapPanel>
-                        <Button Content="Nettoyer les fichiers" Click="Clean_Click" Style="{StaticResource AccentBtnStyle}" Margin="0,0,8,8"/>
-                        <Button Content="Gérer le démarrage" Click="Startup_Click" Margin="0,0,8,8"/>
-                        <Button Content="Mises à jour" Click="Updates_Click" Margin="0,0,8,8"/>
-                        <Button x:Name="EmptyRecycleBtn" Content="Vider la corbeille" Click="EmptyRecycle_Click" Style="{StaticResource DangerBtnStyle}" IsEnabled="False" Margin="0,0,8,8"/>
-                        <Button x:Name="FlushDnsBtn" Content="Vider le cache DNS" Click="FlushDns_Click" Margin="0,0,0,8"/>
+                        <Button Content="{loc:Translate Health.CleanFiles}" Click="Clean_Click" Style="{StaticResource AccentBtnStyle}" Margin="0,0,8,8"/>
+                        <Button Content="{loc:Translate Health.ManageStartup}" Click="Startup_Click" Margin="0,0,8,8"/>
+                        <Button Content="{loc:Translate Health.Updates}" Click="Updates_Click" Margin="0,0,8,8"/>
+                        <Button x:Name="EmptyRecycleBtn" Content="{loc:Translate Health.EmptyRecycle}" Click="EmptyRecycle_Click" Style="{StaticResource DangerBtnStyle}" IsEnabled="False" Margin="0,0,8,8"/>
+                        <Button x:Name="FlushDnsBtn" Content="{loc:Translate Health.FlushDns}" Click="FlushDns_Click" Margin="0,0,0,8"/>
                     </WrapPanel>
                     <TextBlock x:Name="StatusText" Foreground="{DynamicResource TextSecond}" FontSize="11" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
                 </StackPanel>

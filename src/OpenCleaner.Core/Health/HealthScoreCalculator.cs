@@ -61,7 +61,12 @@ public static class HealthScoreCalculator
             findings.Add(new HealthFinding(
                 "storage.unknown", HealthSeverity.Advice, "Stockage non mesuré",
                 "Windows n'a pas communiqué la capacité des disques.",
-                "Vérifiez l'espace libre dans l'Explorateur de fichiers.", "disk"));
+                "Vérifiez l'espace libre dans l'Explorateur de fichiers.", "disk")
+            {
+                TitleKey = "Health.Storage.Unknown.Title",
+                DetailKey = "Health.Storage.Unknown.Detail",
+                RecommendationKey = "Health.Storage.Unknown.Recommendation"
+            });
             return Section("storage", "Stockage", StorageMax - 8, StorageMax, false, findings);
         }
 
@@ -88,14 +93,26 @@ public static class HealthScoreCalculator
                 $"{SizeFormatter.Format(freeBytes)} libres sur {SizeFormatter.Format(disk.TotalBytes)} " +
                 $"({free:P1} disponible).",
                 "Repérez les dossiers volumineux avant de supprimer quoi que ce soit.",
-                "disk"));
+                "disk")
+            {
+                TitleKey = "Health.Storage.Low.Title",
+                DetailKey = "Health.Storage.Low.Detail",
+                RecommendationKey = "Health.Storage.Low.Recommendation",
+                Args = [disk.Name, SizeFormatter.Format(freeBytes), SizeFormatter.Format(disk.TotalBytes),
+                    free.ToString("P1")]
+            });
         }
 
         if (findings.Count == 0)
             findings.Add(new HealthFinding(
                 "storage.ok", HealthSeverity.Ok, "Espace disque suffisant",
                 "Chaque disque mesuré dispose d'au moins 20 % d'espace libre.",
-                "Aucune action nécessaire.", "disk"));
+                "Aucune action nécessaire.", "disk")
+            {
+                TitleKey = "Health.Storage.Ok.Title",
+                DetailKey = "Health.Storage.Ok.Detail",
+                RecommendationKey = "Health.Storage.Ok.Recommendation"
+            });
 
         return Section("storage", "Stockage", Math.Max(0, StorageMax - deduction), StorageMax,
             true, findings);
@@ -109,7 +126,12 @@ public static class HealthScoreCalculator
             findings.Add(new HealthFinding(
                 "memory.unknown", HealthSeverity.Advice, "Mémoire non mesurée",
                 "Windows n'a pas communiqué la mémoire installée.",
-                "Vérifiez la mémoire dans le Gestionnaire des tâches."));
+                "Vérifiez la mémoire dans le Gestionnaire des tâches.")
+            {
+                TitleKey = "Health.Memory.Unknown.Title",
+                DetailKey = "Health.Memory.Unknown.Detail",
+                RecommendationKey = "Health.Memory.Unknown.Recommendation"
+            });
             return Section("memory", "Mémoire", MemoryMax - 6, MemoryMax, false, findings);
         }
 
@@ -130,12 +152,25 @@ public static class HealthScoreCalculator
                 $"{used:P0} de la mémoire est utilisée ({SizeFormatter.Format((long)(total - available))} " +
                 $"sur {SizeFormatter.Format((long)total)}).",
                 "Fermez les applications inutilisées et vérifiez les programmes lancés au démarrage.",
-                "startup"));
+                "startup")
+            {
+                TitleKey = "Health.Memory.Pressure.Title",
+                DetailKey = "Health.Memory.Pressure.Detail",
+                RecommendationKey = "Health.Memory.Pressure.Recommendation",
+                Args = [used.ToString("P0"), SizeFormatter.Format((long)(total - available)),
+                    SizeFormatter.Format((long)total)]
+            });
         else
             findings.Add(new HealthFinding(
                 "memory.ok", HealthSeverity.Ok, "Mémoire disponible",
                 $"{used:P0} de la mémoire est utilisée.",
-                "Aucune action nécessaire."));
+                "Aucune action nécessaire.")
+            {
+                TitleKey = "Health.Memory.Ok.Title",
+                DetailKey = "Health.Memory.Ok.Detail",
+                RecommendationKey = "Health.Memory.Ok.Recommendation",
+                Args = [used.ToString("P0")]
+            });
 
         return Section("memory", "Mémoire", Math.Max(0, MemoryMax - deduction), MemoryMax,
             true, findings);
@@ -158,12 +193,24 @@ public static class HealthScoreCalculator
                 "startup.many", severity, "Nombreux programmes au démarrage",
                 $"{enabled} éléments s'exécutent à l'ouverture de session. Chacun allonge le démarrage.",
                 "Désactivez ceux que vous n'utilisez pas au quotidien ; OpenCleaner peut les réactiver.",
-                "startup"));
+                "startup")
+            {
+                TitleKey = "Health.Startup.Many.Title",
+                DetailKey = "Health.Startup.Many.Detail",
+                RecommendationKey = "Health.Startup.Many.Recommendation",
+                Args = [enabled]
+            });
         else
             findings.Add(new HealthFinding(
                 "startup.ok", HealthSeverity.Ok, "Démarrage maîtrisé",
                 $"{enabled} élément(s) au démarrage.",
-                "Aucune action nécessaire.", "startup"));
+                "Aucune action nécessaire.", "startup")
+            {
+                TitleKey = "Health.Startup.Ok.Title",
+                DetailKey = "Health.Startup.Ok.Detail",
+                RecommendationKey = "Health.Startup.Ok.Recommendation",
+                Args = [enabled]
+            });
 
         return Section("startup", "Démarrage", Math.Max(0, StartupMax - deduction), StartupMax,
             true, findings);
@@ -180,7 +227,12 @@ public static class HealthScoreCalculator
                 "maintenance.reboot", HealthSeverity.Warning, "Redémarrage en attente",
                 "Windows a terminé une installation qui nécessite un redémarrage.",
                 "Redémarrez quand votre travail est enregistré pour appliquer les mises à jour.",
-                "updates"));
+                "updates")
+            {
+                TitleKey = "Health.Maintenance.Reboot.Title",
+                DetailKey = "Health.Maintenance.Reboot.Detail",
+                RecommendationKey = "Health.Maintenance.Reboot.Recommendation"
+            });
         }
 
         if (metrics.Uptime > TimeSpan.FromDays(30))
@@ -189,7 +241,17 @@ public static class HealthScoreCalculator
             findings.Add(new HealthFinding(
                 "maintenance.uptime", HealthSeverity.Advice, "Windows tourne depuis longtemps",
                 $"La session dure depuis {FormatUptime(metrics.Uptime)}.",
-                "Un redémarrage libère les ressources accumulées par les applications."));
+                "Un redémarrage libère les ressources accumulées par les applications.")
+            {
+                TitleKey = "Health.Maintenance.Uptime.Title",
+                DetailKey = metrics.Uptime.TotalDays < 2
+                    ? "Health.Maintenance.Uptime.DaysOne.Detail"
+                    : "Health.Maintenance.Uptime.Days.Detail",
+                RecommendationKey = "Health.Maintenance.Uptime.Recommendation",
+                Args = metrics.Uptime.TotalDays < 2
+                    ? [metrics.Uptime.Hours]
+                    : [(int)metrics.Uptime.TotalDays, metrics.Uptime.Hours]
+            });
         }
         else if (metrics.Uptime > TimeSpan.FromDays(14))
         {
@@ -197,14 +259,25 @@ public static class HealthScoreCalculator
             findings.Add(new HealthFinding(
                 "maintenance.uptime", HealthSeverity.Advice, "Session longue",
                 $"La session dure depuis {FormatUptime(metrics.Uptime)}.",
-                "Un redémarrage occasionnel évite l'accumulation de ressources."));
+                "Un redémarrage occasionnel évite l'accumulation de ressources.")
+            {
+                TitleKey = "Health.Maintenance.Session.Title",
+                DetailKey = "Health.Maintenance.Uptime.Days.Detail",
+                RecommendationKey = "Health.Maintenance.Session.Recommendation",
+                Args = [(int)metrics.Uptime.TotalDays, metrics.Uptime.Hours]
+            });
         }
 
         if (findings.Count == 0)
             findings.Add(new HealthFinding(
                 "maintenance.ok", HealthSeverity.Ok, "Aucune maintenance en attente",
                 "Pas de redémarrage requis et session récente.",
-                "Aucune action nécessaire.", "updates"));
+                "Aucune action nécessaire.", "updates")
+            {
+                TitleKey = "Health.Maintenance.Ok.Title",
+                DetailKey = "Health.Maintenance.Ok.Detail",
+                RecommendationKey = "Health.Maintenance.Ok.Recommendation"
+            });
 
         return Section("maintenance", "Entretien", Math.Max(0, MaintenanceMax - deduction),
             MaintenanceMax, true, findings);
@@ -231,7 +304,13 @@ public static class HealthScoreCalculator
                     "cleanliness.temporary", HealthSeverity.Advice, "Fichiers temporaires accumulés",
                     $"{SizeFormatter.Format(temporary)} dans {Math.Max(0, metrics.TemporaryItems):N0} élément(s).",
                     "Analysez-les puis nettoyez uniquement ce que vous acceptez de perdre.",
-                    "cleanTemp", temporary));
+                    "cleanTemp", temporary)
+                {
+                    TitleKey = "Health.Cleanliness.Temporary.Title",
+                    DetailKey = "Health.Cleanliness.Temporary.Detail",
+                    RecommendationKey = "Health.Cleanliness.Temporary.Recommendation",
+                    Args = [SizeFormatter.Format(temporary), Math.Max(0, metrics.TemporaryItems)]
+                });
         }
 
         long browser = Math.Max(0, metrics.BrowserCacheBytes);
@@ -243,7 +322,13 @@ public static class HealthScoreCalculator
                 "cleanliness.browser", HealthSeverity.Advice, "Caches de navigateurs volumineux",
                 $"{SizeFormatter.Format(browser)} de caches dans {Math.Max(0, metrics.BrowserCacheItems):N0} fichier(s).",
                 "Fermez les navigateurs, puis nettoyez leurs caches. Vos favoris et mots de passe sont conservés.",
-                "cleanBrowser", browser));
+                "cleanBrowser", browser)
+            {
+                TitleKey = "Health.Cleanliness.Browser.Title",
+                DetailKey = "Health.Cleanliness.Browser.Detail",
+                RecommendationKey = "Health.Cleanliness.Browser.Recommendation",
+                Args = [SizeFormatter.Format(browser), Math.Max(0, metrics.BrowserCacheItems)]
+            });
         }
 
         long recycle = Math.Max(0, metrics.RecycleBinBytes);
@@ -262,14 +347,25 @@ public static class HealthScoreCalculator
                     "cleanliness.recycle", HealthSeverity.Advice, "Corbeille volumineuse",
                     $"{SizeFormatter.Format(recycle)} dans {Math.Max(0, metrics.RecycleBinItems):N0} élément(s).",
                     "Vérifiez son contenu dans l'Explorateur : le vidage est définitif.",
-                    "recycle", recycle));
+                    "recycle", recycle)
+                {
+                    TitleKey = "Health.Cleanliness.Recycle.Title",
+                    DetailKey = "Health.Cleanliness.Recycle.Detail",
+                    RecommendationKey = "Health.Cleanliness.Recycle.Recommendation",
+                    Args = [SizeFormatter.Format(recycle), Math.Max(0, metrics.RecycleBinItems)]
+                });
         }
 
         if (findings.Count == 0)
             findings.Add(new HealthFinding(
                 "cleanliness.ok", HealthSeverity.Ok, "Peu de fichiers temporaires",
                 "Les caches mesurés restent modestes.",
-                "Aucune action nécessaire."));
+                "Aucune action nécessaire.")
+            {
+                TitleKey = "Health.Cleanliness.Ok.Title",
+                DetailKey = "Health.Cleanliness.Ok.Detail",
+                RecommendationKey = "Health.Cleanliness.Ok.Recommendation"
+            });
 
         return Section("cleanliness", "Propreté", Math.Max(0, CleanlinessMax - deduction),
             CleanlinessMax, true, findings);

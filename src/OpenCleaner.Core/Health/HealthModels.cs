@@ -50,7 +50,20 @@ public sealed record HealthFinding(
     string Detail,
     string Recommendation,
     string? Action = null,
-    long? ReclaimableBytes = null);
+    long? ReclaimableBytes = null)
+{
+    /// <summary>Clé de traduction du titre ; l'interface retombe sur <see cref="Title"/> si absente.</summary>
+    public string? TitleKey { get; init; }
+
+    /// <summary>Clé de traduction du détail, avec <see cref="Args"/>.</summary>
+    public string? DetailKey { get; init; }
+
+    /// <summary>Clé de traduction de la recommandation.</summary>
+    public string? RecommendationKey { get; init; }
+
+    /// <summary>Paramètres des clés de traduction.</summary>
+    public object?[]? Args { get; init; }
+}
 
 public sealed record HealthSection(
     string Id,

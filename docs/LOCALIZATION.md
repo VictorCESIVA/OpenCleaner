@@ -7,7 +7,7 @@ Le français reste la langue source. L'anglais est introduit progressivement, av
 - **Catalogues** : `src/OpenCleaner.UI/Localization/strings-fr.json` et `strings-en.json`, embarqués dans l'assembly. Clés plates, textes avec paramètres `{0}`, `{1}`.
 - **Service** : `LocalizationService` charge les catalogues, expose `Get(clé, paramètres)`, `SetLanguage("fr"|"en")` et publie le catalogue courant dans un `ResourceDictionary` fusionné.
 - **XAML** : `Text="{loc:Translate Clé}"`. L'extension s'appuie sur `DynamicResource` ; le remplacement du dictionnaire met à jour les vues sans les recréer.
-- **Code** : `LocalizationService.Instance.Get("Clé", args)` (raccourci `T` dans `MainWindow`).
+- **Code** : `LocalizationService.Instance.Get("Clé", args)` (raccourci `T` dans les vues). Les constats de santé portent des clés (`TitleKey`, `DetailKey`, `RecommendationKey`) dans le moteur, avec les textes français conservés comme repli.
 - **Préférence** : `Language` est enregistrée dans `%APPDATA%/OpenCleaner/preferences.json` et appliquée au démarrage avant la création de la fenêtre principale.
 - **Unités et dates** : `SizeFormatter` reçoit les symboles de la langue (o/Ko/Mo/Go ou B/KB/MB/GB) ; les convertisseurs de risque et de dates relatives utilisent les mêmes clés.
 
@@ -18,13 +18,14 @@ Migré :
 - fenêtre principale complète : navigation, tableau de bord, en-têtes de catégories, filtres, colonnes, états vides, chargement, confirmations de nettoyage, export, bandeau d'espace faible ;
 - fenêtre Paramètres complète : planification, exécutions, langue, exclusions, seuil d'alerte, sauvegardes, mises à jour, messages et dialogues ;
 - Espace disque complet : statistiques, lecteurs, barre d'outils, carte proportionnelle, liste, plus gros fichiers, applications, légendes et infobulles ;
+- Santé du PC complète : score, sections, constats du moteur, recommandations, historique, tendance, disques, mémoire, actions rapides et export ;
 - libellés de risque, tailles, nombres, dates relatives et culture d'affichage (fr-FR / en-US) ;
 - sélecteur de langue dans les paramètres ;
 - préférence persistante et bascule immédiate.
 
 Reste à migrer (le français reste affiché) :
 
-- Santé du PC, Démarrage, Désinstallation, Mises à jour ;
+- Démarrage, Désinstallation, Mises à jour ;
 - Restauration, Confidentialité, Doublons, Caches développeur, Effacement sécurisé, code de récupération ;
 - descriptions générées par les plugins et messages des services Core affichés dans l'interface ;
 - textes des tâches planifiées et journaux secondaires.
@@ -49,6 +50,8 @@ Reste à migrer (le français reste affiché) :
 ![Espace disque en anglais](preview/disk-en.png)
 
 ![Applications et espace occupé en anglais](preview/disk-apps-en.png)
+
+![Santé du PC en anglais](preview/health-en.png)
 
 ## Limites
 

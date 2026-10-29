@@ -144,7 +144,11 @@ internal class Program
             Render(settingsEn,Path.Combine(output,"SettingsWindow-en.png"),1048,824);
             Render(diskEn,Path.Combine(output,"DiskSpaceWindow-en.png"),1048,824);
             diskEn.ShowPreviewData(PreviewDiskUsage(), "apps", PreviewApplications());
+            var healthEn = new HealthWindow();
+            healthEn.PopulatePreview(PreviewSystemInfo(), PreviewHealthMetrics());
             Render(diskEn,Path.Combine(output,"DiskSpaceWindow-apps-en.png"),1048,824);
+            Render(healthEn,Path.Combine(output,"HealthWindow-en.png"),1048,824);
+            Render(healthEn,Path.Combine(output,"HealthWindow-en-full.png"),1048,1600);
             OpenCleaner.UI.Localization.LocalizationService.Instance.SetLanguage("fr");
         }
         main.ShowLowSpaceForPreview(new DiskSpaceAlert("C:\\", 42L*1024*1024*1024, 500L*1024*1024*1024, 42.0/500));

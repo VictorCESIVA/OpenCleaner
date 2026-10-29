@@ -45,6 +45,26 @@ public sealed class LocalizationCatalogTests
     }
 
     [Fact]
+    public void CatalogsCoverTheHealthKeysGeneratedByTheCore()
+    {
+        var french = French();
+        var english = English();
+        foreach (string key in new[]
+                 {
+                     "Health.Title", "Health.Section.Storage", "Health.Grade.Watch",
+                     "Health.Storage.Low.Title", "Health.Storage.Low.Detail",
+                     "Health.Memory.Pressure.Detail", "Health.Startup.Many.Detail",
+                     "Health.Maintenance.Reboot.Title", "Health.Maintenance.Uptime.Days.Detail",
+                     "Health.Cleanliness.Temporary.Detail", "Health.Cleanliness.Browser.Detail",
+                     "Health.Cleanliness.Recycle.Detail", "Health.Action.Explore"
+                 })
+        {
+            Assert.True(french.TryGet(key, out _), "Clé santé absente du français : " + key);
+            Assert.True(english.TryGet(key, out _), "Clé santé absente de l'anglais : " + key);
+        }
+    }
+
+    [Fact]
     public void ValuesAreFormattedWithTheCatalogCulture()
     {
         Assert.Contains("3", French().Format("Main.ItemsFound", 3, "1 Mo"));

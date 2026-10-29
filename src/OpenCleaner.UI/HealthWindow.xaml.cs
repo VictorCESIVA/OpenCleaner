@@ -14,6 +14,7 @@ using OpenCleaner.Core.Security;
 using OpenCleaner.Core.Tools;
 using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System.Plugins;
+using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
@@ -32,12 +33,12 @@ public sealed class HealthFindingRow
         });
         ActionLabel = finding.Action switch
         {
-            "disk" => "Explorer",
-            "startup" => "Gérer",
-            "updates" => "Voir",
-            "cleanTemp" => "Analyser",
-            "cleanBrowser" => "Analyser",
-            "recycle" => "Vider",
+            "disk" => HealthLocalization.T("Health.Action.Explore"),
+            "startup" => HealthLocalization.T("Health.Action.Manage"),
+            "updates" => HealthLocalization.T("Health.Action.View"),
+            "cleanTemp" => HealthLocalization.T("Health.Action.Analyze"),
+            "cleanBrowser" => HealthLocalization.T("Health.Action.Analyze"),
+            "recycle" => HealthLocalization.T("Health.Action.Empty"),
             _ => null
         };
         Action = finding.Action;
@@ -48,14 +49,52 @@ public sealed class HealthFindingRow
     }
 
     public HealthFinding Finding { get; }
-    public string Title => Finding.Title;
-    public string Detail => Finding.Detail;
-    public string Recommendation => Finding.Recommendation;
+    public string Title => HealthLocalization.Title(Finding);
+    public string Detail => HealthLocalization.Detail(Finding);
+    public string Recommendation => HealthLocalization.Recommendation(Finding);
     public Brush SeverityBrush { get; }
     public string? Action { get; }
     public string? ActionLabel { get; }
     public Visibility ActionVisibility { get; }
     public string ReclaimLabel { get; }
+}
+
+/// <summary>Traduit les constats du moteur ; les textes français restent le repli.</summary>
+internal static class HealthLocalization
+{
+    public static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
+    public static string Title(HealthFinding finding) =>
+        finding.TitleKey is { } key ? T(key, finding.Args ?? []) : finding.Title;
+
+    public static string Detail(HealthFinding finding) =>
+        finding.DetailKey is { } key ? T(key, finding.Args ?? []) : finding.Detail;
+
+    public static string Recommendation(HealthFinding finding) =>
+        finding.RecommendationKey is { } key ? T(key, finding.Args ?? []) : finding.Recommendation;
+
+    public static string SectionTitle(HealthSection section)
+    {
+        string id = string.IsNullOrEmpty(section.Id)
+            ? section.Id
+            : char.ToUpperInvariant(section.Id[0]) + section.Id[1..];
+        return T("Health.Section." + id);
+    }
+
+    public static string Grade(int score) => score switch
+    {
+        >= 90 => T("Health.Grade.Excellent"),
+        >= 75 => T("Health.Grade.Good"),
+        >= 55 => T("Health.Grade.Watch"),
+        _ => T("Health.Grade.Critical")
+    };
+
+    public static HealthFinding Localize(HealthFinding finding) => finding with
+    {
+        Title = Title(finding),
+        Detail = Detail(finding),
+        Recommendation = Recommendation(finding)
+    };
 }
 
 public partial class HealthWindow : UserControl, IThemeAware
@@ -65,6 +104,7 @@ public partial class HealthWindow : UserControl, IThemeAware
     private bool _hasRecycleItems;
     private HealthReport? _report;
     private HealthMetrics? _metrics;
+    private SystemHealthInfo? _info;
     private CleanupHistorySummary? _history;
     private IReadOnlyList<SpaceTrendPoint> _trendPoints = [];
     private SpaceTrendResult? _trendResult;
@@ -72,6 +112,7 @@ public partial class HealthWindow : UserControl, IThemeAware
     public HealthWindow()
     {
         InitializeComponent();
+        LocalizationService.Instance.LanguageChanged += OnLanguageChanged;
         Loaded += async (_, _) =>
         {
             if (_loaded) return;
@@ -80,11 +121,19 @@ public partial class HealthWindow : UserControl, IThemeAware
         };
     }
 
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        if (_report == null || _metrics == null || _info == null) return;
+        ShowReport(_report, _metrics, _info);
+        if (_history != null) PopulateHistory(_history);
+        if (_trendResult != null) PopulateTrend(_trendResult);
+    }
+
     private async Task LoadAsync()
     {
         if (_busy) return;
         SetBusy(true);
-        StatusText.Text = "Lecture des informations système…";
+        StatusText.Text = HealthLocalization.T("Health.Status.System");
         try
         {
             SystemHealthInfo info = await Task.Run(SystemInfoService.Get);
@@ -95,12 +144,13 @@ public partial class HealthWindow : UserControl, IThemeAware
 
             _hasRecycleItems = bin is { ItemCount: > 0 };
             RecycleText.Text = bin == null
-                ? "Corbeille : information indisponible."
-                : $"Corbeille : {bin.ItemCount:N0} élément(s) • {SizeFormatter.Format(bin.SizeBytes)}";
+                ? HealthLocalization.T("Health.Recycle.Unavailable")
+                : HealthLocalization.T("Health.Recycle.Summary", bin.ItemCount.ToString("N0"),
+                    SizeFormatter.Format(bin.SizeBytes));
 
             HealthMetrics baseMetrics = HealthCheckService.Collect(info, bin, startup);
             ShowReport(HealthScoreCalculator.Evaluate(baseMetrics), baseMetrics, info);
-            StatusText.Text = "Indicateurs de base actualisés. Lecture de l'historique…";
+            StatusText.Text = HealthLocalization.T("Health.Status.Base");
 
             try
             {
@@ -110,7 +160,7 @@ public partial class HealthWindow : UserControl, IThemeAware
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                HistoryCaption.Text = "Historique indisponible : " + ex.Message;
+                HistoryCaption.Text = HealthLocalization.T("Health.History.Unavailable", ex.Message);
             }
 
             try
@@ -122,10 +172,10 @@ public partial class HealthWindow : UserControl, IThemeAware
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
-                TrendCaption.Text = "Historique d'espace indisponible : " + ex.Message;
+                TrendCaption.Text = HealthLocalization.T("Health.Trend.Unavailable", ex.Message);
             }
 
-            StatusText.Text = "Indicateurs de base actualisés. Mesure des caches à faible risque…";
+            StatusText.Text = HealthLocalization.T("Health.Status.Caches");
 
             CacheSnapshot cache = CacheSnapshot.Empty;
             string cacheNote = "";
@@ -135,18 +185,18 @@ public partial class HealthWindow : UserControl, IThemeAware
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
             {
-                cacheNote = "Caches non mesurés : " + ex.Message;
+                cacheNote = HealthLocalization.T("Health.Caches.NotMeasured", ex.Message);
             }
 
             HealthMetrics metrics = HealthCheckService.Collect(info, bin, startup, cache);
             ShowReport(HealthScoreCalculator.Evaluate(metrics), metrics, info);
             StatusText.Text = cacheNote.Length > 0
-                ? "Diagnostic partiel. " + cacheNote
-                : "Diagnostic terminé. Aucune donnée n'a quitté votre PC.";
+                ? HealthLocalization.T("Health.Status.Partial", cacheNote)
+                : HealthLocalization.T("Health.Status.Done");
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Impossible de lire les informations système : " + ex.Message;
+            StatusText.Text = HealthLocalization.T("Health.Status.SystemError", ex.Message);
         }
         finally
         {
@@ -184,7 +234,7 @@ public partial class HealthWindow : UserControl, IThemeAware
 
         int failed = results.Count(result => result.Error != null);
         string note = failed > 0
-            ? $"{failed} analyse(s) de cache incomplète(s) : les tailles affichées sont minimales."
+            ? HealthLocalization.T("Health.CachePartial", failed)
             : "";
         return (new CacheSnapshot(temporary, temporaryItems, browser, browserItems), note);
     }
@@ -193,11 +243,12 @@ public partial class HealthWindow : UserControl, IThemeAware
     {
         _report = report;
         _metrics = metrics;
+        _info = info;
 
         ScoreRing.Score = report.Score;
         ScoreRing.MaxScore = report.MaxScore;
         ScoreValue.Text = report.Score.ToString();
-        GradeText.Text = report.Grade;
+        GradeText.Text = HealthLocalization.Grade(report.Score);
 
         bool reclaim = report.ReclaimableBytes > 0;
         GradeBadge.Visibility = reclaim ? Visibility.Visible : Visibility.Collapsed;
@@ -208,13 +259,14 @@ public partial class HealthWindow : UserControl, IThemeAware
             tint.Freeze();
             GradeBadge.Background = tint;
             GradeBadgeText.Foreground = (Brush)FindResource("WarnColor");
-            GradeBadgeText.Text = $"récupérable : {SizeFormatter.Format(report.ReclaimableBytes)}";
+            GradeBadgeText.Text = HealthLocalization.T("Health.Reclaimable",
+                SizeFormatter.Format(report.ReclaimableBytes));
         }
 
         int toFix = report.Findings.Count(finding => finding.Severity is HealthSeverity.Warning or HealthSeverity.Critical);
         ScoreCaption.Text = toFix == 0
-            ? "Aucune alerte prioritaire. Les détails ci-dessous restent vérifiables."
-            : $"{toFix} alerte(s) prioritaire(s) sur les indicateurs mesurés localement.";
+            ? HealthLocalization.T("Health.Report.None")
+            : HealthLocalization.T("Health.Report.Alerts", toFix);
 
         RenderSections(report);
         RenderFindings(report);
@@ -222,8 +274,10 @@ public partial class HealthWindow : UserControl, IThemeAware
         PopulateDisks(info);
         PopulateMemory(info);
         UptimeText.Text = FormatUptime(info.Uptime);
-        SystemText.Text = $"{info.OsName} {info.OsVersion} • build {info.Build}";
-        HealthText.Text = $"{info.CpuName} • {info.LogicalProcessors} processeurs logiques";
+        SystemText.Text = $"{info.OsName} {info.OsVersion} • " +
+                          HealthLocalization.T("Health.System.Build", info.Build);
+        HealthText.Text = HealthLocalization.T("Health.System.Cpu", info.CpuName,
+            info.LogicalProcessors);
 
         EmptyRecycleBtn.IsEnabled = !_busy && _hasRecycleItems;
     }
@@ -240,7 +294,7 @@ public partial class HealthWindow : UserControl, IThemeAware
 
             var name = new TextBlock
             {
-                Text = section.Title,
+                Text = HealthLocalization.SectionTitle(section),
                 FontSize = 11,
                 VerticalAlignment = VerticalAlignment.Center
             };
@@ -289,17 +343,18 @@ public partial class HealthWindow : UserControl, IThemeAware
         FindingsList.Visibility = rows.Count == 0 ? Visibility.Collapsed : Visibility.Visible;
         FindingsEmpty.Visibility = rows.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
         FindingsSummary.Text = rows.Count == 0
-            ? "Tout est en ordre"
+            ? HealthLocalization.T("Health.Summary.Ok")
             : report.ReclaimableBytes > 0
-                ? $"{SizeFormatter.Format(report.ReclaimableBytes)} récupérables"
-                : $"{rows.Count} point(s) à vérifier";
+                ? HealthLocalization.T("Health.Summary.Reclaimable",
+                    SizeFormatter.Format(report.ReclaimableBytes))
+                : HealthLocalization.T("Health.Summary.Points", rows.Count);
     }
 
     internal void PopulateTrend(SpaceTrendResult trend)
     {
         _trendResult = trend;
         _trendPoints = trend.Points;
-        TrendTitle.Text = $"Espace libre · {trend.Drive.TrimEnd('\\')}";
+        TrendTitle.Text = HealthLocalization.T("Health.Trend.FreeTitle", trend.Drive.TrimEnd('\\'));
         TrendStart.Text = trend.Points.Count > 0
             ? trend.Points[0].Date.ToString("d MMM")
             : "";
@@ -311,12 +366,12 @@ public partial class HealthWindow : UserControl, IThemeAware
         if (!trend.HasEnoughData)
         {
             TrendDelta.Text = trend.LatestFreeBytes is long latest
-                ? $"{SizeFormatter.Format(latest)} libres"
+                ? HealthLocalization.T("Health.Trend.Free", SizeFormatter.Format(latest))
                 : "—";
             TrendDelta.SetResourceReference(TextBlock.ForegroundProperty, "TextPrimary");
             TrendCaption.Text = trend.LatestFreeBytes == null
-                ? "Aucun relevé disponible pour ce volume."
-                : "Premier relevé enregistré aujourd'hui. Le graphique apparaîtra après quelques jours.";
+                ? HealthLocalization.T("Health.Trend.NoData")
+                : HealthLocalization.T("Health.Trend.First");
             RenderTrendChart();
             return;
         }
@@ -324,7 +379,7 @@ public partial class HealthWindow : UserControl, IThemeAware
         long delta = trend.DeltaBytes ?? 0;
         if (delta == 0)
         {
-            TrendDelta.Text = "stable";
+            TrendDelta.Text = HealthLocalization.T("Health.Trend.Stable");
             TrendDelta.SetResourceReference(TextBlock.ForegroundProperty, "Accent");
         }
         else
@@ -332,8 +387,8 @@ public partial class HealthWindow : UserControl, IThemeAware
             TrendDelta.Text = (delta > 0 ? "+" : "−") + SizeFormatter.Format(Math.Abs(delta));
             TrendDelta.SetResourceReference(TextBlock.ForegroundProperty, delta > 0 ? "Accent" : "Danger");
         }
-        TrendCaption.Text = $"{SizeFormatter.Format(trend.LatestFreeBytes ?? 0)} libres aujourd'hui • " +
-                            $"{trend.Points.Count} relevés sur 30 jours";
+        TrendCaption.Text = HealthLocalization.T("Health.Trend.Today",
+            SizeFormatter.Format(trend.LatestFreeBytes ?? 0), trend.Points.Count);
         RenderTrendChart();
     }
 
@@ -377,17 +432,16 @@ public partial class HealthWindow : UserControl, IThemeAware
         if (!history.HasData)
         {
             HistoryCleanups.Text = HistoryFiles.Text = HistoryBytes.Text = "0";
-            HistoryCaption.Text = "Aucun nettoyage enregistré sur la période. " +
-                                  "Cette carte se remplit après un nettoyage confirmé.";
+            HistoryCaption.Text = HealthLocalization.T("Health.History.NoData");
             return;
         }
 
         HistoryCleanups.Text = history.Cleanups.ToString("N0");
         HistoryFiles.Text = history.Files.ToString("N0");
         HistoryBytes.Text = SizeFormatter.Format(history.Bytes);
-        string suffix = "Volume des fichiers supprimés ; les sauvegardes conservées occupent encore de l'espace.";
+        string suffix = HealthLocalization.T("Health.History.Volume");
         HistoryCaption.Text = history.LastCleanupUtc is DateTime last
-            ? $"Dernier nettoyage : {last.ToLocalTime():g}. {suffix}"
+            ? HealthLocalization.T("Health.History.Last", last.ToLocalTime().ToString("g"), suffix)
             : suffix;
     }
 
@@ -405,7 +459,7 @@ public partial class HealthWindow : UserControl, IThemeAware
     {
         if (_report == null || _metrics == null) return null;
         return HealthExportService.ToJson(HealthExportService.Create(
-            _report, _metrics, _history, _trendResult, DateTime.UtcNow, "OpenCleaner"));
+            LocalizedReport(), _metrics, _history, _trendResult, DateTime.UtcNow, "OpenCleaner"));
     }
 
     /// <summary>Exécute la collecte réelle et le rendu (validation locale, hors CI).</summary>
@@ -416,14 +470,15 @@ public partial class HealthWindow : UserControl, IThemeAware
     {
         ShowReport(HealthScoreCalculator.Evaluate(metrics), metrics, info);
         RecycleText.Text = metrics.RecycleBinBytes > 0
-            ? $"Corbeille : {metrics.RecycleBinItems:N0} élément(s) • {SizeFormatter.Format(metrics.RecycleBinBytes)}"
-            : "Corbeille : vide.";
+            ? HealthLocalization.T("Health.Recycle.Summary", metrics.RecycleBinItems.ToString("N0"),
+                SizeFormatter.Format(metrics.RecycleBinBytes))
+            : HealthLocalization.T("Health.Recycle.Empty");
         _hasRecycleItems = metrics.RecycleBinItems > 0;
         EmptyRecycleBtn.IsEnabled = _hasRecycleItems;
         PopulateHistory(new CleanupHistorySummary(8, 12_400, 34L * 1024 * 1024 * 1024,
             DateTime.UtcNow.AddDays(-1), []));
         PopulateTrend(PreviewTrend());
-        StatusText.Text = "Aperçu du diagnostic. Aucune analyse ni suppression exécutée.";
+        StatusText.Text = HealthLocalization.T("Health.Preview");
     }
 
     private static SpaceTrendResult PreviewTrend()
@@ -451,7 +506,7 @@ public partial class HealthWindow : UserControl, IThemeAware
             {
                 panel.Children.Add(new TextBlock
                 {
-                    Text = "Espace disponible non communiqué",
+                    Text = HealthLocalization.T("Health.Disk.NoCapacity"),
                     Margin = new Thickness(0, 3, 0, 0)
                 });
             }
@@ -464,8 +519,9 @@ public partial class HealthWindow : UserControl, IThemeAware
                 if (low) lowDisks++;
                 var detail = new TextBlock
                 {
-                    Text = $"{SizeFormatter.Format(free)} libres sur {SizeFormatter.Format(disk.TotalBytes)}" +
-                           (low ? "  •  Espace faible" : ""),
+                    Text = HealthLocalization.T("Health.Disk.Free", SizeFormatter.Format(free),
+                        SizeFormatter.Format(disk.TotalBytes)) +
+                           (low ? HealthLocalization.T("Health.Disk.Low") : ""),
                     Margin = new Thickness(0, 3, 0, 6),
                     TextWrapping = TextWrapping.Wrap
                 };
@@ -487,24 +543,28 @@ public partial class HealthWindow : UserControl, IThemeAware
         }
 
         if (DisksPanel.Children.Count == 0)
-            DisksPanel.Children.Add(new TextBlock { Text = "Aucun disque accessible détecté." });
+            DisksPanel.Children.Add(new TextBlock { Text = HealthLocalization.T("Health.Disk.None") });
 
         AdviceText.Text = knownDisks == 0
-            ? "Capacité des disques indisponible ; vérifiez l'espace dans Windows."
+            ? HealthLocalization.T("Health.Disk.CapacityUnknown")
             : lowDisks > 0
-                ? $"{(lowDisks == 1 ? "Un disque dispose" : $"{lowDisks} disques disposent")} de moins de 10 % " +
-                  "d'espace libre. Explorez leur contenu avant de supprimer des fichiers."
-                : "Aucun manque d'espace détecté sur les disques dont la capacité est connue.";
+                ? lowDisks == 1
+                    ? HealthLocalization.T("Health.Disk.LowOne")
+                    : HealthLocalization.T("Health.Disk.LowMany", lowDisks)
+                : HealthLocalization.T("Health.Disk.Ok");
     }
 
     private void PopulateMemory(SystemHealthInfo info)
     {
         long total = (long)Math.Min(info.TotalMemoryBytes, long.MaxValue);
         long available = (long)Math.Min(info.AvailableMemoryBytes, (ulong)Math.Max(0, total));
-        MemoryText.Text = total > 0 ? $"{SizeFormatter.Format(total - available)} utilisés" : "Indisponible";
+        MemoryText.Text = total > 0
+            ? HealthLocalization.T("Health.Memory.Used", SizeFormatter.Format(total - available))
+            : HealthLocalization.T("Health.Memory.Unavailable");
         MemoryDetail.Text = total > 0
-            ? $"{SizeFormatter.Format(available)} disponibles sur {SizeFormatter.Format(total)}"
-            : "Windows n'a pas communiqué cette information.";
+            ? HealthLocalization.T("Health.Memory.Detail", SizeFormatter.Format(available),
+                SizeFormatter.Format(total))
+            : HealthLocalization.T("Health.Memory.NotReported");
         MemoryBar.Value = total > 0 ? 100d * (total - available) / total : 0;
     }
 
@@ -537,14 +597,14 @@ public partial class HealthWindow : UserControl, IThemeAware
     {
         if (_report == null || _metrics == null)
         {
-            StatusText.Text = "Diagnostic non disponible : actualisez d'abord.";
+            StatusText.Text = HealthLocalization.T("Health.Diagnostic.Unavailable");
             return;
         }
 
         var dialog = new SaveFileDialog
         {
-            Title = "Exporter le diagnostic",
-            Filter = "Rapport JSON (*.json)|*.json",
+            Title = HealthLocalization.T("Health.Export.Title"),
+            Filter = HealthLocalization.T("Health.Export.Filter"),
             FileName = $"OpenCleaner-Diagnostic-{DateTime.Now:yyyyMMdd-HHmm}.json"
         };
         if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
@@ -552,13 +612,13 @@ public partial class HealthWindow : UserControl, IThemeAware
         {
             string version = typeof(HealthWindow).Assembly.GetName().Version?.ToString(3) ?? "";
             string json = HealthExportService.ToJson(HealthExportService.Create(
-                _report, _metrics, _history, _trendResult, DateTime.UtcNow, "OpenCleaner " + version));
+                LocalizedReport(), _metrics, _history, _trendResult, DateTime.UtcNow, "OpenCleaner " + version));
             await File.WriteAllTextAsync(dialog.FileName, json);
-            StatusText.Text = "Diagnostic exporté : " + Path.GetFileName(dialog.FileName);
+            StatusText.Text = HealthLocalization.T("Health.Export.Done", Path.GetFileName(dialog.FileName));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            StatusText.Text = "Échec de l'export : " + ex.Message;
+            StatusText.Text = HealthLocalization.T("Health.Export.Failed", ex.Message);
         }
     }
 
@@ -585,8 +645,8 @@ public partial class HealthWindow : UserControl, IThemeAware
     {
         if (_busy) return;
         if (MessageBox.Show(Window.GetWindow(this),
-                "Vider la corbeille supprime définitivement son contenu. OpenCleaner ne peut pas le restaurer.\n\nContinuer ?",
-                "Vider la corbeille", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                HealthLocalization.T("Health.Recycle.Confirm"),
+                HealthLocalization.T("Health.Recycle.Title"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
         if (!UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using (operation)
@@ -597,16 +657,17 @@ public partial class HealthWindow : UserControl, IThemeAware
                 await Task.Run(RecycleBinService.Empty, operation.Token);
                 _hasRecycleItems = false;
                 EmptyRecycleBtn.IsEnabled = false;
-                RecycleText.Text = "Corbeille : vide.";
-                StatusText.Text = "Corbeille vidée.";
+                RecycleText.Text = HealthLocalization.T("Health.Recycle.Empty");
+                StatusText.Text = HealthLocalization.T("Health.Recycle.Emptied");
             }
             catch (OperationCanceledException)
             {
-                StatusText.Text = "Opération annulée.";
+                StatusText.Text = HealthLocalization.T("Health.Operation.Cancelled");
             }
             catch (Exception ex)
             {
-                MessageBox.Show(Window.GetWindow(this), ex.Message, "Corbeille", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Window.GetWindow(this), ex.Message,
+                    HealthLocalization.T("Health.Recycle.Title"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -628,15 +689,17 @@ public partial class HealthWindow : UserControl, IThemeAware
                 RedirectStandardOutput = true,
                 RedirectStandardError = true
             };
-            using var process = Process.Start(start) ?? throw new InvalidOperationException("ipconfig est introuvable");
+            using var process = Process.Start(start) ??
+                throw new InvalidOperationException(HealthLocalization.T("Health.Dns.NotFound"));
             await process.WaitForExitAsync();
             StatusText.Text = process.ExitCode == 0
-                ? "Cache DNS vidé."
-                : "La commande a retourné le code " + process.ExitCode + ".";
+                ? HealthLocalization.T("Health.Dns.Flushed")
+                : HealthLocalization.T("Health.Dns.ExitCode", process.ExitCode);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Cache DNS", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Window.GetWindow(this), ex.Message,
+                HealthLocalization.T("Health.Dns.Title"), MessageBoxButton.OK, MessageBoxImage.Error);
         }
         finally
         {
@@ -647,7 +710,24 @@ public partial class HealthWindow : UserControl, IThemeAware
     private static ILogger<T> GetLogger<T>() => App.Services.GetRequiredService<ILogger<T>>();
 
     private static string FormatUptime(TimeSpan uptime) =>
-        uptime.TotalDays >= 1
-            ? $"{(int)uptime.TotalDays} {(uptime.TotalDays < 2 ? "jour" : "jours")} et {uptime.Hours} h"
-            : $"{uptime.Hours} h {uptime.Minutes} min";
+        uptime.TotalDays >= 2
+            ? HealthLocalization.T("Health.Uptime.Days", (int)uptime.TotalDays, uptime.Hours)
+            : uptime.TotalDays >= 1
+                ? HealthLocalization.T("Health.Uptime.DaysOne", uptime.Hours)
+                : HealthLocalization.T("Health.Uptime.Hours", uptime.Hours, uptime.Minutes);
+
+    private HealthReport LocalizedReport()
+    {
+        HealthReport report = _report!;
+        return report with
+        {
+            Grade = HealthLocalization.Grade(report.Score),
+            Sections = report.Sections.Select(section => section with
+            {
+                Title = HealthLocalization.SectionTitle(section),
+                Findings = section.Findings.Select(HealthLocalization.Localize).ToList()
+            }).ToList(),
+            Findings = report.Findings.Select(HealthLocalization.Localize).ToList()
+        };
+    }
 }

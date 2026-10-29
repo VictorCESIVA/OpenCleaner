@@ -24,6 +24,36 @@ public sealed class HealthScoreCalculatorTests
     };
 
     [Fact]
+    public void EveryFindingCarriesLocalizationKeys()
+    {
+        HealthMetrics metrics = Healthy() with
+        {
+            Disks = [new HealthDisk("C:\\", 500 * GigaByte, 5 * GigaByte)],
+            AvailableMemoryBytes = 1UL * (ulong)GigaByte,
+            EnabledStartupItems = 40,
+            RebootPending = true,
+            Uptime = TimeSpan.FromDays(45),
+            TemporaryBytes = 20 * GigaByte,
+            TemporaryItems = 15,
+            BrowserCacheBytes = 6 * GigaByte,
+            BrowserCacheItems = 80,
+            RecycleBinBytes = 12 * GigaByte,
+            RecycleBinItems = 9
+        };
+
+        HealthReport report = HealthScoreCalculator.Evaluate(metrics);
+
+        Assert.All(report.Findings, finding =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(finding.TitleKey), finding.Id + " sans TitleKey");
+            Assert.False(string.IsNullOrWhiteSpace(finding.DetailKey), finding.Id + " sans DetailKey");
+            Assert.False(string.IsNullOrWhiteSpace(finding.RecommendationKey),
+                finding.Id + " sans RecommendationKey");
+        });
+        Assert.Equal(5, report.Sections.Select(section => section.Id).Distinct().Count());
+    }
+
+    [Fact]
     public void HealthyMachineScoresFullMarks()
     {
         HealthReport report = HealthScoreCalculator.Evaluate(Healthy());
