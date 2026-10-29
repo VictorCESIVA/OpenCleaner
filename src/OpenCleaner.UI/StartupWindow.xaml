@@ -18,7 +18,11 @@
             </StackPanel>
 
             <Grid Grid.Row="1" Margin="0,0,0,12">
-                <TextBox x:Name="FilterBox" Height="38"
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBox x:Name="FilterBox" Grid.Column="0" Height="38"
                          Background="{DynamicResource BgCard}" Foreground="{DynamicResource TextPrimary}"
                          BorderBrush="{DynamicResource Border}" BorderThickness="1" Padding="36,7,12,7"
                          VerticalContentAlignment="Center"
@@ -40,6 +44,12 @@
                         </Style>
                     </TextBlock.Style>
                 </TextBlock>
+                <ComboBox x:Name="SortCombo" Grid.Column="1" Width="170" Height="38" Margin="8,0,0,0"
+                          SelectedIndex="0" SelectionChanged="Sort_Changed"
+                          AutomationProperties.Name="Trier les éléments de démarrage">
+                    <ComboBoxItem Content="Trier : nom" Tag="Name"/>
+                    <ComboBoxItem Content="Trier : impact" Tag="Impact"/>
+                </ComboBox>
             </Grid>
 
             <Border Grid.Row="2" Style="{StaticResource Card}" Padding="8" ClipToBounds="True">
@@ -92,6 +102,9 @@
                                                    Foreground="{DynamicResource TextSecond}"
                                                    TextTrimming="CharacterEllipsis" Margin="0,4,0,0"
                                                    ToolTip="{Binding Command}"/>
+                                        <TextBlock Text="{Binding ImpactLabel}" FontSize="10.5"
+                                                   Foreground="{Binding ImpactBrush}"
+                                                   ToolTip="{Binding ImpactToolTip}" Margin="0,3,0,0"/>
                                     </StackPanel>
 
                                     <StackPanel Grid.Column="2" MinWidth="120" MaxWidth="180"

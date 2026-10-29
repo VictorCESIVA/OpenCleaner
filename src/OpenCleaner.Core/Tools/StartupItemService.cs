@@ -25,9 +25,11 @@ public sealed record StartupItem(
     string? RegistryPath = null,
     string? ValueName = null,
     string? FilePath = null,
-    string? IconPath = null)
+    string? IconPath = null,
+    StartupImpact Impact = StartupImpact.Unknown)
 {
     public string StatusLabel => IsEnabled ? "Activé" : "Désactivé";
+    public string ImpactLabel => "Impact estimé : " + StartupImpactEstimator.Label(Impact);
     public string LocationLabel => Location switch
     {
         StartupItemLocation.CurrentUserRun => "HKCU · Run",
@@ -85,6 +87,10 @@ public static class StartupItemService
         return false;
     }
 
+    private static bool IsExecutable(string filePath) =>
+        filePath.EndsWith(".exe", StringComparison.OrdinalIgnoreCase) ||
+        filePath.EndsWith(".com", StringComparison.OrdinalIgnoreCase);
+
     private static void AddRunItems(List<StartupItem> items, RegistryKey root, string path,
         StartupItemLocation location, bool canToggle)
     {
@@ -96,9 +102,11 @@ public static class StartupItemService
             {
                 string? command = key.GetValue(name)?.ToString();
                 if (string.IsNullOrWhiteSpace(command)) continue;
+                string? executable = IconPathResolver.ExtractExecutable(command) ??
+                                     IconPathResolver.FromStartMenuShortcut(name);
                 items.Add(new StartupItem($"{location}|{name}", name, command, location, true, canToggle,
-                    path, name, IconPath: IconPathResolver.ExtractExecutable(command) ??
-                                    IconPathResolver.FromStartMenuShortcut(name)));
+                    path, name, IconPath: executable,
+                    Impact: StartupImpactEstimator.Estimate(executable)));
             }
         }
         catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)
@@ -117,7 +125,8 @@ public static class StartupItemService
                 if (name.EndsWith(".disabled", StringComparison.OrdinalIgnoreCase) ||
                     name.Equals("desktop.ini", StringComparison.OrdinalIgnoreCase)) continue;
                 items.Add(new StartupItem($"{location}|{file}", name, file, location, true, canToggle,
-                    FilePath: file, IconPath: IconPathResolver.FromFilePath(file)));
+                    FilePath: file, IconPath: IconPathResolver.FromFilePath(file),
+                    Impact: IsExecutable(file) ? StartupImpactEstimator.Estimate(file) : StartupImpact.Unknown));
             }
         }
         catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)
@@ -140,10 +149,12 @@ public static class StartupItemService
                     {
                         string? command = key.GetValue(name)?.ToString();
                         if (string.IsNullOrWhiteSpace(command)) continue;
+                        string? executable = IconPathResolver.ExtractExecutable(command) ??
+                                             IconPathResolver.FromStartMenuShortcut(name);
                         items.Add(new StartupItem($"disabled|{subKey}|{name}", name, command,
                             StartupItemLocation.DisabledByOpenCleaner, false, true, originalPath, name,
-                            IconPath: IconPathResolver.ExtractExecutable(command) ??
-                                      IconPathResolver.FromStartMenuShortcut(name)));
+                            IconPath: executable,
+                            Impact: StartupImpactEstimator.Estimate(executable)));
                     }
                 }
             }
@@ -168,7 +179,8 @@ public static class StartupItemService
                     items.Add(new StartupItem($"disabled|{file}", name, file,
                         StartupItemLocation.DisabledByOpenCleaner, false, canToggle, FilePath: file,
                         IconPath: IconPathResolver.FromFilePath(file) ??
-                                  IconPathResolver.FromStartMenuShortcut(Path.GetFileNameWithoutExtension(name))));
+                                  IconPathResolver.FromStartMenuShortcut(Path.GetFileNameWithoutExtension(name)),
+                        Impact: IsExecutable(file) ? StartupImpactEstimator.Estimate(file) : StartupImpact.Unknown));
                 }
             }
             catch (Exception ex) when (ex is SecurityException or UnauthorizedAccessException or IOException)

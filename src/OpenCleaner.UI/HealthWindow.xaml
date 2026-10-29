@@ -1,51 +1,135 @@
 <UserControl x:Class="OpenCleaner.UI.HealthWindow"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:local="clr-namespace:OpenCleaner.UI">
     <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
         <StackPanel Margin="32,26,32,28">
-            <Grid Margin="0,0,0,20">
+            <Grid Margin="0,0,0,18">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock Text="Santé du PC" FontSize="27" FontWeight="SemiBold"/>
-                    <TextBlock Text="Surveillez les ressources et accédez aux outils utiles." Foreground="{DynamicResource TextSecond}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                    <TextBlock Text="Un score expliqué, des constats vérifiables et des actions sûres." Foreground="{DynamicResource TextSecond}" Margin="0,5,0,0" TextWrapping="Wrap"/>
                 </StackPanel>
                 <Button x:Name="RefreshBtn" Grid.Column="1" Content="Actualiser" Click="Refresh_Click" VerticalAlignment="Center"/>
             </Grid>
 
+            <!-- SCORE -->
+            <Border Style="{StaticResource Card}" Padding="22,18" Margin="0,0,0,14">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="26"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+                    <Grid Width="150" Height="150" VerticalAlignment="Center">
+                        <local:ScoreRing x:Name="ScoreRing" Score="0" MaxScore="100" RingThickness="12"/>
+                        <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                            <TextBlock x:Name="ScoreValue" Text="—" FontSize="38" FontWeight="SemiBold" HorizontalAlignment="Center"/>
+                            <TextBlock Text="sur 100" FontSize="11" Foreground="{DynamicResource TextSecond}" HorizontalAlignment="Center" Margin="0,-2,0,0"/>
+                        </StackPanel>
+                    </Grid>
+                    <StackPanel Grid.Column="2" VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal">
+                            <TextBlock x:Name="GradeText" Text="Évaluation…" FontSize="23" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                            <Border x:Name="GradeBadge" CornerRadius="5" Padding="8,3" Margin="10,0,0,0" VerticalAlignment="Center" Visibility="Collapsed">
+                                <TextBlock x:Name="GradeBadgeText" FontSize="10" FontWeight="SemiBold"/>
+                            </Border>
+                        </StackPanel>
+                        <TextBlock x:Name="ScoreCaption" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" Margin="0,5,0,12"
+                                   Text="Lecture des indicateurs locaux en cours…"/>
+                        <StackPanel x:Name="SectionsPanel"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
+
+            <!-- RECOMMANDATIONS -->
             <Border Style="{StaticResource Card}" Padding="20,18" Margin="0,0,0,14">
                 <StackPanel>
-                    <TextBlock Text="ESPACE DE STOCKAGE" Style="{StaticResource Eyebrow}"/>
-                    <TextBlock Text="Espace disponible sur vos disques" FontSize="17" FontWeight="SemiBold" Margin="0,6,0,12"/>
-                    <StackPanel x:Name="DisksPanel"/>
-                    <TextBlock Text="L'espace libre ne mesure pas l'état physique du disque." FontSize="11" Foreground="{DynamicResource TextSecond}" Margin="0,9,0,0" TextWrapping="Wrap"/>
-                    <Button Content="Explorer l'espace disque" Style="{StaticResource SecondBtnStyle}" Click="Disk_Click" HorizontalAlignment="Left" Margin="0,14,0,0"/>
+                    <TextBlock Text="RECOMMANDATIONS" Style="{StaticResource Eyebrow}"/>
+                    <Grid Margin="0,4,0,0">
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <TextBlock Text="Ce qui mérite votre attention" FontSize="17" FontWeight="SemiBold"/>
+                        <TextBlock x:Name="FindingsSummary" Grid.Column="1" Foreground="{DynamicResource TextSecond}" FontSize="11" VerticalAlignment="Center"/>
+                    </Grid>
+                    <ItemsControl x:Name="FindingsList" Margin="0,10,0,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Background="{DynamicResource BgMain}" BorderBrush="{DynamicResource Border}"
+                                        BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,0,0,8">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <Ellipse Width="8" Height="8" Fill="{Binding SeverityBrush}"
+                                                 VerticalAlignment="Top" Margin="0,6,12,0"/>
+                                        <StackPanel Grid.Column="1">
+                                            <StackPanel Orientation="Horizontal">
+                                                <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" TextWrapping="Wrap"/>
+                                                <TextBlock Text="{Binding ReclaimLabel}" Foreground="{DynamicResource TextSecond}"
+                                                           FontSize="11" Margin="8,2,0,0"/>
+                                            </StackPanel>
+                                            <TextBlock Text="{Binding Detail}" Foreground="{DynamicResource TextSecond}"
+                                                       FontSize="12" TextWrapping="Wrap" Margin="0,3,0,0"/>
+                                            <TextBlock Text="{Binding Recommendation}" Foreground="{DynamicResource TextSecond}"
+                                                       FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0" Opacity="0.85"/>
+                                        </StackPanel>
+                                        <Button Grid.Column="2" Content="{Binding ActionLabel}" Tag="{Binding Action}"
+                                                Visibility="{Binding ActionVisibility}" Click="FindingAction_Click"
+                                                Style="{StaticResource SecondBtnStyle}" Padding="14,8" MinHeight="34"
+                                                VerticalAlignment="Center" Margin="14,0,0,0"/>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                    <TextBlock x:Name="FindingsEmpty" Visibility="Collapsed" Foreground="{DynamicResource TextSecond}" FontSize="12"
+                               Text="Aucun point à traiter : les indicateurs mesurés sont sains." TextWrapping="Wrap" Margin="0,6,0,0"/>
                 </StackPanel>
             </Border>
 
+            <!-- DÉTAILS -->
             <Grid Margin="0,0,0,14">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="14"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
                 <Border Style="{StaticResource Card}" Padding="20,18">
                     <StackPanel>
-                        <TextBlock Text="MÉMOIRE" Style="{StaticResource Eyebrow}"/>
-                        <TextBlock x:Name="MemoryText" Text="—" FontSize="21" FontWeight="SemiBold" Margin="0,7,0,4"/>
-                        <TextBlock x:Name="MemoryDetail" Text="Lecture en cours…" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap"/>
-                        <ProgressBar x:Name="MemoryBar" Style="{StaticResource ModernProgressBar}" Height="6" Minimum="0" Maximum="100" Margin="0,12,0,0"/>
+                        <TextBlock Text="STOCKAGE" Style="{StaticResource Eyebrow}"/>
+                        <TextBlock Text="Espace disponible sur vos disques" FontSize="16" FontWeight="SemiBold" Margin="0,5,0,12" TextWrapping="Wrap"/>
+                        <StackPanel x:Name="DisksPanel"/>
+                        <TextBlock Text="L'espace libre ne mesure pas l'état physique du disque." FontSize="11" Foreground="{DynamicResource TextSecond}" Margin="0,8,0,0" TextWrapping="Wrap"/>
+                        <Button Content="Explorer l'espace disque" Style="{StaticResource SecondBtnStyle}" Click="Disk_Click" HorizontalAlignment="Left" Margin="0,12,0,0"/>
                     </StackPanel>
                 </Border>
-                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="20,18">
-                    <StackPanel>
-                        <TextBlock Text="WINDOWS EN COURS DEPUIS" Style="{StaticResource Eyebrow}"/>
-                        <TextBlock x:Name="UptimeText" Text="—" FontSize="21" FontWeight="SemiBold" Margin="0,7,0,4"/>
-                        <TextBlock x:Name="SystemText" Text="Lecture en cours…" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap"/>
-                    </StackPanel>
-                </Border>
+                <StackPanel Grid.Column="2">
+                    <Border Style="{StaticResource Card}" Padding="20,16" Margin="0,0,0,14">
+                        <StackPanel>
+                            <TextBlock Text="MÉMOIRE" Style="{StaticResource Eyebrow}"/>
+                            <TextBlock x:Name="MemoryText" Text="—" FontSize="20" FontWeight="SemiBold" Margin="0,6,0,3"/>
+                            <TextBlock x:Name="MemoryDetail" Text="Lecture en cours…" Foreground="{DynamicResource TextSecond}" FontSize="12" TextWrapping="Wrap"/>
+                            <ProgressBar x:Name="MemoryBar" Style="{StaticResource ModernProgressBar}" Height="6" Minimum="0" Maximum="100" Margin="0,10,0,0"/>
+                        </StackPanel>
+                    </Border>
+                    <Border Style="{StaticResource Card}" Padding="20,16">
+                        <StackPanel>
+                            <TextBlock Text="WINDOWS EN COURS DEPUIS" Style="{StaticResource Eyebrow}"/>
+                            <TextBlock x:Name="UptimeText" Text="—" FontSize="20" FontWeight="SemiBold" Margin="0,6,0,3"/>
+                            <TextBlock x:Name="SystemText" Text="Lecture en cours…" Foreground="{DynamicResource TextSecond}" FontSize="12" TextWrapping="Wrap"/>
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
             </Grid>
 
-            <Border Style="{StaticResource Card}" Padding="20,18" Margin="0,0,0,14">
+            <!-- RACCOURCIS -->
+            <Border Style="{StaticResource Card}" Padding="20,18" Margin="0,0,0,10">
                 <StackPanel>
-                    <TextBlock Text="ACTIONS UTILES" Style="{StaticResource Eyebrow}"/>
-                    <TextBlock Text="Prenez la main" FontSize="17" FontWeight="SemiBold" Margin="0,6,0,4"/>
-                    <TextBlock x:Name="AdviceText" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" Margin="0,0,0,6"/>
+                    <TextBlock Text="ACTIONS RAPIDES" Style="{StaticResource Eyebrow}"/>
+                    <TextBlock Text="Prenez la main" FontSize="17" FontWeight="SemiBold" Margin="0,5,0,4"/>
+                    <TextBlock x:Name="AdviceText" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" Margin="0,0,0,4"/>
                     <TextBlock x:Name="RecycleText" Text="Corbeille : lecture en cours…" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" Margin="0,0,0,12"/>
                     <WrapPanel>
                         <Button Content="Nettoyer les fichiers" Click="Clean_Click" Style="{StaticResource AccentBtnStyle}" Margin="0,0,8,8"/>

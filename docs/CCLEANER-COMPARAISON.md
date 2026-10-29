@@ -2,21 +2,21 @@
 
 Comparaison établie à partir des fonctions publiques de CCleaner pour Windows (version 2026). OpenCleaner reste un utilitaire open source local, sans télémétrie ni catalogue propriétaire.
 
-## Fonctions disponibles dans OpenCleaner 1.3.0
+## Fonctions disponibles dans OpenCleaner 1.4.0
 
 | CCleaner | OpenCleaner | Détail |
 |---|---|---|
 | Custom Clean | Oui | Catégories système, navigateurs, applications, registre, analyse et sélection. |
 | Nettoyage des navigateurs | Oui | Chrome, Edge, Brave, Firefox, Opera, Vivaldi ; cookies et historique sur option. |
-| Health Check | Partiel | Santé du PC, système, disques, corbeille et cache DNS. Pas de correction automatique globale. |
+| Health Check | Oui | Score sur 100, cinq sections mesurées, constats expliqués et actions directes. Aucune correction silencieuse : chaque action destructive reste confirmée. |
 | Corbeille | Oui | Consultation du volume et vidage explicite et irréversible. |
 | Prefetch | Oui | Cible experte, fichiers de plus de 30 jours. |
 | Applications (Office, Thunderbird, caches dev) | Oui | Office, Thunderbird, npm, Yarn, NuGet, pip, Gradle, VS Code, Teams, Discord, Spotify, JetBrains. |
 | Outils IA | Oui | Caches et journaux de Cursor, Claude et ChatGPT. |
-| Startup Manager | Partiel | HKCU Run/RunOnce et dossier Démarrage avec sauvegarde et réactivation ; HKLM en lecture seule. |
+| Startup Manager | Partiel | HKCU Run/RunOnce et dossier Démarrage avec sauvegarde, réactivation et impact estimé ; HKLM en lecture seule. |
 | Apps Uninstaller | Oui | Liste, recherche, portée, taille et lancement du désinstalleur officiel. |
 | Software Updater | Oui | Via `winget`, avec sortie visible, confirmation et annulation. |
-| Disk Analyzer | Oui | Classement des enfants d'un dossier, sans suivre les jonctions. |
+| Disk Analyzer | Oui | Carte proportionnelle, navigation instantanée dans l'arborescence scannée, liste et plus gros fichiers. |
 | Duplicate Finder | Oui | SHA-256 avec pré-empreinte et conservation vérifiée de l'original. |
 | Registry Cleaner | Partiel | Historiques HKCU ciblés, export avant suppression, liste blanche. |
 | Scheduled Cleaning | Oui | Tâche Windows dans le contexte utilisateur. |
@@ -45,3 +45,15 @@ Comparaison établie à partir des fonctions publiques de CCleaner pour Windows 
 - Les suppressions de fichiers passent par une sauvegarde chiffrée, sauf l'effacement sécurisé explicitement choisi.
 - Les chemins critiques, les jonctions, les autres profils et les sauvegardes sont protégés.
 - Aucune télémétrie, aucun compte et aucune connexion hors mise à jour Velopack ou `winget` lancé par l'utilisateur.
+
+## Points où OpenCleaner va plus loin
+
+- **Résultat expliqué, pas seulement chiffré.** Le score de santé détaille ses cinq sections, affiche les points perdus et laisse chaque correction à confirmer dans l'outil concerné.
+- **Espace disque plus lisible.** La carte proportionnelle situe immédiatement les gros postes ; la navigation dans l'arborescence déjà scannée est instantanée et les zones protégées sont visuellement distinctes.
+- **Nettoyage réversible par défaut.** Chaque suppression est sauvegardée et chiffrée, avec vérification avant suppression et restauration depuis l'application.
+- **Transparence sur les estimations.** L'impact au démarrage, les tailles de caches et les limites de l'analyse disque sont présentés comme des estimations, avec leur méthode.
+- **Aucune pression commerciale.** Pas de publicité, pas de compte, pas de télémétrie, pas de fonctionnalité bridée derrière une offre payante.
+- **Code vérifiable.** Le code source et les tests sont publics sous licence MIT.
+
+Ces avantages ne rendent pas OpenCleaner meilleur sur tout : CCleaner reste plus large sur les pilotes, la surveillance matérielle et la récupération de fichiers, fonctions volontairement hors périmètre.
+

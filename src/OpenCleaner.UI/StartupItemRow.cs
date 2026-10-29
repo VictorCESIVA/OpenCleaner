@@ -19,6 +19,20 @@ internal sealed class StartupItemRow : INotifyPropertyChanged
     public bool CanToggle => Item.CanToggle;
     public string? IconPath => Item.IconPath;
 
+    public StartupImpact Impact => Item.Impact;
+    public string ImpactLabel => Item.ImpactLabel;
+    public string ImpactToolTip =>
+        "Estimation fondée sur la taille de l'exécutable et son emplacement. " +
+        "Ce n'est pas une mesure du temps de démarrage réel.";
+
+    public Brush ImpactBrush => (Brush)System.Windows.Application.Current.FindResource(Item.Impact switch
+    {
+        StartupImpact.High => "RiskExpert",
+        StartupImpact.Medium => "RiskRecommended",
+        StartupImpact.Low => "RiskSafe",
+        _ => "TextSecond"
+    });
+
     public string Initials
     {
         get

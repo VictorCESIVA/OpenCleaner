@@ -18,10 +18,10 @@ Les sauvegardes sont conservées localement : elles occupent de l'espace. Un net
 - **Applications** : certains caches Steam, journaux Office, caches Thunderbird, caches npm, Yarn, NuGet, pip, Gradle, VS Code, Teams, Discord, Spotify, JetBrains et outils IA (Cursor, Claude, ChatGPT).
 - **Doublons** : comparaison SHA-256 (avec seuil de taille configurable et pré-empreinte rapide) dans les dossiers personnels courants. L'original conservé est identifié et revérifié avant la suppression des copies.
 - **Confidentialité** : repérage de certaines traces locales et fichiers contenant potentiellement des secrets. Ces résultats exigent une vérification manuelle ; cet outil n'est pas un antivirus.
-- **Espace disque** : classement des enfants d'un dossier selon leur taille accessible. Les dossiers inaccessibles, liés et certains dossiers système sont exclus ; les totaux sont donc partiels.
-- **Santé du PC** : espace disponible par disque avec signalement sous 10 %, mémoire, durée de fonctionnement et corbeille ; accès direct au nettoyage, à l'espace disque, au démarrage et aux mises à jour. L'espace libre n'est pas un diagnostic de l'état physique du disque.
+- **Espace disque** : carte proportionnelle (treemap), navigation instantanée dans l'arborescence analysée, liste par dossier et plus gros fichiers. Un seul parcours, liens et jonctions ignorés ; les zones protégées sont signalées en ambre. Les tailles peuvent être approximatives pour les liens physiques, les fichiers compressés ou les dossiers système. L'outil est en lecture seule.
+- **Santé du PC** : score sur 100 en cinq sections (stockage, mémoire, démarrage, entretien, propreté), constats expliqués et boutons d'action. Les tailles de caches sont mesurées en lecture seule avec un délai maximal ; une mesure partielle est signalée. L'espace libre n'est pas un diagnostic de l'état physique du disque.
 - **Désinstallation** : liste des applications installées et lancement du désinstalleur officiel après confirmation.
-- **Démarrage Windows** : consultation et activation/désactivation des éléments HKCU et du dossier Démarrage, avec sauvegarde OpenCleaner ; les éléments machine restent en lecture seule sans élévation.
+- **Démarrage Windows** : consultation, activation/désactivation des éléments HKCU et du dossier Démarrage avec sauvegarde OpenCleaner, tri par impact estimé. L'impact est une heuristique fondée sur la taille de l'exécutable et son emplacement, pas une mesure du temps de démarrage. Les éléments machine restent en lecture seule sans élévation.
 - **Mises à jour logicielles** : vérification et mise à jour groupée via Windows Package Manager (`winget`), avec sortie visible et annulation. La mise à jour demande une autorisation administrateur ; les applications dont la version installée est inconnue sont ignorées.
 - **Effacement sécurisé** : écriture de trois passes aléatoires avant suppression de fichiers sélectionnés, sans sauvegarde OpenCleaner. Les fichiers en lecture seule ou possédant plusieurs liens physiques sont refusés. Sur SSD et en présence de copies ou instantanés, l'effacement définitif ne peut pas être garanti.
 - **Planification** : tâche Windows dans le contexte utilisateur, limitée aux fichiers à faible risque des catégories autorisées. Si OpenCleaner est déjà ouvert, Windows réessaie jusqu'à trois fois ; enregistrez à nouveau la planification pour mettre à jour une tâche existante.
@@ -71,7 +71,7 @@ L'application ne force plus la fermeture des navigateurs et ne redémarre plus a
 - **Plugins.System** : analyseurs et nettoyeurs intégrés.
 - **UI** : fenêtres WPF et coordination des opérations.
 - **Tests** : régressions du moteur et des plugins, sur des fixtures temporaires.
-- **docs** : site statique de présentation ; rapports d'audit du [14 octobre 2026](docs/AUDIT-2026-10-14.md) et du [26 octobre 2026](docs/AUDIT-2026-10-26.md), et [comparaison avec CCleaner](docs/CCLEANER-COMPARAISON.md).
+- **docs** : site statique de présentation ; rapports d'audit du [14 octobre 2026](docs/AUDIT-2026-10-14.md), du [26 octobre 2026](docs/AUDIT-2026-10-26.md) et du [29 octobre 2026](docs/AUDIT-2026-10-29.md), et [comparaison avec CCleaner](docs/CCLEANER-COMPARAISON.md).
 
 La CI compile et teste la solution sur Windows et refuse les vulnérabilités NuGet connues. Le workflow de release valide le tag, exécute ces vérifications, construit un package Velopack et le signe si le certificat est fourni via les secrets GitHub.
 

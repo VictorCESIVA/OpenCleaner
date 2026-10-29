@@ -62,9 +62,18 @@ public partial class StartupWindow : UserControl
             filtered = filtered.Where(row =>
                 row.Name.Contains(query, StringComparison.CurrentCultureIgnoreCase) ||
                 row.Command.Contains(query, StringComparison.CurrentCultureIgnoreCase));
+
+        string sort = (SortCombo.SelectedItem as ComboBoxItem)?.Tag as string ?? "Name";
+        var ordered = sort == "Impact"
+            ? filtered.OrderByDescending(row => row.Item.Impact)
+                .ThenBy(row => row.Name, StringComparer.CurrentCultureIgnoreCase)
+            : filtered.OrderBy(row => row.Name, StringComparer.CurrentCultureIgnoreCase);
+
         _items.Clear();
-        foreach (StartupItemRow item in filtered) _items.Add(item);
+        foreach (StartupItemRow item in ordered) _items.Add(item);
+        int highImpact = _items.Count(row => row.Item.Impact == StartupImpact.High);
         CountText.Text = _items.Count == 1 ? "1 élément" : $"{_items.Count:N0} éléments";
+        if (highImpact > 0) CountText.Text += $" • {highImpact} à impact élevé";
         UpdateEmptyState();
         UpdateSelection();
     }
@@ -119,6 +128,12 @@ public partial class StartupWindow : UserControl
     }
 
     private void Filter_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (!_loaded) return;
+        ApplyFilter();
+    }
+
+    private void Sort_Changed(object sender, SelectionChangedEventArgs e)
     {
         if (!_loaded) return;
         ApplyFilter();

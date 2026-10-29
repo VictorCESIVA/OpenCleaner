@@ -489,6 +489,8 @@ public partial class MainWindow : Window
         };
         foreach (var (key, color) in additional)
             SetThemeColor(key, color);
+        foreach (var view in _toolViews.Values.OfType<IThemeAware>())
+            view.ApplyTheme(dark);
         ThemeIcon.Text = dark ? "Thème clair" : "Thème sombre";
     }
 
@@ -516,6 +518,7 @@ public partial class MainWindow : Window
                 "shredder" => new ShredderWindow(), _ => throw new ArgumentException("Unknown tool", nameof(key))
             };
             _toolViews.Add(key, view);
+            if (view is IThemeAware themeAware) themeAware.ApplyTheme(_isDarkTheme);
         }
         if (_activeToolButton != null) _activeToolButton.Style = (Style)FindResource("SidebarBtnStyle");
         _activeToolButton = button;
