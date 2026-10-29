@@ -172,8 +172,8 @@ public partial class App : System.Windows.Application
         var logFactory    = Services.GetRequiredService<ILoggerFactory>();
         var logger        = logFactory.CreateLogger("BackgroundMode");
 
-        int cleaned = 0;
-        long freed  = 0;
+        int filesProcessed = 0;
+        long bytesProcessed = 0;
 
         try
         {
@@ -226,12 +226,9 @@ public partial class App : System.Windows.Application
                         var analyzed = await Task.Run(() => plugin.AnalyzeAsync(ct: timeout.Token), timeout.Token);
                         var items = analyzed.Where(i => i.RiskLevel == RiskLevel.Safe && i.Type == ItemType.File).ToList();
                         var result = await Task.Run(() => plugin.CleanAsync(items, backupManager, ct: timeout.Token), timeout.Token);
-                        if (result.Success)
-                        {
-                            cleaned++;
-                        }
-                        else failures++;
-                        freed += result.BytesRecovered ?? 0;
+                        filesProcessed += Math.Clamp(result.ItemsProcessed ?? 0, 0, items.Count);
+                        bytesProcessed += items.Sum(item => item.Size);
+                        if (!result.Success) failures++;
                     }
                     catch (OperationCanceledException) { failures++; break; }
                     catch (Exception ex)
@@ -259,7 +256,8 @@ public partial class App : System.Windows.Application
         }
 
         // Log le résultat dans un fichier pour traçabilité
-        LogBackgroundResult(cleaned, freed, logger);
+        ScheduledRunJournal.Append(new ScheduledRunRecord(DateTime.UtcNow, filesProcessed, bytesProcessed, failures));
+        LogBackgroundResult(filesProcessed, bytesProcessed, failures, logger);
         Current.Shutdown(failures == 0 ? 0 : 1);
     }
 
@@ -269,7 +267,7 @@ public partial class App : System.Windows.Application
         base.OnExit(e);
     }
 
-    private static void LogBackgroundResult(int plugins, long bytes, ILogger logger)
+    private static void LogBackgroundResult(int files, long bytes, int failures, ILogger logger)
     {
         try
         {
@@ -277,7 +275,7 @@ public partial class App : System.Windows.Application
             var logDir  = System.IO.Path.GetDirectoryName(ScheduleConfig.ConfigPath)!;
             System.IO.Directory.CreateDirectory(logDir);
             var logPath = System.IO.Path.Combine(logDir, "background.log");
-            var line    = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {plugins} plugin(s) — {mb:0.#} Mo lib\u00e9r\u00e9s.";
+            var line    = $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {files} fichier(s) — {mb:0.#} Mo traités, {failures} erreur(s).";
             System.IO.File.AppendAllText(logPath, line + Environment.NewLine);
         }
         catch (Exception ex)

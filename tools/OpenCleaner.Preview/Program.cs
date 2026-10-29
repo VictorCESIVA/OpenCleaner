@@ -7,6 +7,7 @@ using System.Windows.Media.Imaging;
 using OpenCleaner.UI;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Health;
+using OpenCleaner.Core.Scheduler;
 using OpenCleaner.Core.Tools;
 
 internal class Program
@@ -98,6 +99,9 @@ internal class Program
         disk.ShowPreviewData(PreviewDiskUsage());
         var settings = new SettingsWindow();
         settings.ShowExclusionsForPreview([@"C:\Users\Exemple\Documents\Projets", @"D:\Sauvegardes"]);
+        settings.ShowScheduleForPreview(
+            new ScheduledRunRecord(DateTime.UtcNow.AddDays(-1), 1_240, 512L * 1024 * 1024, 0),
+            DateTime.Now.Date.AddDays(2).AddHours(3));
         var windows=new FrameworkElement[]{main,settings,new RestoreWindow(),new PrivacyWindow(),new DuplicateWindow(),disk,new DevCleanerWindow(),new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION",false),health,uninstaller,startup,new UpdatesWindow(),new ShredderWindow()};
         foreach(var window in windows)
         {

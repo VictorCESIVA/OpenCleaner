@@ -17,6 +17,20 @@ public sealed record ScheduleConfig
     public DayOfWeek[]  Days        { get; init; } = [DayOfWeek.Monday, DayOfWeek.Friday];
     public string[]     PluginIds   { get; init; } = ["system.temp"];
 
+    /// <summary>Prochaine occurrence locale, ou null si la planification est désactivée.</summary>
+    public DateTime? GetNextRun(DateTime now)
+    {
+        if (!IsEnabled || Days == null || Days.Length == 0) return null;
+        for (int offset = 0; offset <= 7; offset++)
+        {
+            DateTime date = now.Date.AddDays(offset);
+            if (!Days.Contains(date.DayOfWeek)) continue;
+            DateTime candidate = date.Add(TimeOfDay);
+            if (candidate > now) return candidate;
+        }
+        return null;
+    }
+
     public void Validate()
     {
         if (TimeOfDay < TimeSpan.Zero || TimeOfDay >= TimeSpan.FromDays(1))

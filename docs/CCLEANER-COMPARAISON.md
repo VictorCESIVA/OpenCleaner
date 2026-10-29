@@ -21,7 +21,7 @@ Comparaison établie à partir des fonctions publiques de CCleaner pour Windows 
 | Duplicate Finder | Oui | SHA-256 avec pré-empreinte, hachage complet parallèle, conservation vérifiée de l'original et refus des fichiers à plusieurs liens physiques. |
 | Registry Cleaner | Partiel | Historiques HKCU ciblés, export avant suppression, liste blanche. |
 | Exclusions | Oui | Dossiers exclus par l'utilisateur, appliqués à l'analyse et à la suppression, sous-dossiers compris. |
-| Scheduled Cleaning | Oui | Tâche Windows dans le contexte utilisateur, limitée aux fichiers Safe de catégories autorisées, caches d'applications compris. |
+| Scheduled Cleaning | Oui | Tâche Windows dans le contexte utilisateur, fichiers Safe de catégories autorisées, caches d'applications compris, avec dernière exécution et prochaine occurrence visibles. |
 | Smart Clean | Partiel | Analyse rapide et nettoyage des fichiers Safe ; pas de déclenchement automatique à la fermeture du navigateur. |
 | Drive Wiper | Partiel | Effacement sécurisé de fichiers sélectionnés (3 passes), pas d'effacement de l'espace libre d'un disque entier. |
 | Restauration | Oui | Sauvegardes chiffrées, code de récupération, quarantaine et restauration. |

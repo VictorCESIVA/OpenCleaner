@@ -56,6 +56,8 @@ public partial class SettingsWindow : UserControl
         foreach (var cb in plugBoxes)
             cb.IsChecked = cb != PlugWinUpd && config.PluginIds.Contains((string)cb.Tag);
 
+        UpdateRunSummary(config);
+
         if (configError == null)
         {
             bool taskExists = _scheduler.GetScheduledTask() != null;
@@ -133,6 +135,7 @@ public partial class SettingsWindow : UserControl
             SaveStatus.Text = config.IsEnabled
                 ? $"✅ Tâche planifiée à {config.TimeOfDay:hh\\:mm} ({string.Join(", ", config.Days)})"
                 : "✅ Planificateur désactivé.";
+            UpdateRunSummary(config);
         }
         catch (Exception ex)
         {
@@ -243,6 +246,29 @@ public partial class SettingsWindow : UserControl
         PlugSystem.IsEnabled = PlugBrowser.IsEnabled =
         PlugThumb.IsEnabled  = PlugOffice.IsEnabled = PlugSteam.IsEnabled   =
         PlugAppCaches.IsEnabled = on;
+    }
+
+    private void UpdateRunSummary(ScheduleConfig config)
+    {
+        ScheduledRunRecord? last = ScheduledRunJournal.ReadLatest(1).FirstOrDefault();
+        LastRunText.Text = last == null
+            ? "Aucune exécution enregistrée. Le résultat apparaîtra ici après la première tâche."
+            : DescribeLastRun(last);
+        DateTime? next = config.GetNextRun(DateTime.Now);
+        NextRunText.Text = next is DateTime date
+            ? $"Prochaine exécution : {date:dddd d MMMM 'à' HH:mm}."
+            : "Prochaine exécution : planification désactivée ou aucun jour sélectionné.";
+    }
+
+    private static string DescribeLastRun(ScheduledRunRecord record) =>
+        $"{record.CompletedAt.ToLocalTime():g} — {record.FilesCleaned:N0} fichier(s) • " +
+        $"{SizeFormatter.Format(record.BytesProcessed)} concernés" +
+        (record.Failures > 0 ? $" • {record.Failures} erreur(s)" : " • aucune erreur");
+
+    internal void ShowScheduleForPreview(ScheduledRunRecord lastRun, DateTime nextRun)
+    {
+        LastRunText.Text = DescribeLastRun(lastRun);
+        NextRunText.Text = $"Prochaine exécution : {nextRun:dddd d MMMM 'à' HH:mm}.";
     }
 
     // ─── PRÉFÉRENCES ────────────────────────────────────────────────────

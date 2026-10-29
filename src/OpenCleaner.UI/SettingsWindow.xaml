@@ -40,6 +40,22 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- SECTION : Dernière exécution -->
+                    <Border Style="{StaticResource Card}"
+                            Padding="20,14" Margin="0,0,0,12">
+                        <StackPanel>
+                            <TextBlock Text="Exécutions planifiées"
+                                       FontSize="14" FontWeight="SemiBold"
+                                       Foreground="{DynamicResource TextPrimary}" Margin="0,0,0,6"/>
+                            <TextBlock x:Name="LastRunText" Text="Aucune exécution enregistrée."
+                                       FontSize="12" Foreground="{DynamicResource TextSecond}"
+                                       TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/>
+                            <TextBlock x:Name="NextRunText" Text=""
+                                       FontSize="11" Foreground="{DynamicResource TextSecond}"
+                                       TextWrapping="Wrap" Margin="0,4,0,0"/>
+                        </StackPanel>
+                    </Border>
+
                     <!-- SECTION : Heure -->
                     <Border Style="{StaticResource Card}"
                             Padding="20,14" Margin="0,0,0,12">
