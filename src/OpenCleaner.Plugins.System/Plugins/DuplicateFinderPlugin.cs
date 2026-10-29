@@ -62,7 +62,9 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
                 ct.ThrowIfCancellationRequested();
                 try
                 {
-                    if (info.Exists && info.Length >= _minSizeBytes && !_fileGuardian.IsSystemCriticalPathForScan(info.FullName))
+                    if (info.Exists && info.Length >= _minSizeBytes &&
+                        !CleaningExclusions.IsExcluded(info.FullName) &&
+                        !_fileGuardian.IsSystemCriticalPathForScan(info.FullName))
                         candidates.TryAdd(info.FullName, info);
                 }
                 catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }

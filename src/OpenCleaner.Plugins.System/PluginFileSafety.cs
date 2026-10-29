@@ -247,6 +247,7 @@ public abstract class SafeFileCleanerPlugin : ICleanerPlugin
                     {
                         string file = info.FullName;
                         if (!visited.Add(file) || !info.Exists) continue;
+                        if (CleaningExclusions.IsExcluded(file)) continue;
                         // Last-access updates can be disabled on NTFS; require both write/access to be old.
                         var lastUse = info.LastWriteTimeUtc > info.LastAccessTimeUtc ? info.LastWriteTimeUtc : info.LastAccessTimeUtc;
                         if (target.MinAge != null && nowUtc - lastUse < target.MinAge) continue;

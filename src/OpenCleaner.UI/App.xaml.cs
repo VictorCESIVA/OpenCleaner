@@ -50,6 +50,7 @@ public partial class App : System.Windows.Application
 
     private static void BuildServices()
     {
+        CleaningExclusions.Load();
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddDebug());
         services.AddSingleton<IBackupManager, BackupManager>();

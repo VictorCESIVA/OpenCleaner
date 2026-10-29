@@ -18,11 +18,13 @@ public sealed class FileGuardian : IFileGuardian
         _transactions = transactions;
     }
 
-    public bool IsSystemCriticalPath(string path) => PathSafety.IsCritical(path) ||
+    public bool IsSystemCriticalPath(string path) => CleaningExclusions.IsExcluded(path) ||
+        PathSafety.IsCritical(path) ||
         (_backupManager is BackupManager manager && PathSafety.IsWithin(PathSafety.Normalize(path), manager.BackupsRoot));
 
     public bool IsSystemCriticalPathForScan(string path)
     {
+        if (CleaningExclusions.IsExcluded(path)) return true;
         if (PathSafety.IsCritical(path, checkReparse: false)) return true;
         if (_backupManager is not BackupManager manager) return false;
         try { return PathSafety.IsWithin(PathSafety.Normalize(path), manager.BackupsRoot); }
@@ -50,6 +52,7 @@ public sealed class FileGuardian : IFileGuardian
         string? backupPath = null;
         OperationResult Failure(string message) => new(false, message, transactionId, originalFile, backupPath, 0, 0);
 
+        if (CleaningExclusions.IsExcluded(path)) return Failure("Path excluded by user policy");
         if (IsSystemCriticalPath(path)) return Failure("System critical or unsafe path blocked");
         path = PathSafety.Normalize(path);
 
@@ -120,6 +123,8 @@ public sealed class FileGuardian : IFileGuardian
     {
         ct.ThrowIfCancellationRequested();
         Guid transactionId = Guid.NewGuid();
+        if (CleaningExclusions.IsExcluded(dir))
+            return new(false, "Directory excluded by user policy", transactionId, ItemsProcessed: 0, BytesRecovered: 0);
         if (IsSystemCriticalPath(dir)) return new(false, "System critical or unsafe directory blocked", transactionId, ItemsProcessed: 0, BytesRecovered: 0);
         if (!Directory.Exists(dir)) return new(false, "Directory not found", transactionId, ItemsProcessed: 0, BytesRecovered: 0);
 

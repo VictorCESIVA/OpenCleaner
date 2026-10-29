@@ -174,6 +174,15 @@ public sealed class PluginSafetyTests : IDisposable
     }
 
     [Fact]
+    public async Task ExcludedFolderIsNotProposedForCleaning()
+    {
+        Write("cache.txt");
+        using var _ = CleaningExclusions.OverrideForTests([_root]);
+
+        Assert.Empty(await Cleaner().AnalyzeAsync());
+    }
+
+    [Fact]
     public async Task ParallelHashingKeepsEveryDuplicateAndCompletesProgress()
     {
         string content = new string('p', 300 * 1024);

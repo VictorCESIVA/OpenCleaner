@@ -96,7 +96,9 @@ internal class Program
             throw new InvalidOperationException("Unavailable health indicators are incorrect");
         var disk = new DiskSpaceWindow();
         disk.ShowPreviewData(PreviewDiskUsage());
-        var windows=new FrameworkElement[]{main,new SettingsWindow(),new RestoreWindow(),new PrivacyWindow(),new DuplicateWindow(),disk,new DevCleanerWindow(),new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION",false),health,uninstaller,startup,new UpdatesWindow(),new ShredderWindow()};
+        var settings = new SettingsWindow();
+        settings.ShowExclusionsForPreview([@"C:\Users\Exemple\Documents\Projets", @"D:\Sauvegardes"]);
+        var windows=new FrameworkElement[]{main,settings,new RestoreWindow(),new PrivacyWindow(),new DuplicateWindow(),disk,new DevCleanerWindow(),new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION",false),health,uninstaller,startup,new UpdatesWindow(),new ShredderWindow()};
         foreach(var window in windows)
         {
             var name=window.GetType().Name;

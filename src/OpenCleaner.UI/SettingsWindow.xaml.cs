@@ -1,8 +1,10 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Win32;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Scheduler;
 using OpenCleaner.Core.Security;
+using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 
@@ -11,10 +13,13 @@ namespace OpenCleaner.UI;
 public partial class SettingsWindow : UserControl
 {
     private readonly SchedulerService _scheduler;
+    private readonly ObservableCollection<string> _exclusions = [];
 
     public SettingsWindow()
     {
         InitializeComponent();
+        ExclusionsList.ItemsSource = _exclusions;
+        LoadExclusions();
         var version = typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion.Split('+')[0];
         ApplicationVersionText.Text = "OpenCleaner " + (version ?? typeof(App).Assembly.GetName().Version?.ToString(3));
@@ -234,6 +239,61 @@ public partial class SettingsWindow : UserControl
         DayThu.IsEnabled = DayFri.IsEnabled = DaySat.IsEnabled = DaySun.IsEnabled = on;
         PlugWinUpd.IsEnabled = false;
         PlugSystem.IsEnabled = PlugBrowser.IsEnabled =
-        PlugThumb.IsEnabled  = PlugOffice.IsEnabled = PlugSteam.IsEnabled   = on;
+        PlugThumb.IsEnabled  = PlugOffice.IsEnabled = PlugSteam.IsEnabled   =
+        PlugAppCaches.IsEnabled = on;
+    }
+
+    // ─── EXCLUSIONS ─────────────────────────────────────────────────────
+
+    private void LoadExclusions()
+    {
+        _exclusions.Clear();
+        foreach (string path in CleaningExclusions.Paths) _exclusions.Add(path);
+        UpdateExclusionsStatus(null);
+    }
+
+    private void UpdateExclusionsStatus(string? message) =>
+        ExclusionsStatus.Text = message ?? (_exclusions.Count == 0
+            ? "Aucune exclusion : les protections par défaut s'appliquent."
+            : $"{_exclusions.Count} dossier(s) exclu(s) du nettoyage.");
+
+    private void ExclusionsList_SelectionChanged(object sender, SelectionChangedEventArgs e) =>
+        RemoveExclusionBtn.IsEnabled = ExclusionsList.SelectedItem is string;
+
+    private void AddExclusion_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFolderDialog
+        {
+            Title = "Choisir un dossier à exclure",
+            Multiselect = false
+        };
+        if (dialog.ShowDialog(Window.GetWindow(this)) != true) return;
+        if (!CleaningExclusions.Add(dialog.FolderName))
+        {
+            UpdateExclusionsStatus("Impossible d'enregistrer cette exclusion. Vérifiez le chemin et les droits du dossier de configuration.");
+            return;
+        }
+        LoadExclusions();
+        UpdateExclusionsStatus("Dossier exclu : " + dialog.FolderName);
+    }
+
+    private void RemoveExclusion_Click(object sender, RoutedEventArgs e)
+    {
+        if (ExclusionsList.SelectedItem is not string path) return;
+        if (!CleaningExclusions.Remove(path))
+        {
+            UpdateExclusionsStatus("Impossible de retirer cette exclusion.");
+            return;
+        }
+        LoadExclusions();
+        UpdateExclusionsStatus("Exclusion retirée : " + path);
+    }
+
+    internal void ShowExclusionsForPreview(IEnumerable<string> paths)
+    {
+        _exclusions.Clear();
+        foreach (string path in paths) _exclusions.Add(path);
+        ExclusionsStatus.Text = "Aperçu : aucune modification enregistrée.";
+        RemoveExclusionBtn.IsEnabled = false;
     }
 }

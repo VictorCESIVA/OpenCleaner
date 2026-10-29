@@ -88,4 +88,29 @@ public sealed class FileGuardianTests
         Assert.Contains("critical", result.Message.ToLowerInvariant());
         _backupMock.Verify(b => b.CreateBackupAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()), Times.Never);
     }
+
+    [Fact]
+    public async Task SafeDeleteAsync_ExcludedPathIsBlockedBeforeAnyBackup()
+    {
+        string directory = Path.Combine(Path.GetTempPath(), "OpenCleaner-Excluded-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(directory);
+        string file = Path.Combine(directory, "important.txt");
+        await File.WriteAllTextAsync(file, "conserver");
+        try
+        {
+            using var _ = CleaningExclusions.OverrideForTests([directory]);
+
+            OperationResult result = await _guardian.SafeDeleteAsync(file);
+
+            Assert.False(result.Success);
+            Assert.True(File.Exists(file));
+            Assert.True(_guardian.IsSystemCriticalPathForScan(file));
+            _backupMock.Verify(b => b.CreateBackupAsync(It.IsAny<string>(), It.IsAny<CancellationToken>()),
+                Times.Never);
+        }
+        finally
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+    }
 }
