@@ -14,10 +14,15 @@
       content="Un utilitaire Windows gratuit et open source. Analysez, vérifiez, puis nettoyez : vous gardez la main."
     />
     <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://victorcesiva.github.io/OpenCleaner/" />
+    <meta property="og:image" content="https://victorcesiva.github.io/OpenCleaner/preview/readme-dark.png" />
+    <meta property="og:image:alt" content="L’interface OpenCleaner, avec analyse rapide et résultats à vérifier." />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="canonical" href="https://victorcesiva.github.io/OpenCleaner/" />
     <title>OpenCleaner — De l’air pour votre PC.</title>
     <link rel="icon" type="image/svg+xml" href="assets/mark.svg" />
-    <link rel="stylesheet" href="styles.css" />
-    <script src="script.js" defer></script>
+    <link rel="stylesheet" href="styles.css?v=20261029" />
+    <script src="script.js?v=20261029" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -64,33 +69,36 @@
             De l’air pour<br />votre <span class="highlight">PC.</span>
           </h1>
           <p class="hero-description">
-            Les fichiers s’accumulent. Faites le tri.<br />OpenCleaner vous aide
-            à repérer l’inutile et à choisir ce qui peut partir.
+            Analysez les fichiers inutiles, comprenez ce qui occupe votre
+            disque et choisissez ce que vous nettoyez.
           </p>
           <div class="hero-actions">
             <a
               class="button button-dark"
               data-download
-              href="https://github.com/VictorCESIVA/OpenCleaner/releases"
+              href="https://github.com/VictorCESIVA/OpenCleaner/releases/latest/download/OpenCleaner-win-x64-Setup.exe"
               ><span data-icon="download"></span
               ><span>Télécharger pour Windows</span></a
             >
-            <a class="text-link" href="#fonctionnalites"
-              >Faire le tour <span aria-hidden="true">↗</span></a
+            <a class="text-link" href="#apercus"
+              >Voir l’application <span aria-hidden="true">↘</span></a
             >
           </div>
-          <p class="download-meta">Windows 10 & 11 · 64 bits · Gratuit</p>
+          <p class="download-meta">Windows 10 & 11 · 64 bits · Français / English</p>
+          <div class="download-options">
           <a
             class="release-link"
             id="release-link"
-            href="https://github.com/VictorCESIVA/OpenCleaner/releases"
+            href="https://github.com/VictorCESIVA/OpenCleaner/releases/latest"
             ><span id="version-text">Versions et notes sur GitHub</span>
             <span aria-hidden="true">↗</span></a
           >
+          <a class="release-link" href="https://github.com/VictorCESIVA/OpenCleaner/releases/latest/download/OpenCleaner-win-x64-Portable.zip">Version portable · sans installation ↗</a>
+          </div>
         </div>
         <div class="hero-product">
           <div class="product-caption">
-            <span class="eyebrow">Votre espace, en mieux</span
+            <span class="eyebrow">La nouvelle interface</span
             ><span
               class="preview-controls"
               role="group"
@@ -111,24 +119,24 @@
               </button></span
             >
           </div>
-          <div class="product-window">
+          <a class="product-window" id="preview-link" href="preview/readme-dark.png" target="_blank" rel="noopener" aria-label="Agrandir l’aperçu de l’interface OpenCleaner (nouvel onglet)">
             <img
               id="app-preview"
-              src="preview/dashboard.png"
-              width="1280"
-              height="824"
+              src="preview/readme-dark.png"
+              width="1360"
+              height="940"
               alt="Interface sombre d’OpenCleaner : catégories de nettoyage, bouton d’analyse et liste des résultats à vérifier."
               fetchpriority="high"
             />
-          </div>
+          </a>
           <div class="product-bottom">
             <span
-              ><span class="status-dot"></span> L’application, tout
-              simplement.</span
+              ><span class="status-dot"></span> Un espace pour tous vos outils.</span
             ><span class="product-note"
               ><span data-icon="check"></span> Vous gardez la main</span
             >
           </div>
+          <p class="preview-disclaimer">Aperçu de la version en développement. L’apparence peut différer de la version téléchargée.</p>
           <div class="orbit-label" aria-hidden="true">
             <span data-icon="leaf"></span> Gardez l’essentiel.
           </div>
@@ -233,23 +241,49 @@
             <span class="feature-label">Détection de doublons</span>
           </article>
           <article class="feature feature-small">
-            <span class="feature-icon"><span data-icon="terminal"></span></span>
-            <h3>Les caches aussi codent.</h3>
+            <span class="feature-icon"><span data-icon="chart"></span></span>
+            <h3>Un diagnostic expliqué.</h3>
             <p>
-              Examinez les caches npm, Yarn et VS Code. Vos projets, leurs
-              dossiers node_modules et leurs configurations sont conservés.
+              Stockage, mémoire, démarrage et entretien : un score sur 100,
+              des constats détaillés et des actions pour savoir par où commencer.
             </p>
-            <span class="feature-label">Outils de développement</span>
+            <span class="feature-label">Santé du PC</span>
           </article>
           <article class="feature feature-small">
-            <span class="feature-icon"><span data-icon="shield"></span></span>
-            <h3>Un œil sur vos traces.</h3>
+            <span class="feature-icon"><span data-icon="folder"></span></span>
+            <h3>Le quotidien, simplifié.</h3>
             <p>
-              Repérez certaines traces locales et des fichiers potentiellement
-              sensibles. Vérifiez chaque résultat avant de décider.
+              Gérez les applications au démarrage, lancez un désinstalleur
+              officiel ou vérifiez les mises à jour de vos logiciels.
             </p>
-            <span class="feature-label">Confidentialité</span>
+            <span class="feature-label">Outils système</span>
           </article>
+        </div>
+        <p class="feature-more">Aussi disponibles : caches d’applications et développeur, confidentialité, exclusions de dossiers et planification.
+          <a class="text-link" href="https://github.com/VictorCESIVA/OpenCleaner#readme">Voir le guide utilisateur <span aria-hidden="true">↗</span></a>
+        </p>
+      </section>
+      <section class="section shell" id="apercus" aria-labelledby="previews-title">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">L’application de plus près</p>
+            <h2 id="previews-title">Voyez ce qui compte.<br />Décidez de la suite.</h2>
+          </div>
+          <p>Des outils réunis dans une seule fenêtre.<br />Cliquez sur une capture pour l’agrandir.</p>
+        </div>
+        <div class="preview-gallery">
+          <figure class="preview-card">
+            <a href="preview/readme-health.png" target="_blank" rel="noopener" aria-label="Agrandir la capture Santé du PC (nouvel onglet)">
+              <img src="preview/readme-health.png" width="1360" height="940" loading="lazy" decoding="async" alt="Santé du PC : score expliqué, points à vérifier et boutons pour agir, avec des données d’exemple.">
+            </a>
+            <figcaption><h3>Votre PC, en clair.</h3><p>Comprenez les indicateurs de santé, retrouvez vos nettoyages récents et suivez l’évolution de l’espace libre.</p><span>Santé du PC · données d’exemple</span></figcaption>
+          </figure>
+          <figure class="preview-card">
+            <a href="preview/readme-disk.png" target="_blank" rel="noopener" aria-label="Agrandir la capture Espace disque (nouvel onglet)">
+              <img src="preview/readme-disk.png" width="1048" height="824" loading="lazy" decoding="async" alt="Espace disque : carte proportionnelle des dossiers, statistiques et zones protégées, avec des données d’exemple.">
+            </a>
+            <figcaption><h3>Chaque dossier à sa place.</h3><p>Explorez les dossiers les plus volumineux, les gros fichiers et les applications associées, sans rien supprimer.</p><span>Espace disque · données d’exemple</span></figcaption>
+          </figure>
         </div>
       </section>
       <section
@@ -259,7 +293,7 @@
       >
         <div class="shell workflow-layout">
           <div class="workflow-intro">
-            <p class="eyebrow">Pas de grand bouton magique</p>
+            <p class="eyebrow">Vous gardez la main</p>
             <h2 id="workflow-title">D’abord voir.<br />Ensuite choisir.</h2>
             <p>
               Un nettoyage commence par une décision éclairée. OpenCleaner vous
@@ -280,8 +314,8 @@
               <div>
                 <h3>Analysez votre PC</h3>
                 <p>
-                  Choisissez une catégorie. L’application repère les fichiers
-                  concernés et estime leur volume.
+                  Lancez « Analyser mon PC » pour un premier tri, ou choisissez
+                  une catégorie. L’analyse ne supprime aucun fichier.
                 </p>
               </div>
               <span data-icon="search"></span>
@@ -292,7 +326,8 @@
                 <h3>Vérifiez les résultats</h3>
                 <p>
                   Consultez les éléments et leur niveau de risque. Sélectionnez
-                  ceux que vous souhaitez nettoyer.
+                  ceux que vous souhaitez nettoyer. Sans sélection, tous les
+                  résultats affichés sont concernés.
                 </p>
               </div>
               <span data-icon="list"></span>
@@ -337,16 +372,16 @@
         <div class="source-copy">
           <p class="eyebrow">Rien à cacher</p>
           <h2 id="source-title">
-            Le code est ouvert.<br />La confiance aussi.
+            Un outil gratuit.<br />Un projet ouvert.
           </h2>
           <p>
-            OpenCleaner est un projet gratuit sous licence MIT, construit avec
-            .NET et WPF. Vous pouvez lire le code, signaler un problème ou
-            contribuer à la suite.
+            OpenCleaner est un projet gratuit sous licence MIT. Vous pouvez
+            lire le code, signaler un problème ou contribuer à la suite.
           </p>
           <p>
             Pas de publicité ni de télémétrie applicative. La recherche de mises
-            à jour des installations Velopack contacte GitHub.
+            à jour des versions installées contacte GitHub. Le nettoyage
+            fonctionne hors ligne et ne demande aucun compte.
           </p>
           <a
             class="text-link"
@@ -381,9 +416,11 @@
               <span aria-hidden="true">+</span>
             </summary>
             <p>
-              D’un PC Windows 10 ou Windows 11 en 64 bits. Retrouvez les
-              installateurs et les notes de chaque version sur
-              <a href="https://github.com/VictorCESIVA/OpenCleaner/releases"
+              D’un PC Windows 10 ou Windows 11 en 64 bits. L’installateur inclut
+              le nécessaire pour fonctionner. Une version portable est aussi
+              disponible : décompressez l’archive, puis lancez OpenCleaner.UI.exe.
+              Retrouvez les fichiers et les notes de version sur
+              <a href="https://github.com/VictorCESIVA/OpenCleaner/releases/latest"
                 >GitHub Releases</a
               >.
             </p>
@@ -409,10 +446,20 @@
               Ouvrez Restauration dans OpenCleaner pour retrouver les
               sauvegardes encore conservées. Elles sont locales, chiffrées avec
               une clé liée à votre compte Windows, et un code de récupération
-              permet de retrouver l'accès en cas de perte. Elles ne remplacent
-              pas une sauvegarde indépendante. Les exportations du registre se
-              réimportent manuellement après vérification.
+              permet de retrouver l’accès en cas de perte : conservez-le en lieu
+              sûr. Ces copies ne remplacent pas une sauvegarde indépendante.
+              Le vidage de la corbeille et l’effacement sécurisé ne créent pas de
+              sauvegarde OpenCleaner ; sur SSD, l’effacement définitif ne peut
+              pas être garanti. Les exports du registre se réimportent manuellement.
             </p>
+          </details>
+          <details>
+            <summary>Peut-on changer la langue et le thème ? <span aria-hidden="true">+</span></summary>
+            <p>Oui. Le français et l’anglais sont disponibles depuis Paramètres &gt; Langue, sans redémarrage. Le thème clair ou sombre se choisit dans la barre latérale. La nouvelle interface respecte le réglage d’animations de Windows.</p>
+          </details>
+          <details>
+            <summary>Comment mettre OpenCleaner à jour ? <span aria-hidden="true">+</span></summary>
+            <p>Dans Paramètres, choisissez Vérifier les mises à jour. Les versions installées recherchent aussi les mises à jour au démarrage. L’application demande votre accord avant de redémarrer pour appliquer une mise à jour. Pour une version portable, téléchargez la nouvelle archive depuis <a href="https://github.com/VictorCESIVA/OpenCleaner/releases/latest">GitHub Releases</a>.</p>
           </details>
           <details>
             <summary>
@@ -449,10 +496,11 @@
           <a
             class="button button-dark"
             data-download
-            href="https://github.com/VictorCESIVA/OpenCleaner/releases"
+            href="https://github.com/VictorCESIVA/OpenCleaner/releases/latest/download/OpenCleaner-win-x64-Setup.exe"
             ><span data-icon="download"></span
             ><span>Télécharger OpenCleaner</span></a
           >
+          <a class="text-link portable-download" href="https://github.com/VictorCESIVA/OpenCleaner/releases/latest/download/OpenCleaner-win-x64-Portable.zip">Ou choisir la version portable <span aria-hidden="true">↗</span></a>
           <p>
             Windows 10 & 11 · 64 bits<br />Gratuit aujourd’hui. Code ouvert pour
             la suite.
@@ -475,6 +523,7 @@
       </div>
       <div class="footer-links">
         <a href="https://github.com/VictorCESIVA/OpenCleaner">GitHub ↗</a
+        ><a href="https://github.com/VictorCESIVA/OpenCleaner#readme">Guide utilisateur ↗</a
         ><a href="https://github.com/VictorCESIVA/OpenCleaner/issues"
           >Signaler un problème ↗</a
         ><a

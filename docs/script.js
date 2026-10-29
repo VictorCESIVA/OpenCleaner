@@ -80,8 +80,9 @@ themeButtons.forEach(function (button) {
   button.addEventListener("click", function () {
     const light = button.dataset.previewTheme === "light";
     preview.src = light
-      ? "preview/dashboard-light.png"
-      : "preview/dashboard.png";
+      ? "preview/readme-light.png"
+      : "preview/readme-dark.png";
+    document.getElementById("preview-link").href = preview.src;
     preview.alt =
       "Interface " +
       (light ? "claire" : "sombre") +
@@ -146,7 +147,7 @@ async function fetchLatestRelease() {
     document.getElementById("version-text").textContent =
       release.tag_name + " · Notes de version";
   } catch {
-    // The HTML already links to the full releases page, even without JavaScript.
+    // Direct download links stay usable when GitHub's API is unavailable.
   } finally {
     clearTimeout(timer);
   }
