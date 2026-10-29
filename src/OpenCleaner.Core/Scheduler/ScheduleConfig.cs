@@ -13,6 +13,7 @@ public sealed record ScheduleConfig
     };
     public static bool IsAutomaticPlugin(string id) => AutomaticPluginIds.Contains(id);
     public bool         IsEnabled   { get; init; } = false;
+    public bool         CreateBackup { get; init; } = true;
     public TimeSpan     TimeOfDay   { get; init; } = new TimeSpan(3, 0, 0); // 03:00 par défaut
     public DayOfWeek[]  Days        { get; init; } = [DayOfWeek.Monday, DayOfWeek.Friday];
     public string[]     PluginIds   { get; init; } = ["system.temp"];

@@ -39,7 +39,7 @@ L’application est prévue pour **Windows 10 et 11 en 64 bits**. Les versions d
 
 **Vous préférez une version sans installation ?** Téléchargez [l’archive portable](https://github.com/VictorCESIVA/OpenCleaner/releases/latest/download/OpenCleaner-win-x64-Portable.zip), décompressez-la dans un dossier, puis lancez **OpenCleaner.UI.exe**.
 
-Au premier lancement, conservez le **code de récupération** dans un endroit sûr. Il permet de déverrouiller vos sauvegardes si leur clé locale devient inaccessible.
+Si vous utilisez les sauvegardes, conservez le **code de récupération** dans un endroit sûr. Il permet de les déverrouiller si leur clé locale devient inaccessible.
 
 ## Ce que vous pouvez faire
 
@@ -51,8 +51,9 @@ Au premier lancement, conservez le **code de récupération** dans un endroit s�
 | Faire le point sur le PC | **Santé du PC** présente un score expliqué, les points à vérifier et l’historique des nettoyages. |
 | Repérer des copies de fichiers | **Doublons** compare leur contenu et identifie l’original à conserver avant de proposer les copies à supprimer. |
 | Gérer les logiciels | **Démarrage**, **Désinstaller** et **Mises à jour** réunissent les actions courantes. |
-| Retrouver un fichier nettoyé | **Restauration** permet de consulter et de restaurer les sauvegardes conservées. |
-| Adapter le nettoyage | **Paramètres** permet d’exclure des dossiers et de planifier un nettoyage limité aux catégories autorisées à faible risque. |
+| Choisir comment supprimer | Avant chaque nettoyage, choisissez **Sauvegarder et supprimer** ou **Supprimer sans sauvegarde**. |
+| Retrouver un fichier sauvegardé | **Restauration** permet de restaurer uniquement les fichiers dont vous avez conservé une sauvegarde. |
+| Adapter le nettoyage | **Paramètres** permet d’exclure des dossiers et de planifier un nettoyage à faible risque, avec ou sans sauvegarde. |
 
 | Santé du PC | Espace disque |
 | --- | --- |
@@ -77,8 +78,12 @@ Les cookies et l’historique des navigateurs restent des options explicites. Le
 
 1. **Analysez.** Cliquez sur **Analyser mon PC** pour le nettoyage rapide, ou choisissez une catégorie puis **Analyser**. L’analyse ne supprime aucun fichier.
 2. **Vérifiez.** Consultez les chemins, les tailles et les niveaux de risque. Pour un nettoyage ciblé, sélectionnez uniquement les lignes souhaitées. Sans sélection, le nettoyage porte sur les résultats affichés, recherche et filtre compris.
-3. **Confirmez.** Cliquez sur **Nettoyer** ou **Nettoyer les résultats**, puis relisez la confirmation. Les fichiers concernés sont sauvegardés avant leur suppression.
-4. **Gardez un recours.** Retrouvez les sauvegardes dans **Restauration**. Ne les supprimez que lorsque vous êtes certain de ne plus en avoir besoin.
+3. **Choisissez.** Cliquez sur **Nettoyer** ou **Nettoyer les résultats**. La confirmation propose **Sauvegarder et supprimer**, **Supprimer sans sauvegarde** ou **Annuler**. Le choix est redemandé à chaque nettoyage manuel.
+4. **Supprimez selon votre choix.** Avec sauvegarde, une copie chiffrée est vérifiée avant suppression et reste accessible dans **Restauration**. Sans sauvegarde, aucune copie n’est créée : le fichier est supprimé définitivement, hors de la corbeille.
+
+![Confirmation de nettoyage : sauvegarder et supprimer, supprimer définitivement sans sauvegarde, ou annuler.](docs/preview/cleanup-choice.png)
+
+**Sans sauvegarde, il n’y a pas de restauration OpenCleaner.** Une annulation arrête les suppressions suivantes ; les fichiers déjà supprimés restent supprimés, même si une erreur interrompt le nettoyage.
 
 ### Comprendre les niveaux de risque
 
@@ -90,12 +95,14 @@ Les cookies et l’historique des navigateurs restent des options explicites. Le
 
 ## Vos fichiers et votre vie privée
 
-- **Sauvegardes locales chiffrées** : les fichiers nettoyés sont sauvegardés et leur copie est vérifiée avant suppression.
+- **Sauvegarde à votre choix** : une copie locale chiffrée est créée et vérifiée uniquement si vous choisissez **Sauvegarder et supprimer**. Une sauvegarde demandée qui échoue bloque la suppression du fichier concerné.
 - **Dossiers exclus** : ajoutez les emplacements à conserver dans **Paramètres > Dossiers exclus**. L’exclusion couvre aussi leurs sous-dossiers.
 - **Protections système** : les emplacements critiques et les liens vers d’autres dossiers sont refusés par le moteur de nettoyage.
 - **Utilisation locale** : aucun compte n’est nécessaire. Le nettoyage fonctionne hors ligne ; la recherche des mises à jour contacte GitHub et les mises à jour logicielles utilisent Windows Package Manager.
 
-**Les sauvegardes prennent de la place.** Si elles restent sur le même disque, le volume détecté lors d’une analyse ne correspond pas forcément à l’espace immédiatement libéré. Dans **Restauration**, supprimez uniquement les sauvegardes dont vous n’avez plus besoin.
+**Avec sauvegarde, les copies prennent de la place.** Si elles restent sur le même disque, le volume détecté ne correspond pas forcément à l’espace immédiatement libéré. Dans **Restauration**, supprimez uniquement les copies dont vous n’avez plus besoin. **Sans sauvegarde, aucune copie ne reste à supprimer dans Restauration.** Les anciennes sauvegardes sont conservées jusqu’à leur suppression par vos soins.
+
+**Pour un nettoyage planifié**, choisissez l’option de sauvegarde dans les paramètres : le choix s’appliquera à chaque exécution. Les planifications existantes gardent leurs sauvegardes tant que vous ne modifiez pas ce réglage.
 
 **Certaines actions n’ont pas de retour par les sauvegardes OpenCleaner.** Le vidage de la corbeille et l’effacement sécurisé ne créent pas de sauvegarde. Les modifications du registre nécessitent une restauration manuelle depuis les exports. Sur SSD, l’effacement définitif ne peut pas être garanti.
 

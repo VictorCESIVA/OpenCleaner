@@ -167,12 +167,8 @@ public partial class DevCleanerWindow : UserControl
         var toClean = _items.Where(i => i.IsSelected).Select(i => i.Item).ToList();
         if (toClean.Count == 0) { StatusText.Text = T("Dev.NoneSelected"); return; }
 
-        var confirm = MessageBox.Show(
-            T("Dev.Confirm", toClean.Count),
-            T("Dev.ConfirmTitle"),
-            MessageBoxButton.YesNo, MessageBoxImage.Warning);
-
-        if (confirm != MessageBoxResult.Yes) return;
+        bool? createBackup = CleanupConfirmationWindow.Confirm(Window.GetWindow(this), T("Dev.Confirm", toClean.Count));
+        if (createBackup == null) return;
 
         if (_plugin == null || !UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using var scope = operation;
@@ -191,7 +187,7 @@ public partial class DevCleanerWindow : UserControl
             var progress = operation.CreateProgress<double>(p => StatusText.Text = T("Dev.CleanProgress", p));
             OperationResult result;
             await using (var transaction = new CleanupTransactionScope(
-                             App.Services.GetRequiredService<ITransactionManager>()))
+                             App.Services.GetRequiredService<ITransactionManager>(), createBackup.Value))
             {
                 result = await Task.Run(() => plugin.CleanAsync(toClean, backupManager, progress, operation.Token),
                     operation.Token);
@@ -202,7 +198,7 @@ public partial class DevCleanerWindow : UserControl
             StatusText.Text = (result.Success ? "✅ " : "⚠️ ") + PluginMessageLocalizer.Localize(result.Message);
             _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
-        catch (OperationCanceledException) { StatusText.Text = T("Dev.Cancelled"); _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T(createBackup.Value ? "Dev.Cancelled" : "Cleanup.PermanentInterrupted"); _plugin = null; }
         catch (Exception ex) { StatusText.Text = "❌ " + ex.Message; }
         finally { ScanBtn.IsEnabled = true; foreach (var option in Options) option.IsEnabled = true; }
     }

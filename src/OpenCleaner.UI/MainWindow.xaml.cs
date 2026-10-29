@@ -49,6 +49,8 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        Width = Math.Min(Width, SystemParameters.WorkArea.Width);
+        Height = Math.Min(Height, SystemParameters.WorkArea.Height);
         FilesListView.ItemsSource = _foundItems;
         ApplyTheme(App.Preferences.DarkTheme);
         UpdateSidebarSelection("system");
@@ -70,8 +72,30 @@ public partial class MainWindow : Window
                 StatusText.Text = T("Main.Cancelling");
             }
         };
-        Loaded += async (_, _) => await CheckLowSpaceAsync();
+        Loaded += async (_, _) =>
+        {
+            UiMotion.Enter(DashboardScroll);
+            await CheckLowSpaceAsync();
+        };
+        StateChanged += (_, _) => UpdateWindowState();
     }
+
+    private void UpdateWindowState()
+    {
+        bool maximized = WindowState == WindowState.Maximized;
+        MaximizeButton.Content = maximized ? "\uE923" : "\uE922";
+        string label = T(maximized ? "Window.Restore" : "Window.Maximize");
+        MaximizeButton.ToolTip = label;
+        System.Windows.Automation.AutomationProperties.SetName(MaximizeButton, label);
+    }
+
+    private void Minimize_Click(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
+    private void Maximize_Click(object sender, RoutedEventArgs e)
+    {
+        if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this);
+        else SystemCommands.MaximizeWindow(this);
+    }
+    private void Close_Click(object sender, RoutedEventArgs e) => SystemCommands.CloseWindow(this);
 
     private async Task CheckLowSpaceAsync()
     {
@@ -110,6 +134,7 @@ public partial class MainWindow : Window
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
         UpdatePluginHeader(_selectedPluginTag);
+        UpdateWindowState();
         ThemeIcon.Text = T(_isDarkTheme ? "Nav.ThemeLight" : "Nav.ThemeDark");
         ApplyFilter();
         FilesListView.Items.Refresh();
@@ -155,6 +180,7 @@ public partial class MainWindow : Window
     internal void ShowCleaner(string tag)
     {
         if (UiOperation.IsBusy || !PluginMeta.ContainsKey(tag)) return;
+        bool changed = DashboardScroll.Visibility != Visibility.Visible || _selectedPluginTag != tag;
         if (_activeToolButton != null) _activeToolButton.Style = (Style)FindResource("SidebarBtnStyle");
         _activeToolButton = null;
         ToolContent.Visibility = Visibility.Collapsed;
@@ -163,6 +189,8 @@ public partial class MainWindow : Window
         _selectedPluginTag = tag;
         UpdateSidebarSelection(tag);
         UpdatePluginHeader(tag);
+        CleaningGroup.IsExpanded = true;
+        if (changed) UiMotion.Enter(DashboardScroll);
     }
 
     private void InvalidateAnalysis()
@@ -264,8 +292,9 @@ public partial class MainWindow : Window
         LoadingOverlay.Visibility = Visibility.Visible;
         ProgressBar.Visibility = Visibility.Visible;
         ProgressBar.IsIndeterminate = true;
-        SpinnerRotate.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(0, 360,
-            new Duration(TimeSpan.FromSeconds(1))) { RepeatBehavior = RepeatBehavior.Forever });
+        if (SystemParameters.ClientAreaAnimation)
+            SpinnerRotate.BeginAnimation(RotateTransform.AngleProperty, new DoubleAnimation(0, 360,
+                new Duration(TimeSpan.FromSeconds(1))) { RepeatBehavior = RepeatBehavior.Forever });
     }
 
     private void HideLoading()
@@ -303,7 +332,7 @@ public partial class MainWindow : Window
                 var items = await Task.Run(() => plugin.AnalyzeAsync(progress, operation.Token), operation.Token);
                 _allAnalyzedItems = items.ToList();
                 ApplyFilter();
-                if (items.Count > 0 && TryFindResource("FadeInStory") is Storyboard story) story.Begin();
+                if (items.Count > 0) UiMotion.Enter(ResultsPanel);
                 UpdateStats(_allAnalyzedItems);
                 StatusText.Text = items.Count == 0
                     ? T("Main.NothingToClean")
@@ -456,24 +485,28 @@ public partial class MainWindow : Window
         }
         var selected = FilesListView.SelectedItems.Cast<CleanableItem>().ToList();
         var items = selected.Count > 0 ? selected : _foundItems.ToList();
-        var warning = _selectedPluginTag == "registry"
-            ? T("Main.RegistryWarning")
-            : T("Main.BackupWarning");
-        if (MessageBox.Show(this, T("Main.ConfirmClean", items.Count, warning),
-            T("Main.ConfirmCleanTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
-            MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        bool? createBackup;
+        if (_selectedPluginTag == "registry")
+        {
+            if (MessageBox.Show(this, T("Main.ConfirmClean", items.Count, T("Main.RegistryWarning")),
+                T("Main.ConfirmCleanTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                MessageBoxResult.No) != MessageBoxResult.Yes) return;
+            createBackup = true;
+        }
+        else createBackup = CleanupConfirmationWindow.Confirm(this, T("Cleanup.FileCount", items.Count));
+        if (createBackup == null) return;
         if (!UiOperation.TryBegin(this, out var operation)) return;
         using (operation)
         {
             var plugin = _currentPlugin;
-            ShowLoading(T("Main.Cleaning"), T("Main.CleaningSub"));
+            ShowLoading(T("Main.Cleaning"), T(createBackup.Value ? "Main.CleaningSub" : "Cleanup.PermanentProgress"));
             try
             {
                 var backup = App.Services.GetRequiredService<IBackupManager>();
                 var progress = CreateProgress();
                 OperationResult result;
                 await using (var transaction = new CleanupTransactionScope(
-                                 App.Services.GetRequiredService<ITransactionManager>()))
+                                 App.Services.GetRequiredService<ITransactionManager>(), createBackup.Value))
                 {
                     result = await Task.Run(() => plugin.CleanAsync(items, backup, progress, operation.Token),
                         operation.Token);
@@ -505,7 +538,7 @@ public partial class MainWindow : Window
             catch (OperationCanceledException)
             {
                 InvalidateAnalysis();
-                StatusText.Text = T("Main.CleanCancelled");
+                StatusText.Text = T(createBackup.Value ? "Main.CleanCancelled" : "Cleanup.PermanentInterrupted");
                 if (_selectedPluginTag == "registry")
                     MessageBox.Show(this, T("Main.RegistryManual"),
                         T("Main.RegistryDialogTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
@@ -548,17 +581,19 @@ public partial class MainWindow : Window
         _isDarkTheme = dark;
         var palette = dark ? new Dictionary<string, string>
         {
-            ["BgMain"]="#15191F", ["BgSidebar"]="#101419", ["BgCard"]="#1D232B",
-            ["BgHover"]="#29323C", ["BgSelected"]="#263C38", ["Accent"]="#8BC9AA",
-            ["AccentHover"]="#A8DCC1", ["AccentForeground"]="#0D211A",
-            ["TextPrimary"]="#F1F3F4", ["TextSecond"]="#B0BAC4", ["Border"]="#343E49",
+            ["BgMain"]="#101215", ["BgSidebar"]="#15181C", ["BgCard"]="#191D23",
+            ["BgHover"]="#232931", ["BgSelected"]="#203B33", ["Accent"]="#9BE7C4",
+            ["AccentHover"]="#BEF4DC", ["AccentForeground"]="#102A20",
+            ["TextPrimary"]="#F3F5F7", ["TextSecond"]="#A4ADB9", ["Border"]="#2B313A",
+            ["HeroBorder"]="#355A4C", ["Violet"]="#BDA9EF", ["VioletSoft"]="#18BDA9EF", ["AccentSoft"]="#149BE7C4",
             ["Warning"]="#F2C078", ["Danger"]="#FF929C"
         } : new Dictionary<string, string>
         {
-            ["BgMain"]="#F4F5F6", ["BgSidebar"]="#EAEDEF", ["BgCard"]="#FFFFFF",
-            ["BgHover"]="#E6E9EB", ["BgSelected"]="#DCEBE3", ["Accent"]="#176649",
+            ["BgMain"]="#F5F7F8", ["BgSidebar"]="#EDF1F2", ["BgCard"]="#FFFFFF",
+            ["BgHover"]="#E6EBEE", ["BgSelected"]="#DCEEE4", ["Accent"]="#176649",
             ["AccentHover"]="#105139", ["AccentForeground"]="#FFFFFF",
             ["TextPrimary"]="#202830", ["TextSecond"]="#55616D", ["Border"]="#D2D8DD",
+            ["HeroBorder"]="#43735D", ["Violet"]="#6C4BA8", ["VioletSoft"]="#126C4BA8", ["AccentSoft"]="#12176649",
             ["Warning"]="#805211", ["Danger"]="#B7263B"
         };
         foreach (var (key, color) in palette)
@@ -618,6 +653,12 @@ public partial class MainWindow : Window
         DashboardScroll.Visibility = Visibility.Collapsed;
         ToolContent.Content = view;
         ToolContent.Visibility = Visibility.Visible;
+        if (button != null)
+        {
+            for (DependencyObject? parent = VisualTreeHelper.GetParent(button); parent != null; parent = VisualTreeHelper.GetParent(parent))
+                if (parent is Expander group) group.IsExpanded = true;
+        }
+        UiMotion.Enter(ToolContent);
     }
 
     private void OpenRestore_Click(object sender, RoutedEventArgs e) => ShowTool("restore", sender as Button);
@@ -681,13 +722,13 @@ public partial class MainWindow : Window
                 T("Main.BrowsersOpenTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
             return;
         }
-        if (MessageBox.Show(this, T("Main.ConfirmSmart", _smartScanResults.Sum(r => r.Items.Count)),
-            T("Main.ConfirmSmartTitle"), MessageBoxButton.YesNo, MessageBoxImage.Question,
-            MessageBoxResult.No) != MessageBoxResult.Yes) return;
+        bool? createBackup = CleanupConfirmationWindow.Confirm(this,
+            T("Main.ConfirmSmart", _smartScanResults.Sum(r => r.Items.Count)));
+        if (createBackup == null) return;
         if (!UiOperation.TryBegin(this, out var operation)) return;
         using (operation)
         {
-            ShowLoading(T("Main.SmartCleaning"));
+            ShowLoading(T("Main.SmartCleaning"), T(createBackup.Value ? "Main.CleaningSub" : "Cleanup.PermanentProgress"));
             try
             {
                 var scans = _smartScanResults;
@@ -696,7 +737,7 @@ public partial class MainWindow : Window
                     SmartCleanDesc.Text = T("Main.SmartCleaningStep", p.plugin, p.current, p.total));
                 SmartCleanResult result;
                 await using (var transaction = new CleanupTransactionScope(
-                                 App.Services.GetRequiredService<ITransactionManager>()))
+                                 App.Services.GetRequiredService<ITransactionManager>(), createBackup.Value))
                 {
                     result = await Task.Run(() => service.ExecuteSmartCleanAsync(scans, progress, operation.Token),
                         operation.Token);
@@ -713,7 +754,7 @@ public partial class MainWindow : Window
                 EmptyState.Visibility = Visibility.Visible;
                 SmartCleanResult.Visibility = Visibility.Collapsed;
             }
-            catch (OperationCanceledException) { SmartCleanDesc.Text = T("Main.SmartInterrupted"); _smartScanResults = null; }
+            catch (OperationCanceledException) { SmartCleanDesc.Text = T(createBackup.Value ? "Main.SmartInterrupted" : "Cleanup.PermanentInterrupted"); _smartScanResults = null; }
             catch (Exception ex) { SmartCleanDesc.Text = ex.Message; _smartScanResults = null; }
             finally { HideLoading(); }
         }

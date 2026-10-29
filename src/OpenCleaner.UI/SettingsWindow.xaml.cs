@@ -47,6 +47,7 @@ public partial class SettingsWindow : UserControl
             SaveStatus.Text = T("Settings.ConfigUnreadable", configError);
 
         EnabledCheck.IsChecked = config.IsEnabled;
+        ScheduledBackupCheck.IsChecked = config.CreateBackup;
         TimeBox.Text = config.TimeOfDay.ToString(@"hh\:mm");
 
         // Jours
@@ -118,6 +119,7 @@ public partial class SettingsWindow : UserControl
         var config = new ScheduleConfig
         {
             IsEnabled  = EnabledCheck.IsChecked == true,
+            CreateBackup = ScheduledBackupCheck.IsChecked == true,
             TimeOfDay  = time,
             Days       = days,
             PluginIds  = pluginIds
@@ -126,6 +128,9 @@ public partial class SettingsWindow : UserControl
         try
         {
             var previous = SchedulerService.LoadConfig();
+            if (config.IsEnabled && !config.CreateBackup && MessageBox.Show(Window.GetWindow(this),
+                    T("Settings.ScheduleWithoutBackupConfirm"), T("Cleanup.Title"), MessageBoxButton.YesNo,
+                    MessageBoxImage.Warning, MessageBoxResult.No) != MessageBoxResult.Yes) return;
             SchedulerService.SaveConfig(config);
             try
             {

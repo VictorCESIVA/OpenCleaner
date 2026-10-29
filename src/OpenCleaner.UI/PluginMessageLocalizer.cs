@@ -41,7 +41,7 @@ public static class PluginMessageLocalizer
     };
 
     private static readonly Regex FilesDeleted = new(
-        @"^(\d+)/(\d+) fichiers supprimés \((.+?) d'espace net récupéré, sauvegardes conservées\)$",
+        @"^(\d+)/(\d+) fichiers supprimés \((.+?) d'espace net récupéré(?:, sauvegardes conservées)?\)$",
         RegexOptions.Compiled);
 
     private static readonly Regex HistoriesDeleted = new(

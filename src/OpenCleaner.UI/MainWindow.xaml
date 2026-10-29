@@ -3,36 +3,63 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:OpenCleaner.UI"
         xmlns:loc="clr-namespace:OpenCleaner.UI.Localization"
-        Title="OpenCleaner" Icon="Assets/OpenCleaner.ico" Height="860" Width="1280"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        Title="OpenCleaner" Icon="Assets/OpenCleaner.ico" Height="940" Width="1360"
         MinHeight="740" MinWidth="1040" WindowStartupLocation="CenterScreen" x:Name="RootWindow"
         PreviewKeyDown="Window_PreviewKeyDown">
+    <shell:WindowChrome.WindowChrome><shell:WindowChrome CaptionHeight="48" ResizeBorderThickness="6" GlassFrameThickness="0" CornerRadius="0" UseAeroCaptionButtons="False"/></shell:WindowChrome.WindowChrome>
     <Window.Resources>
-        <Storyboard x:Key="FadeInStory"><DoubleAnimation Storyboard.TargetName="ResultsPanel" Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.25"/></Storyboard>
         <Style x:Key="NavIcon" TargetType="TextBlock">
             <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/><Setter Property="FontSize" Value="15"/><Setter Property="Width" Value="27"/><Setter Property="VerticalAlignment" Value="Center"/>
             <Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
         </Style>
         <Style x:Key="NavLabel" TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Foreground" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/></Style>
+        <Style x:Key="CaptionButton" TargetType="Button" BasedOn="{StaticResource SecondBtnStyle}">
+            <Setter Property="Width" Value="46"/><Setter Property="MinHeight" Value="46"/><Setter Property="Padding" Value="0"/>
+            <Setter Property="BorderThickness" Value="0"/><Setter Property="Foreground" Value="{DynamicResource TextSecond}"/>
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets"/><Setter Property="FontSize" Value="10"/>
+            <Setter Property="shell:WindowChrome.IsHitTestVisibleInChrome" Value="True"/>
+        </Style>
     </Window.Resources>
+    <Border BorderBrush="{DynamicResource Border}" BorderThickness="1">
     <Grid Background="{DynamicResource BgMain}">
-        <Grid.ColumnDefinitions><ColumnDefinition Width="232"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+        <Grid.RowDefinitions><RowDefinition Height="48"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+        <Grid>
+            <Grid.ColumnDefinitions><ColumnDefinition Width="244"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <Border Background="{DynamicResource BgSidebar}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,1,0">
+                <StackPanel Orientation="Horizontal" Margin="22,0,0,0" VerticalAlignment="Center">
+                    <Viewbox Width="26" Height="26" Margin="0,0,10,0"><Canvas Width="64" Height="64"><Rectangle Width="64" Height="64" RadiusX="18" RadiusY="18" Fill="#254B3D"/><Path Data="M 45,18 A 20,20 0 1 0 45,46" Fill="Transparent" Stroke="#F2FAF6" StrokeThickness="7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/><Path Data="M 49,7 L 51.5,13.5 L 58,16 L 51.5,18.5 L 49,25 L 46.5,18.5 L 40,16 L 46.5,13.5 Z" Fill="#9BE7C4"/></Canvas></Viewbox>
+                    <TextBlock Text="OpenCleaner" FontSize="16" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                </StackPanel>
+            </Border>
+            <StackPanel Grid.Column="1" Orientation="Horizontal" Margin="32,0,0,0" VerticalAlignment="Center">
+                <TextBlock Text="{loc:Translate Main.Workspace}" Foreground="{DynamicResource TextSecond}" FontSize="11"/>
+                <TextBlock Text=" / " Margin="9,0" Foreground="{DynamicResource Border}"/>
+                <TextBlock Text="{loc:Translate Main.ThisComputer}" Foreground="{DynamicResource TextSecond}" FontSize="11"/>
+            </StackPanel>
+            <StackPanel Grid.Column="2" Orientation="Horizontal">
+                <Button Style="{StaticResource CaptionButton}" Content="&#xE921;" Click="Minimize_Click" ToolTip="{loc:Translate Window.Minimize}" AutomationProperties.Name="{loc:Translate Window.Minimize}"/>
+                <Button x:Name="MaximizeButton" Style="{StaticResource CaptionButton}" Content="&#xE922;" Click="Maximize_Click" ToolTip="{loc:Translate Window.Maximize}" AutomationProperties.Name="{loc:Translate Window.Maximize}"/>
+                <Button Content="&#xE8BB;" Click="Close_Click" ToolTip="{loc:Translate Window.Close}" AutomationProperties.Name="{loc:Translate Window.Close}"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource CaptionButton}"><Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#B7263B"/><Setter Property="Foreground" Value="White"/></Trigger></Style.Triggers></Style></Button.Style></Button>
+            </StackPanel>
+        </Grid>
+        <Grid Grid.Row="1">
+        <Grid.ColumnDefinitions><ColumnDefinition Width="244"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
         <Border Background="{DynamicResource BgSidebar}" BorderBrush="{DynamicResource Border}" BorderThickness="0,0,1,0">
             <DockPanel Margin="14,0">
-                <StackPanel DockPanel.Dock="Top" Margin="10,24,0,20">
-                    <StackPanel Orientation="Horizontal">
-                        <Viewbox Width="34" Height="34" Margin="0,0,10,0"><Canvas Width="64" Height="64"><Rectangle Width="64" Height="64" RadiusX="18" RadiusY="18" Fill="#18392F"/><Path Data="M 45,18 A 20,20 0 1 0 45,46" Fill="Transparent" Stroke="#F2FAF6" StrokeThickness="7" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/><Path Data="M 49,7 L 51.5,13.5 L 58,16 L 51.5,18.5 L 49,25 L 46.5,18.5 L 40,16 L 46.5,13.5 Z" Fill="#8EDCB5"/></Canvas></Viewbox>
-                        <TextBlock Text="OpenCleaner" FontSize="18" FontWeight="SemiBold" VerticalAlignment="Center"/>
-                    </StackPanel>
-                </StackPanel>
                 <StackPanel DockPanel.Dock="Bottom" Margin="0,12,0,20">
                     <Border Height="1" Background="{DynamicResource Border}" Margin="10,0,10,12"/>
                     <Button x:Name="ToolCancelBtn" Content="{loc:Translate Nav.CancelOperation}" Click="CancelOperation_Click" Visibility="Collapsed" Margin="0,0,0,8"/>
-                    <Button Style="{StaticResource SidebarBtnStyle}" Click="ThemeToggle_Click" ToolTip="{loc:Translate Nav.ThemeTip}"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE708;" Style="{StaticResource NavIcon}"/><TextBlock x:Name="ThemeIcon" Text="{loc:Translate Nav.ThemeLight}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
-                    <Button x:Name="SettingsNav" Style="{StaticResource SidebarBtnStyle}" Click="OpenSettings_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE713;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Settings}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                    <Button AutomationProperties.Name="{Binding Text, ElementName=ThemeIcon}" Style="{StaticResource SidebarBtnStyle}" Click="ThemeToggle_Click" ToolTip="{loc:Translate Nav.ThemeTip}"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE708;" Style="{StaticResource NavIcon}"/><TextBlock x:Name="ThemeIcon" Text="{loc:Translate Nav.ThemeLight}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                    <Button AutomationProperties.Name="{loc:Translate Nav.Settings}" x:Name="SettingsNav" Style="{StaticResource SidebarBtnStyle}" Click="OpenSettings_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE713;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Settings}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                    <StackPanel Orientation="Horizontal" Margin="14,14,0,0"><Ellipse Width="5" Height="5" Fill="{DynamicResource Accent}" Margin="0,0,8,0"/><TextBlock Text="{loc:Translate Main.LocalOnly}" FontSize="10" Foreground="{DynamicResource TextSecond}"/></StackPanel>
                 </StackPanel>
                 <ScrollViewer x:Name="NavigationScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Margin="0,0,-6,0">
                     <StackPanel Margin="0,0,6,0">
-                        <TextBlock Text="{loc:Translate Nav.Clean}" Style="{StaticResource Eyebrow}" Margin="12,0,0,10"/>
+                        <TextBlock Text="{loc:Translate Nav.Workspace}" Style="{StaticResource Eyebrow}" Margin="14,20,0,10"/>
+                        <Button AutomationProperties.Name="{loc:Translate Nav.Health}" x:Name="HealthNav" Style="{StaticResource SidebarBtnStyle}" Click="OpenHealth_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE95E;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Health}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Button AutomationProperties.Name="{loc:Translate Nav.Disk}" x:Name="DiskNav" Style="{StaticResource SidebarBtnStyle}" Click="OpenDiskAnalyzer_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xEDA2;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Disk}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Expander x:Name="CleaningGroup" Header="{loc:Translate Nav.Clean}" Style="{StaticResource NavigationGroup}" IsExpanded="True">
                         <StackPanel x:Name="SidebarPanel">
                             <Button x:Name="BtnSystem" AutomationProperties.Name="{loc:Translate Nav.Temp}" Tag="system" Style="{StaticResource SidebarBtnActiveStyle}" Click="SidebarPlugin_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE74D;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Temp}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
                             <Button x:Name="BtnWindowsUpdate" AutomationProperties.Name="{loc:Translate Nav.WindowsUpdate}" Tag="windowsupdate" IsEnabled="False" ToolTipService.ShowOnDisabled="True" ToolTip="{loc:Translate Nav.WindowsUpdateTip}" Style="{StaticResource SidebarBtnStyle}" Click="SidebarPlugin_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE895;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.WindowsUpdate}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
@@ -43,29 +70,30 @@
                             <Button x:Name="BtnAppCaches" AutomationProperties.Name="{loc:Translate Nav.AppCaches}" Tag="appcaches" Style="{StaticResource SidebarBtnStyle}" Click="SidebarPlugin_Click" ToolTip="{loc:Translate Nav.AppCachesTip}"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE71D;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.AppCaches}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
                             <Button x:Name="BtnRegistry" AutomationProperties.Name="{loc:Translate Nav.Registry}" Tag="registry" Style="{StaticResource SidebarBtnStyle}" Click="SidebarPlugin_Click" ToolTip="{loc:Translate Nav.RegistryTip}"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE90F;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Registry}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
                         </StackPanel>
-                        <TextBlock Text="{loc:Translate Nav.Explore}" Style="{StaticResource Eyebrow}" Margin="12,24,0,10"/>
-                        <Button x:Name="DiskNav" Style="{StaticResource SidebarBtnStyle}" Click="OpenDiskAnalyzer_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xEDA2;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Disk}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
-                        <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenDuplicates_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8C8;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Duplicates}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
-                        <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenPrivacy_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE72E;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Privacy}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
-                        <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenDevCleaner_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE943;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.DevCaches}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
-                        <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenRestore_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE81C;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Restore}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
-                        <TextBlock Text="{loc:Translate Nav.SystemTools}" Style="{StaticResource Eyebrow}" Margin="12,24,0,10"/>
-                        <Button x:Name="UpdatesNav" Style="{StaticResource SidebarBtnStyle}" Click="OpenUpdates_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE895;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Updates}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
-                        <Button x:Name="HealthNav" Style="{StaticResource SidebarBtnStyle}" Click="OpenHealth_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE95E;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Health}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
-                        <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenUninstaller_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE71D;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Uninstall}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
-                        <Button x:Name="StartupNav" Style="{StaticResource SidebarBtnStyle}" Click="OpenStartup_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE768;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Startup}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
-                        <Button Style="{StaticResource SidebarBtnStyle}" Click="OpenShredder_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE74D;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Shredder}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        </Expander>
+                        <Expander Header="{loc:Translate Nav.Explore}" Style="{StaticResource NavigationGroup}"><StackPanel>
+                        <Button AutomationProperties.Name="{loc:Translate Nav.Duplicates}" Style="{StaticResource SidebarBtnStyle}" Click="OpenDuplicates_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE8C8;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Duplicates}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Button AutomationProperties.Name="{loc:Translate Nav.Privacy}" Style="{StaticResource SidebarBtnStyle}" Click="OpenPrivacy_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE72E;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Privacy}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Button AutomationProperties.Name="{loc:Translate Nav.DevCaches}" Style="{StaticResource SidebarBtnStyle}" Click="OpenDevCleaner_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE943;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.DevCaches}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Button AutomationProperties.Name="{loc:Translate Nav.Restore}" Style="{StaticResource SidebarBtnStyle}" Click="OpenRestore_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE81C;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Restore}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        </StackPanel></Expander>
+                        <Expander Header="{loc:Translate Nav.SystemTools}" Style="{StaticResource NavigationGroup}"><StackPanel>
+                        <Button AutomationProperties.Name="{loc:Translate Nav.Updates}" x:Name="UpdatesNav" Style="{StaticResource SidebarBtnStyle}" Click="OpenUpdates_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE895;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Updates}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Button AutomationProperties.Name="{loc:Translate Nav.Uninstall}" Style="{StaticResource SidebarBtnStyle}" Click="OpenUninstaller_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE71D;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Uninstall}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Button AutomationProperties.Name="{loc:Translate Nav.Startup}" x:Name="StartupNav" Style="{StaticResource SidebarBtnStyle}" Click="OpenStartup_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE768;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Startup}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        <Button AutomationProperties.Name="{loc:Translate Nav.Shredder}" Style="{StaticResource SidebarBtnStyle}" Click="OpenShredder_Click"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE74D;" Style="{StaticResource NavIcon}"/><TextBlock Text="{loc:Translate Nav.Shredder}" Style="{StaticResource NavLabel}"/></StackPanel></Button>
+                        </StackPanel></Expander>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
         </Border>
         <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" x:Name="DashboardScroll">
-        <Grid Margin="32,26,32,22">
-            <Grid.Height><MultiBinding Converter="{x:Static local:DashboardHeightConverter.Instance}"><Binding ElementName="DashboardScroll" Path="ViewportHeight"/><Binding ElementName="BrowserOptionsPanel" Path="Visibility"/></MultiBinding></Grid.Height>
+        <Grid Margin="32,24,32,24">
+            <Grid.Height><MultiBinding Converter="{x:Static local:DashboardHeightConverter.Instance}"><Binding ElementName="DashboardScroll" Path="ViewportHeight"/><Binding ElementName="BrowserOptionsPanel" Path="Visibility"/><Binding ElementName="LowSpaceBanner" Path="Visibility"/></MultiBinding></Grid.Height>
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <Grid Grid.Row="0" Margin="0,0,0,20">
                 <StackPanel>
-                    <TextBlock Text="{loc:Translate Main.Title}" FontSize="27" FontWeight="SemiBold"/><TextBlock Text="{loc:Translate Main.Subtitle}" FontSize="13" Foreground="{DynamicResource TextSecond}" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                    <TextBlock Text="{loc:Translate Main.Title}" FontSize="30" FontWeight="SemiBold"/><TextBlock Text="{loc:Translate Main.Subtitle}" FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,6,0,0" TextWrapping="Wrap"/>
                     <Border x:Name="LowSpaceBanner" Background="{DynamicResource WarnSoft}" BorderBrush="{DynamicResource WarnColor}"
                             BorderThickness="1" CornerRadius="8" Padding="14,10" Margin="0,12,0,0" Visibility="Collapsed">
                         <Grid>
@@ -79,10 +107,31 @@
                     </Border>
                 </StackPanel>
             </Grid>
-            <Border Grid.Row="1" Style="{StaticResource Card}" Padding="20,16" Margin="0,0,0,24">
-                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                    <StackPanel Margin="0,0,24,0" VerticalAlignment="Center"><TextBlock Text="{loc:Translate Main.SmartTitle}" FontSize="16" FontWeight="SemiBold"/><TextBlock x:Name="SmartCleanDesc" Text="{loc:Translate Main.SmartDesc}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,5,0,0"/><TextBlock x:Name="SmartCleanResult" Text="" TextWrapping="Wrap" FontSize="13" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" Margin="0,8,0,0" Visibility="Collapsed"/></StackPanel>
-                    <StackPanel Grid.Column="1" VerticalAlignment="Center"><Button x:Name="SmartScanBtn" Content="{loc:Translate Main.SmartScan}" Style="{StaticResource AccentBtnStyle}" Click="SmartScan_Click" MinWidth="180"/><Button x:Name="SmartCleanBtn" Content="{loc:Translate Main.SmartClean}" Style="{StaticResource SecondBtnStyle}" Click="SmartClean_Click" IsEnabled="False" Margin="0,8,0,0"/></StackPanel>
+            <Border Grid.Row="1" CornerRadius="18" BorderThickness="1" BorderBrush="{DynamicResource HeroBorder}" Padding="26,22" Margin="0,0,0,26">
+                <Border.Background><LinearGradientBrush StartPoint="0,0" EndPoint="1,0.8"><GradientStop Color="{Binding Color, Source={StaticResource HeroStart}}"/><GradientStop Offset="1" Color="{Binding Color, Source={StaticResource HeroEnd}}"/></LinearGradientBrush></Border.Background>
+                <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="190"/></Grid.ColumnDefinitions>
+                    <StackPanel VerticalAlignment="Center">
+                        <StackPanel Orientation="Horizontal"><TextBlock Text="&#xE945;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource HeroMuted}" FontSize="12" VerticalAlignment="Center" Margin="0,0,8,0"/><TextBlock Text="{loc:Translate Main.SmartTitle}" FontSize="10" FontWeight="SemiBold" Foreground="{DynamicResource HeroMuted}"/></StackPanel>
+                        <TextBlock Text="{loc:Translate Main.HeroTitle}" FontSize="29" FontWeight="SemiBold" Foreground="{DynamicResource HeroText}" Margin="0,9,0,0" TextWrapping="Wrap"/>
+                        <TextBlock x:Name="SmartCleanDesc" Text="{loc:Translate Main.SmartDesc}" TextWrapping="Wrap" FontSize="12" Foreground="{DynamicResource HeroMuted}" Margin="0,8,20,0"/>
+                        <TextBlock x:Name="SmartCleanResult" TextWrapping="Wrap" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource HeroText}" Margin="0,8,0,0" Visibility="Collapsed"/>
+                        <WrapPanel Margin="0,18,0,0">
+                            <Button x:Name="SmartScanBtn" Style="{StaticResource AccentBtnStyle}" Background="#9BE7C4" Foreground="#102A20" BorderBrush="#9BE7C4" Click="SmartScan_Click" Padding="18,10" AutomationProperties.Name="{loc:Translate Main.SmartScan}"><StackPanel Orientation="Horizontal"><TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" Margin="0,0,9,0" VerticalAlignment="Center"/><TextBlock Text="{loc:Translate Main.SmartScan}"/><TextBlock Text="&#xE72A;" FontFamily="Segoe MDL2 Assets" Margin="16,0,0,0" VerticalAlignment="Center"/></StackPanel></Button>
+                            <Button x:Name="SmartCleanBtn" Content="{loc:Translate Main.SmartClean}" Click="SmartClean_Click" IsEnabled="False" Margin="10,0,0,0"><Button.Style><Style TargetType="Button" BasedOn="{StaticResource SecondBtnStyle}"><Setter Property="Foreground" Value="{DynamicResource HeroText}"/><Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Visibility" Value="Collapsed"/></Trigger></Style.Triggers></Style></Button.Style></Button>
+                        </WrapPanel>
+                    </StackPanel>
+                        <Canvas Grid.Column="1" Width="190" Height="186" HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False" Focusable="False">
+                            <Ellipse Width="176" Height="176" Canvas.Left="6" Canvas.Top="4" Stroke="{DynamicResource HeroMuted}" StrokeThickness="1" Opacity="0.13"/>
+                            <Ellipse Width="140" Height="140" Canvas.Left="24" Canvas.Top="22" Stroke="{DynamicResource HeroMuted}" StrokeThickness="1" Opacity="0.18" StrokeDashArray="2,7"/>
+                            <Path Data="M 37,68 Q 37,60 45,60 L 76,60 L 88,72 L 147,72 Q 155,72 155,80 L 155,136 Q 155,144 147,144 L 45,144 Q 37,144 37,136 Z" Fill="#376D57" Stroke="#72AD91" StrokeThickness="1.5"/>
+                            <Rectangle Canvas.Left="51" Canvas.Top="53" Width="80" Height="63" RadiusX="6" RadiusY="6" Fill="#D9F6E7" RenderTransformOrigin="0.5,0.5"><Rectangle.RenderTransform><RotateTransform Angle="-9"/></Rectangle.RenderTransform></Rectangle>
+                            <Path Data="M 62,72 L 107,65 M 64,83 L 95,78" Stroke="#6FAD8D" StrokeThickness="4" StrokeStartLineCap="Round" StrokeEndLineCap="Round"/>
+                            <Path Data="M 31,91 Q 29,83 39,83 L 150,83 Q 160,83 158,93 L 149,139 Q 148,145 140,145 L 49,145 Q 42,145 40,138 Z" Stroke="#A5DABB" StrokeThickness="1.5"><Path.Fill><LinearGradientBrush StartPoint="0,0" EndPoint="0.8,1"><GradientStop Color="#85CFA6"/><GradientStop Color="#4C9B76" Offset="1"/></LinearGradientBrush></Path.Fill></Path>
+                            <Ellipse Width="48" Height="48" Canvas.Left="121" Canvas.Top="117" Fill="#CBF7DF" Stroke="#203D35" StrokeThickness="5"/>
+                            <Path Data="M 135,139 L 142,146 L 155,131" Stroke="#245A40" StrokeThickness="3" StrokeStartLineCap="Round" StrokeEndLineCap="Round" StrokeLineJoin="Round"/>
+                            <Path Data="M 146,23 L 150,34 L 161,38 L 150,42 L 146,53 L 142,42 L 131,38 L 142,34 Z M 33,41 L 35,47 L 41,49 L 35,51 L 33,57 L 31,51 L 25,49 L 31,47 Z" Fill="#BCEDD1"/>
+                            <Ellipse Canvas.Left="168" Canvas.Top="83" Width="5" Height="5" Fill="#9BE7C4"/><Ellipse Canvas.Left="26" Canvas.Top="125" Width="4" Height="4" Fill="#9BE7C4" Opacity="0.65"/>
+                        </Canvas>
                 </Grid>
             </Border>
             <Grid Grid.Row="2" Margin="0,0,0,16"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><StackPanel><TextBlock x:Name="PluginTitle" Text="{loc:Translate Main.PluginSystemTitle}" FontSize="20" FontWeight="SemiBold"/><TextBlock x:Name="PluginDescription" Text="{loc:Translate Main.PluginSystemDesc}" FontSize="12" Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" Margin="0,5,16,0"/></StackPanel><TextBlock Grid.Column="1" x:Name="StatusText" Text="{loc:Translate Main.Ready}" FontSize="11" Foreground="{DynamicResource TextSecond}" VerticalAlignment="Top" Margin="16,7,0,0" MaxWidth="240" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite"/></Grid>
@@ -98,9 +147,9 @@
                 </WrapPanel></StackPanel>
             </Border>
             <Grid Grid.Row="4" Margin="0,0,0,18"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/><ColumnDefinition Width="12"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                <Border Style="{StaticResource Card}" Padding="20,15"><StackPanel><TextBlock Text="{loc:Translate Main.StatFound}" Style="{StaticResource Eyebrow}"/><TextBlock x:Name="StatFiles" Text="—" FontSize="27" FontWeight="SemiBold" Margin="0,5,0,0"/></StackPanel></Border>
-                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="20,15"><StackPanel><TextBlock Text="{loc:Translate Main.StatVolume}" Style="{StaticResource Eyebrow}"/><TextBlock x:Name="StatSize" Text="—" FontSize="27" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" Margin="0,5,0,0"/></StackPanel></Border>
-                <Border Grid.Column="4" Style="{StaticResource Card}" Padding="20,15"><StackPanel><TextBlock Text="{loc:Translate Main.StatRisk}" Style="{StaticResource Eyebrow}"/><TextBlock x:Name="StatRisk" Text="—" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource RiskSafe}" Margin="0,8,0,0"/></StackPanel></Border>
+                <Border Style="{StaticResource Card}" Padding="18,16"><Grid><StackPanel><TextBlock Text="{loc:Translate Main.StatFound}" Style="{StaticResource Eyebrow}" FontSize="10"/><TextBlock x:Name="StatFiles" Text="—" FontSize="27" FontWeight="SemiBold" Margin="0,7,0,0"/></StackPanel><Border Width="32" Height="32" CornerRadius="10" Background="{DynamicResource VioletSoft}" HorizontalAlignment="Right" VerticalAlignment="Top"><TextBlock Text="&#xE8A5;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource Violet}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></Grid></Border>
+                <Border Grid.Column="2" Style="{StaticResource Card}" Padding="18,16"><Grid><StackPanel><TextBlock Text="{loc:Translate Main.StatVolume}" Style="{StaticResource Eyebrow}" FontSize="10"/><TextBlock x:Name="StatSize" Text="—" FontSize="27" FontWeight="SemiBold" Foreground="{DynamicResource Accent}" Margin="0,7,0,0"/></StackPanel><Border Width="32" Height="32" CornerRadius="10" Background="{DynamicResource AccentSoft}" HorizontalAlignment="Right" VerticalAlignment="Top"><TextBlock Text="&#xEDA2;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></Grid></Border>
+                <Border Grid.Column="4" Style="{StaticResource Card}" Padding="18,16"><Grid><StackPanel><TextBlock Text="{loc:Translate Main.StatRisk}" Style="{StaticResource Eyebrow}" FontSize="10"/><TextBlock x:Name="StatRisk" Text="—" FontSize="24" FontWeight="SemiBold" Foreground="{DynamicResource RiskSafe}" Margin="0,10,0,0"/></StackPanel><Border Width="32" Height="32" CornerRadius="10" Background="{DynamicResource AccentSoft}" HorizontalAlignment="Right" VerticalAlignment="Top"><TextBlock Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" Foreground="{DynamicResource Accent}" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></Grid></Border>
             </Grid>
             <ProgressBar Grid.Row="5" x:Name="ProgressBar" Style="{StaticResource ModernProgressBar}" Margin="0,0,0,10" Value="0" Visibility="Collapsed" AutomationProperties.Name="Progression de l'opération"/>
             <Border Grid.Row="6" Style="{StaticResource Card}" Padding="8,8,8,8" MinHeight="140">
@@ -154,7 +203,7 @@
                             <GridViewColumn Header="{loc:Translate Main.ColRisk}" Width="108"><GridViewColumn.CellTemplate><DataTemplate><Border CornerRadius="5" Padding="8,3" Background="{Binding RiskLevel, Converter={x:Static local:RiskBgConverter.Instance}}"><TextBlock Text="{Binding RiskLevel, Converter={x:Static local:RiskLabelConverter.Instance}}" FontSize="10" FontWeight="SemiBold" Foreground="{Binding RiskLevel, Converter={x:Static local:RiskColorConverter.Instance}}"/></Border></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
                         </GridView></ListView.View>
                     </ListView>
-                    <StackPanel Grid.Row="1" x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,44,20,0" IsHitTestVisible="False">
+                    <StackPanel Grid.Row="1" x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center" Margin="20,34,20,12" IsHitTestVisible="False">
                         <Border Width="54" Height="54" Background="{DynamicResource BgHover}" CornerRadius="17" HorizontalAlignment="Center" Margin="0,0,0,12"><Path Data="M 17,13 L 32,13 L 38,19 L 38,40 L 17,40 Z M 32,13 L 32,20 L 38,20 M 23,27 L 32,27 M 23,33 L 30,33" Stroke="{DynamicResource Accent}" StrokeThickness="1.5"/></Border>
                         <TextBlock Text="{loc:Translate Main.EmptyTitle}" FontSize="15" FontWeight="SemiBold" TextAlignment="Center"/><TextBlock Text="{loc:Translate Main.EmptyDesc}" FontSize="12" Foreground="{DynamicResource TextSecond}" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0"/>
                     </StackPanel>
@@ -174,5 +223,7 @@
         </Grid>
         </ScrollViewer>
         <ContentControl x:Name="ToolContent" Grid.Column="1" Visibility="Collapsed"/>
+        </Grid>
     </Grid>
+    </Border>
 </Window>

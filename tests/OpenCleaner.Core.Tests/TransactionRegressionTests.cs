@@ -84,8 +84,10 @@ public sealed class TransactionRegressionTests : IDisposable
         Assert.Equal("restore this", await File.ReadAllTextAsync(source));
     }
 
-    [Fact]
-    public async Task JournalFailurePreventsDeletion()
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task JournalFailurePreventsDeletion(bool createBackup)
     {
         string source = Path.Combine(_root, "journal-failure.txt");
         await File.WriteAllTextAsync(source, "keep this");
@@ -98,7 +100,7 @@ public sealed class TransactionRegressionTests : IDisposable
             command.CommandText = "CREATE TRIGGER deny_operation BEFORE INSERT ON Operations BEGIN SELECT RAISE(ABORT, 'journal failed'); END;";
             command.ExecuteNonQuery();
         }
-        await using (var scope = new CleanupTransactionScope(transactions))
+        await using (var scope = new CleanupTransactionScope(transactions, createBackup))
         {
             var guardian = new FileGuardian(backups, NullLogger<FileGuardian>.Instance, transactions);
             await Assert.ThrowsAsync<SqliteException>(() => guardian.SafeDeleteAsync(source));
@@ -133,7 +135,7 @@ public sealed class TransactionRegressionTests : IDisposable
     public async Task ScopePropagatesRollbackFailure()
     {
         var manager = new Mock<ITransactionManager>();
-        manager.Setup(m => m.BeginTransaction()).Returns(Guid.NewGuid());
+        manager.Setup(m => m.BeginTransaction(true)).Returns(Guid.NewGuid());
         manager.Setup(m => m.RollbackAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
             .ThrowsAsync(new IOException("restore failed"));
         var scope = new CleanupTransactionScope(manager.Object);

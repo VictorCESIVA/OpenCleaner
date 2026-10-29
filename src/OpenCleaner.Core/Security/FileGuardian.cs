@@ -47,6 +47,7 @@ public sealed class FileGuardian : IFileGuardian
     public async Task<OperationResult> SafeDeleteAsync(string path, bool createBackup = true, CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
+        createBackup = createBackup && CleanupTransactionScope.CreateBackup;
         Guid transactionId = Guid.NewGuid();
         FileEntry? originalFile = null;
         string? backupPath = null;
@@ -100,7 +101,7 @@ public sealed class FileGuardian : IFileGuardian
             string currentHash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(deletion.Stream, ct));
             if (deletion.Stream.Length != originalFile.Size ||
                 !string.Equals(currentHash, originalFile.ContentHash, StringComparison.OrdinalIgnoreCase))
-                return Failure("File changed since backup, aborting delete");
+                return Failure("File changed before delete, aborting delete");
 
             ct.ThrowIfCancellationRequested();
             if (IsSystemCriticalPath(path)) return Failure("Path became unsafe before delete");
@@ -158,7 +159,7 @@ public sealed class FileGuardian : IFileGuardian
 
     private async Task StageAsync(OperationResult result)
     {
-        if (_transactions == null || result.BackupPath == null ||
+        if (_transactions == null ||
             CleanupTransactionScope.CurrentTransactionId is not Guid transactionId) return;
         await _transactions.StageOperationAsync(transactionId, result);
     }

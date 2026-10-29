@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
+using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System;
 using OpenCleaner.Plugins.System.Plugins;
 using Xunit;
@@ -34,6 +35,29 @@ public sealed class PluginSafetyTests : IDisposable
     }
 
     private FixtureCleaner Cleaner() => new(_root, _guardian.Object);
+
+    [Fact]
+    public async Task PermanentCleanupUsesRealGuardianAndStillRejectsForgedSelection()
+    {
+        string source = Write("cache.txt", "cache");
+        var backups = new Mock<IBackupManager>(MockBehavior.Strict);
+        using var transactions = new TransactionManager(backups.Object, NullLogger<TransactionManager>.Instance,
+            Path.Combine(_root, "journal", "transactions.db"));
+        var guardian = new FileGuardian(backups.Object, NullLogger<FileGuardian>.Instance, transactions);
+        var cleaner = new FixtureCleaner(_root, guardian);
+        var item = (await cleaner.AnalyzeAsync()).Single(i => i.Path == source);
+        await using var scope = new CleanupTransactionScope(transactions, createBackup: false);
+        var forged = item with { Path = Write("personal.txt", "keep this") };
+        Assert.False((await cleaner.CleanAsync([forged], backups.Object)).Success);
+        Assert.True(File.Exists(source));
+        var result = await Task.Run(() => cleaner.CleanAsync([item], backups.Object));
+        Assert.True(result.Success, result.Message);
+        Assert.Equal(5, result.BytesRecovered);
+        Assert.False(File.Exists(source));
+        Assert.Equal("keep this", await File.ReadAllTextAsync(forged.Path));
+        await scope.CommitAsync();
+        backups.VerifyNoOtherCalls();
+    }
 
     [Fact]
     public async Task ForgedPathAndForeignIdsNeverReachGuardian()
@@ -328,6 +352,7 @@ public sealed class PluginSafetyTests : IDisposable
 
     public void Dispose()
     {
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         foreach (var junction in _junctions.Where(Directory.Exists)) Directory.Delete(junction, recursive: false);
         // Only this uniquely named temporary fixture is removed; no production/user directory is touched.
         var full = Path.GetFullPath(_root);

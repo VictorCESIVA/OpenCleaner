@@ -4,7 +4,7 @@ namespace OpenCleaner.Core.Transactions;
 
 public interface ITransactionManager
 {
-    Guid BeginTransaction();
+    Guid BeginTransaction(bool createBackup = true);
     Task StageOperationAsync(Guid transactionId, OperationResult operation);
     Task CommitAsync(Guid transactionId, CancellationToken ct = default);
     Task CommitPartialAsync(Guid transactionId, CancellationToken ct = default);
@@ -22,18 +22,20 @@ public class Transaction
     public Guid Id { get; }
     public TransactionState State { get; private set; }
     public DateTime CreatedAt { get; }
+    public bool CreateBackup { get; }
     public List<OperationResult> Operations { get; } = [];
 
-    public Transaction()
-        : this(Guid.NewGuid(), TransactionState.Pending, DateTime.UtcNow)
+    public Transaction(bool createBackup = true)
+        : this(Guid.NewGuid(), TransactionState.Pending, DateTime.UtcNow, createBackup)
     {
     }
 
-    internal Transaction(Guid id, TransactionState state, DateTime createdAt)
+    internal Transaction(Guid id, TransactionState state, DateTime createdAt, bool createBackup = true)
     {
         Id = id;
         State = state;
         CreatedAt = createdAt;
+        CreateBackup = createBackup;
     }
 
     public void MarkCommitted() => State = TransactionState.Committed;

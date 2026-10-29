@@ -16,6 +16,7 @@ public partial class App : System.Windows.Application
 {
     public static IServiceProvider Services { get; private set; } = null!;
     public static AppPreferences Preferences { get; private set; } = new();
+    internal bool PreviewMode { get; init; }
 
     public static void SetPreferences(AppPreferences preferences)
     {
@@ -26,6 +27,7 @@ public partial class App : System.Windows.Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if (PreviewMode) return;
 
         DispatcherUnhandledException += (s, args) =>
         {
@@ -164,6 +166,7 @@ public partial class App : System.Windows.Application
 
     private static async void RunBackgroundMode(string[] args)
     {
+        bool createBackup = SchedulerService.LoadConfig().CreateBackup;
         // Récupère la liste des plugins à exécuter depuis --plugins "id1,id2"
         var pluginIds = GetArg(args, "--plugins")
             ?.Split(',', StringSplitOptions.RemoveEmptyEntries)
@@ -179,7 +182,8 @@ public partial class App : System.Windows.Application
 
         try
         {
-            BackupUpgradeResult upgrade = await backupManager.UpgradeLegacyBackupsAsync();
+            BackupUpgradeResult upgrade = createBackup
+                ? await backupManager.UpgradeLegacyBackupsAsync() : new BackupUpgradeResult(0, 0);
             if (upgrade.Quarantined > 0)
                 logger.LogWarning("{Count} sauvegarde(s) corrompue(s) isolée(s) dans {Path}",
                     upgrade.Quarantined, backupManager.QuarantineRoot);
@@ -197,7 +201,7 @@ public partial class App : System.Windows.Application
         try
         {
             await using (var transaction = new CleanupTransactionScope(
-                             Services.GetRequiredService<ITransactionManager>()))
+                             Services.GetRequiredService<ITransactionManager>(), createBackup))
             {
                 foreach (var pluginId in pluginIds.Distinct(StringComparer.Ordinal))
                 {

@@ -178,7 +178,7 @@ internal sealed class ScannedFileSelection
                 }
                 else
                 {
-                    // Never degrade to unprotected deletion when creating a backup fails.
+                    // The cleanup scope carries the user's backup choice; a failed backup still blocks deletion.
                     var result = await guardian.SafeDeleteAsync(item.Path, createBackup: true, ct);
                     if (result.Success)
                     {
@@ -197,7 +197,7 @@ internal sealed class ScannedFileSelection
         }
         progress?.Report(1);
         return new OperationResult(success == list.Count,
-            $"{success}/{list.Count} fichiers supprimés ({SizeFormatter.Format(bytes)} d'espace net récupéré, sauvegardes conservées)",
+            $"{success}/{list.Count} fichiers supprimés ({SizeFormatter.Format(bytes)} d'espace net récupéré)",
             Guid.NewGuid(), ItemsProcessed: success, BytesRecovered: bytes);
     }
 }

@@ -17,7 +17,7 @@ internal class Program
     {
         var output = args.Length > 0 ? args[0] : Path.Combine("artifacts", "ui-preview");
         Directory.CreateDirectory(output);
-        var app=new App();app.InitializeComponent();app.ShutdownMode=ShutdownMode.OnExplicitShutdown;
+        var app=new App { PreviewMode = true };app.InitializeComponent();app.ShutdownMode=ShutdownMode.OnExplicitShutdown;
         typeof(App).GetMethod("BuildServices",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,null);
         if (args.Contains("--live-health"))
         {
@@ -74,6 +74,22 @@ internal class Program
             return;
         }
         var main=new MainWindow();
+        CheckCleanupConfirmation();
+        if (args.Contains("--interactive"))
+        {
+            main.Loaded += (_, _) => CheckMotion((ScrollViewer)main.FindName("DashboardScroll"));
+            app.ShutdownMode = ShutdownMode.OnMainWindowClose;
+            app.Run(main);
+            (App.Services as IDisposable)?.Dispose();
+            return;
+        }
+        CheckMotion(new Border());
+        ((Expander)main.FindName("CleaningGroup")).IsExpanded = false;
+        main.ShowCleaner("browser");
+        if (!((Expander)main.FindName("CleaningGroup")).IsExpanded ||
+            ((Border)main.FindName("BrowserOptionsPanel")).Visibility != Visibility.Visible)
+            throw new InvalidOperationException("Cleaner navigation did not reveal its group and options");
+        main.ShowCleaner("system");
         var uninstaller=new UninstallerWindow();
         SeedUninstaller(uninstaller);
         var startup=new StartupWindow();
@@ -102,22 +118,22 @@ internal class Program
         settings.ShowScheduleForPreview(
             new ScheduledRunRecord(DateTime.UtcNow.AddDays(-1), 1_240, 512L * 1024 * 1024, 0),
             DateTime.Now.Date.AddDays(2).AddHours(3));
-        var windows=new FrameworkElement[]{main,settings,new RestoreWindow(),new PrivacyWindow(),new DuplicateWindow(),disk,new DevCleanerWindow(),new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION",false),health,uninstaller,startup,new UpdatesWindow(),new ShredderWindow()};
+        var windows=new FrameworkElement[]{main,settings,new RestoreWindow(),new PrivacyWindow(),new DuplicateWindow(),disk,new DevCleanerWindow(),new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION",false),health,uninstaller,startup,new UpdatesWindow(),new ShredderWindow(),new CleanupConfirmationWindow(Loc("Cleanup.FileCount", 123))};
         foreach(var window in windows)
         {
             var name=window.GetType().Name;
-            Render(window,Path.Combine(output,name+".png"),window is Window w ? w.Width : 1048,window is Window h ? h.Height-36 : 824);
-            Render(window,Path.Combine(output,name+"-minimum.png"),window is Window mw ? mw.MinWidth : 808,window is Window mh ? mh.MinHeight-36 : 704);
+            Render(window,Path.Combine(output,name+".png"),window is Window w ? w.Width : 1048,window is Window h ? h.Height-(h is MainWindow ? 0 : 36) : 824);
+            Render(window,Path.Combine(output,name+"-minimum.png"),window is Window mw ? mw.MinWidth : 808,window is Window mh ? mh.MinHeight-(mh is MainWindow ? 0 : 36) : 704);
             Console.WriteLine(name+" instantiated and rendered");
         }
         Render(health,Path.Combine(output,"HealthWindow-full.png"),1048,1500);
         Render(settings,Path.Combine(output,"SettingsWindow-full.png"),1048,1200);
         ((Border)main.FindName("BrowserOptionsPanel")).Visibility=Visibility.Visible;
         ((TextBlock)main.FindName("PluginTitle")).Text="Navigateurs Chrome / Edge / Brave";
-        Render(main,Path.Combine(output,"MainWindow-browser-minimum.png"),main.MinWidth,main.MinHeight-36);
+        Render(main,Path.Combine(output,"MainWindow-browser-minimum.png"),main.MinWidth,main.MinHeight);
         ((Border)main.FindName("BrowserOptionsPanel")).Visibility=Visibility.Collapsed;
         ((Border)main.FindName("LoadingOverlay")).Visibility=Visibility.Visible;
-        Render(main,Path.Combine(output,"MainWindow-loading.png"),main.Width,main.Height-36);
+        Render(main,Path.Combine(output,"MainWindow-loading.png"),main.Width,main.Height);
         ((Border)main.FindName("LoadingOverlay")).Visibility=Visibility.Collapsed;
         ((TextBlock)main.FindName("PluginTitle")).Text="Fichiers temporaires système";
         var files=(ListView)main.FindName("FilesListView");
@@ -127,7 +143,7 @@ internal class Program
             new CleanableItem("preview-expert",@"HKCU\Software\Exemple",0,"Clé à vérifier",RiskLevel.ExpertOnly,ItemType.RegistryKey)};
         files.ItemsSource=previewItems;
         ((StackPanel)main.FindName("EmptyState")).Visibility=Visibility.Collapsed;
-        Render(main,Path.Combine(output,"MainWindow-example-data.png"),main.Width,main.Height-36);
+        Render(main,Path.Combine(output,"MainWindow-example-data.png"),main.Width,main.Height);
         if (OpenCleaner.UI.Localization.LocalizationService.Instance.SetLanguage("en"))
         {
             var mainEn = new MainWindow();
@@ -140,7 +156,7 @@ internal class Program
                 DateTime.Now.Date.AddDays(2).AddHours(3));
             var diskEn = new DiskSpaceWindow();
             diskEn.ShowPreviewData(PreviewDiskUsage());
-            Render(mainEn,Path.Combine(output,"MainWindow-en.png"),mainEn.Width,mainEn.Height-36);
+            Render(mainEn,Path.Combine(output,"MainWindow-en.png"),mainEn.Width,mainEn.Height);
             Render(settingsEn,Path.Combine(output,"SettingsWindow-en.png"),1048,824);
             Render(diskEn,Path.Combine(output,"DiskSpaceWindow-en.png"),1048,824);
             diskEn.ShowPreviewData(PreviewDiskUsage(), "apps", PreviewApplications());
@@ -157,6 +173,8 @@ internal class Program
             var devEn = new DevCleanerWindow();
             var shredderEn = new ShredderWindow();
             var recoveryEn = new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION", false);
+            var cleanupEn = new CleanupConfirmationWindow(Loc("Cleanup.FileCount", 123));
+            Render(cleanupEn,Path.Combine(output,"CleanupConfirmationWindow-en.png"),cleanupEn.Width,cleanupEn.Height-36);
             Render(diskEn,Path.Combine(output,"DiskSpaceWindow-apps-en.png"),1048,824);
             Render(healthEn,Path.Combine(output,"HealthWindow-en.png"),1048,824);
             Render(healthEn,Path.Combine(output,"HealthWindow-en-full.png"),1048,1600);
@@ -172,25 +190,30 @@ internal class Program
             OpenCleaner.UI.Localization.LocalizationService.Instance.SetLanguage("fr");
         }
         main.ShowLowSpaceForPreview(new DiskSpaceAlert("C:\\", 42L*1024*1024*1024, 500L*1024*1024*1024, 42.0/500));
-        Render(main,Path.Combine(output,"MainWindow-low-space.png"),main.Width,main.Height-36);
+        Render(main,Path.Combine(output,"MainWindow-low-space.png"),main.Width,main.Height);
+        Render(main,Path.Combine(output,"MainWindow-low-space-minimum.png"),main.MinWidth,main.MinHeight);
         ((Border)main.FindName("LowSpaceBanner")).Visibility=Visibility.Collapsed;
         main.ShowTool("health", (Button)main.FindName("HealthNav"));
         var integratedHealth = (HealthWindow)((ContentControl)main.FindName("ToolContent")).Content;
         if (Window.GetWindow(integratedHealth) != main) throw new InvalidOperationException("Tool owner is not the main window");
         integratedHealth.PopulatePreview(PreviewSystemInfo(), PreviewHealthMetrics());
         ((TextBlock)integratedHealth.FindName("RecycleText")).Text = "Corbeille : 18 éléments • 120 Mo";
-        Render(main,Path.Combine(output,"MainWindow-health.png"),main.Width,main.Height-36);
-        Render(main,Path.Combine(output,"MainWindow-health-minimum.png"),main.MinWidth,main.MinHeight-36);
+        Render(main,Path.Combine(output,"MainWindow-health.png"),main.Width,main.Height);
+        Render(main,Path.Combine(output,"MainWindow-health-minimum.png"),main.MinWidth,main.MinHeight);
         main.ShowCleaner("system");
         var lightHosts = new List<Window>();
         typeof(MainWindow).GetMethod("ApplyTheme",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(main,new object[]{false});
-        Render(main,Path.Combine(output,"MainWindow-light.png"),main.Width,main.Height-36);
+        files.ItemsSource = null;
+        Render(main,Path.Combine(output,"MainWindow-light.png"),main.Width,main.Height);
+        files.ItemsSource = previewItems;
+        ((StackPanel)main.FindName("EmptyState")).Visibility = Visibility.Collapsed;
+        Render(main,Path.Combine(output,"MainWindow-light-results.png"),main.Width,main.Height);
         foreach(var window in windows.Skip(1))
         {
             // Rattacher la vue à une fenêtre pour que les ressources dynamiques suivent le thème.
             var host = window is Window ? null : new Window { Content = window };
             if (host != null) lightHosts.Add(host);
-            Render(window,Path.Combine(output,window.GetType().Name+"-light.png"),window is Window w ? w.Width : 1048,window is Window h ? h.Height-36 : 824);
+            Render(window,Path.Combine(output,window.GetType().Name+"-light.png"),window is Window w ? w.Width : 1048,window is Window h ? h.Height-(h is MainWindow ? 0 : 36) : 824);
             if (host != null) host.Content = null;
         }
         int windowCount = app.Windows.Count;
@@ -364,6 +387,42 @@ internal class Program
     static string Loc(string key, params object?[] args) =>
         OpenCleaner.UI.Localization.LocalizationService.Instance.Get(key, args);
 
+    static void CheckMotion(FrameworkElement element)
+    {
+        UiMotion.Enter(element);
+        if (element.RenderTransform is not TranslateTransform transform ||
+            transform.HasAnimatedProperties != (element.IsLoaded && SystemParameters.ClientAreaAnimation) ||
+            (double)element.GetAnimationBaseValue(UIElement.OpacityProperty) != 1 ||
+            UiMotion.InteractionDuration.TimeSpan.TotalMilliseconds != (SystemParameters.ClientAreaAnimation ? 140 : 0))
+            throw new InvalidOperationException("Motion does not follow Windows animation preferences");
+        UiMotion.Enter(element);
+        if (element.RenderTransform is not TranslateTransform || (double)element.GetAnimationBaseValue(UIElement.OpacityProperty) != 1)
+            throw new InvalidOperationException("Repeated navigation did not reset its animation");
+    }
+
+    static void CheckCleanupConfirmation()
+    {
+        foreach (string? action in new[] { "BackupAndDeleteButton", "DeleteWithoutBackupButton", null })
+        {
+            var dialog = new CleanupConfirmationWindow(Loc("Cleanup.FileCount", 3))
+            {
+                ShowActivated = false, Opacity = 0, Left = -10000, Top = -10000,
+                WindowStartupLocation = WindowStartupLocation.Manual
+            };
+            var cancel = (Button)dialog.FindName("CancelButton");
+            if (!cancel.IsCancel || !cancel.IsDefault)
+                throw new InvalidOperationException("Cleanup confirmation must default to cancellation");
+            dialog.Loaded += (_, _) =>
+            {
+                if (action == null) dialog.Close();
+                else ((Button)dialog.FindName(action)).RaiseEvent(new RoutedEventArgs(Button.ClickEvent));
+            };
+            bool? choice = dialog.ShowDialog() == true ? dialog.CreateBackup : null;
+            bool? expected = action == null ? null : action == "BackupAndDeleteButton";
+            if (choice != expected) throw new InvalidOperationException($"Wrong cleanup confirmation choice: {action}");
+        }
+    }
+
     static void Render(FrameworkElement window,string output,double width,double height)
     {
         var view=window is Window shell ? (FrameworkElement)shell.Content : window;view.Width=width;view.Height=height;
@@ -373,6 +432,16 @@ internal class Program
             control.SetResourceReference(Control.BackgroundProperty, "BgMain");
         }
         view.Measure(new Size(width,height));view.Arrange(new Rect(0,0,width,height));view.UpdateLayout();
+        view.Dispatcher.Invoke(() => { }, System.Windows.Threading.DispatcherPriority.Render);
+        if (window is MainWindow main && ((ScrollViewer)main.FindName("DashboardScroll")).Visibility == Visibility.Visible)
+        {
+            var results = (Grid)main.FindName("ResultsPanel");
+            var analyze = (Button)main.FindName("AnalyzeBtn");
+            double resultsBottom = results.TransformToAncestor(view).Transform(new Point(0, results.ActualHeight)).Y;
+            double actionsTop = analyze.TransformToAncestor(view).Transform(new Point()).Y;
+            if (resultsBottom > actionsTop)
+                throw new InvalidOperationException($"Results overlap the action buttons: {output}");
+        }
         var target=new RenderTargetBitmap((int)width,(int)height,96,96,PixelFormats.Pbgra32);target.Render(view);
         var encoder=new PngBitmapEncoder();encoder.Frames.Add(BitmapFrame.Create(target));using var stream=File.Create(output);encoder.Save(stream);
     }

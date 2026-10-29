@@ -243,13 +243,9 @@ public partial class DuplicateWindow : UserControl
         var toDelete = GetCheckedItems();
         if (toDelete.Count == 0) return;
 
-        var confirm = MessageBox.Show(
-            T("Dup.ConfirmDelete", toDelete.Count),
-            T("Dup.ConfirmTitle"),
-            MessageBoxButton.YesNo,
-            MessageBoxImage.Warning);
-
-        if (confirm != MessageBoxResult.Yes) return;
+        bool? createBackup = CleanupConfirmationWindow.Confirm(Window.GetWindow(this),
+            T("Dup.ConfirmDelete", toDelete.Count));
+        if (createBackup == null) return;
 
         if (_plugin == null || !UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using var scope = operation;
@@ -268,7 +264,7 @@ public partial class DuplicateWindow : UserControl
             var progress = operation.CreateProgress<double>(p => StatusText.Text = T("Dup.DeleteProgress", p));
             OperationResult result;
             await using (var transaction = new CleanupTransactionScope(
-                             App.Services.GetRequiredService<ITransactionManager>()))
+                             App.Services.GetRequiredService<ITransactionManager>(), createBackup.Value))
             {
                 result = await Task.Run(() => plugin.CleanAsync(toDelete, backupManager, progress, operation.Token),
                     operation.Token);
@@ -282,7 +278,7 @@ public partial class DuplicateWindow : UserControl
             // Relancer l'analyse pour mettre à jour l'arbre
             _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
-        catch (OperationCanceledException) { StatusText.Text = T("Dup.Cancelled"); _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T(createBackup.Value ? "Dup.Cancelled" : "Cleanup.PermanentInterrupted"); _plugin = null; }
         catch (Exception ex)
         {
             StatusText.Text = "❌ " + ex.Message;

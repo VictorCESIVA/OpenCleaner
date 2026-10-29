@@ -36,6 +36,8 @@ public sealed class LocalizationCatalogTests
                  {
                      "Nav.Temp", "Nav.Settings", "Main.Title", "Main.SmartScan", "Main.Clean",
                      "Main.ConfirmClean", "Main.ItemsFound", "Risk.Low", "Size.Gigabyte",
+                     "Cleanup.Title", "Cleanup.WithoutBackupDetail", "Cleanup.DeleteWithoutBackup",
+                     "Cleanup.BackupAndDelete", "Settings.ScheduleBackupHint",
                      "Settings.Language", "Plugin.Browser.Title"
                  })
         {

@@ -43,7 +43,8 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
         command.CommandText = """
-            CREATE TABLE IF NOT EXISTS Transactions (Id TEXT PRIMARY KEY, State INTEGER NOT NULL, CreatedAt TEXT NOT NULL);
+            CREATE TABLE IF NOT EXISTS Transactions (Id TEXT PRIMARY KEY, State INTEGER NOT NULL, CreatedAt TEXT NOT NULL,
+                CreateBackup INTEGER NOT NULL DEFAULT 1);
             CREATE TABLE IF NOT EXISTS Operations (
                 Id TEXT PRIMARY KEY, TransactionId TEXT NOT NULL, Success INTEGER NOT NULL, Message TEXT NOT NULL,
                 OriginalPath TEXT, BackupPath TEXT, Timestamp TEXT NOT NULL,
@@ -52,6 +53,12 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
                 FOREIGN KEY (TransactionId) REFERENCES Transactions(Id) ON DELETE CASCADE);
             """;
         command.ExecuteNonQuery();
+        command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name = 'CreateBackup';";
+        if (Convert.ToInt32(command.ExecuteScalar()) == 0)
+        {
+            command.CommandText = "ALTER TABLE Transactions ADD COLUMN CreateBackup INTEGER NOT NULL DEFAULT 1;";
+            command.ExecuteNonQuery();
+        }
         command.CommandText = "PRAGMA table_info(Operations);";
         var columns = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         using (var reader = command.ExecuteReader())
@@ -94,15 +101,16 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
         }
     }
 
-    public Guid BeginTransaction()
+    public Guid BeginTransaction(bool createBackup = true)
     {
-        var transaction = new Transaction();
+        var transaction = new Transaction(createBackup);
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "INSERT INTO Transactions (Id, State, CreatedAt) VALUES (@Id, @State, @CreatedAt);";
+        command.CommandText = "INSERT INTO Transactions (Id, State, CreatedAt, CreateBackup) VALUES (@Id, @State, @CreatedAt, @CreateBackup);";
         command.Parameters.AddWithValue("@Id", transaction.Id.ToString());
         command.Parameters.AddWithValue("@State", (int)transaction.State);
         command.Parameters.AddWithValue("@CreatedAt", transaction.CreatedAt.ToString("O", CultureInfo.InvariantCulture));
+        command.Parameters.AddWithValue("@CreateBackup", createBackup ? 1 : 0);
         command.ExecuteNonQuery();
         _transactions[transaction.Id] = transaction;
         return transaction.Id;
@@ -170,7 +178,7 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
             if (transaction.Operations.Any(o => !o.Success))
             {
                 await DoRollbackAsync(transaction, ct);
-                throw new InvalidOperationException("Transaction contained failed operations and was rolled back");
+                throw new InvalidOperationException("Transaction contained failed operations");
             }
             ct.ThrowIfCancellationRequested();
             SaveState(transaction, TransactionState.Committed);
@@ -231,6 +239,13 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
     private async Task DoRollbackAsync(Transaction transaction, CancellationToken ct)
     {
         if (transaction.State == TransactionState.RolledBack) return;
+        if (!transaction.CreateBackup)
+        {
+            // Permanent deletions remain committed, including after cancellation or a restart.
+            ct.ThrowIfCancellationRequested();
+            SaveState(transaction, TransactionState.Committed);
+            return;
+        }
         var failures = new List<string>();
         // Undo in reverse order. Failed operations did not delete anything and must not replace
         // the user's still-existing file with an older backup.
@@ -307,13 +322,13 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
         if (_transactions.TryGetValue(id, out var transaction)) return transaction;
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT State, CreatedAt FROM Transactions WHERE Id = @Id;";
+        command.CommandText = "SELECT State, CreatedAt, CreateBackup FROM Transactions WHERE Id = @Id;";
         command.Parameters.AddWithValue("@Id", id.ToString());
         using (var reader = command.ExecuteReader())
         {
             if (!reader.Read()) throw new InvalidOperationException($"Transaction {id} not found");
             transaction = new Transaction(id, (TransactionState)reader.GetInt32(0),
-                DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind));
+                DateTime.Parse(reader.GetString(1), CultureInfo.InvariantCulture, DateTimeStyles.RoundtripKind), reader.GetInt32(2) != 0);
         }
         command.CommandText = """
             SELECT Success, Message, OriginalPath, BackupPath, OriginalSize, OriginalLastAccess, OriginalHash,

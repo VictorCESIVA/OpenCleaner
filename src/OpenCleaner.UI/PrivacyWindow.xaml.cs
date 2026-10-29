@@ -135,12 +135,9 @@ public partial class PrivacyWindow : UserControl
             return;
         }
 
-        var confirm = MessageBox.Show(
-            T("Privacy.ConfirmDelete", selected.Count),
-            T("Privacy.ConfirmTitle"),
-            MessageBoxButton.YesNo, MessageBoxImage.Warning);
-
-        if (confirm != MessageBoxResult.Yes) return;
+        bool? createBackup = CleanupConfirmationWindow.Confirm(Window.GetWindow(this),
+            T("Privacy.ConfirmDelete", selected.Count));
+        if (createBackup == null) return;
 
         if (_plugin == null || !UiOperation.TryBegin(Window.GetWindow(this), out var operation)) return;
         using var scope = operation;
@@ -157,7 +154,7 @@ public partial class PrivacyWindow : UserControl
             var progress = operation.CreateProgress<double>(p => StatusText.Text = T("Privacy.DeleteProgress", p));
             OperationResult result;
             await using (var transaction = new CleanupTransactionScope(
-                             App.Services.GetRequiredService<ITransactionManager>()))
+                             App.Services.GetRequiredService<ITransactionManager>(), createBackup.Value))
             {
                 result = await Task.Run(() => plugin.CleanAsync(selected, backupManager, progress, operation.Token),
                     operation.Token);
@@ -168,7 +165,7 @@ public partial class PrivacyWindow : UserControl
             StatusText.Text = (result.Success ? "✅ " : "⚠️ ") + PluginMessageLocalizer.Localize(result.Message);
             _ = Dispatcher.BeginInvoke(new Action(() => Scan_Click(sender, e)));
         }
-        catch (OperationCanceledException) { StatusText.Text = T("Privacy.Cancelled"); _plugin = null; }
+        catch (OperationCanceledException) { StatusText.Text = T(createBackup.Value ? "Privacy.Cancelled" : "Cleanup.PermanentInterrupted"); _plugin = null; }
         catch (Exception ex) { StatusText.Text = "❌ " + ex.Message; }
         finally { ScanBtn.IsEnabled = true; }
     }
