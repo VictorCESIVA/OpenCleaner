@@ -1,6 +1,7 @@
 <UserControl x:Class="OpenCleaner.UI.StartupWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:OpenCleaner.UI.Localization"
         PreviewKeyDown="Startup_PreviewKeyDown">
     <Border Background="{DynamicResource BgMain}" Padding="28,26">
         <Grid>
@@ -12,9 +13,9 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0" Margin="0,0,0,12">
-                <TextBlock Text="Démarrage Windows" FontSize="26" FontWeight="SemiBold"
+                <TextBlock Text="{loc:Translate Startup.Title}" FontSize="26" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimary}"/>
-                <TextBlock Text="Programmes lancés à l'ouverture de session. Les éléments utilisateur sont déplacés vers une sauvegarde OpenCleaner ; les éléments machine sont sauvegardés dans le registre après autorisation administrateur."
+                <TextBlock Text="{loc:Translate Startup.Subtitle}"
                            FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
@@ -27,11 +28,11 @@
                          Background="{DynamicResource BgCard}" Foreground="{DynamicResource TextPrimary}"
                          BorderBrush="{DynamicResource Border}" BorderThickness="1" Padding="36,7,12,7"
                          VerticalContentAlignment="Center"
-                         TextChanged="Filter_Changed" AutomationProperties.Name="Filtrer le démarrage"/>
+                         TextChanged="Filter_Changed" AutomationProperties.Name="{loc:Translate Startup.FilterAutomation}"/>
                 <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="14"
                            Foreground="{DynamicResource TextSecond}" Margin="12,0,0,0"
                            HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                <TextBlock Text="Rechercher un élément de démarrage…" Margin="38,0,0,0"
+                <TextBlock Text="{loc:Translate Startup.SearchPlaceholder}" Margin="38,0,0,0"
                            FontSize="12" Foreground="{DynamicResource TextSecond}"
                            VerticalAlignment="Center" IsHitTestVisible="False">
                     <TextBlock.Style>
@@ -47,9 +48,9 @@
                 </TextBlock>
                 <ComboBox x:Name="SortCombo" Grid.Column="1" Width="170" Height="38" Margin="8,0,0,0"
                           SelectedIndex="0" SelectionChanged="Sort_Changed"
-                          AutomationProperties.Name="Trier les éléments de démarrage">
-                    <ComboBoxItem Content="Trier : nom" Tag="Name"/>
-                    <ComboBoxItem Content="Trier : impact" Tag="Impact"/>
+                          AutomationProperties.Name="{loc:Translate Startup.SortAutomation}">
+                    <ComboBoxItem Content="{loc:Translate Startup.SortName}" Tag="Name"/>
+                    <ComboBoxItem Content="{loc:Translate Startup.SortImpact}" Tag="Impact"/>
                 </ComboBox>
             </Grid>
 
@@ -62,7 +63,7 @@
                              VirtualizingPanel.IsVirtualizing="True"
                              VirtualizingPanel.VirtualizationMode="Recycling"
                              SelectionMode="Single" SelectionChanged="StartupList_SelectionChanged"
-                             AutomationProperties.Name="Éléments de démarrage">
+                             AutomationProperties.Name="{loc:Translate Startup.ListAutomation}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid Height="70" Margin="12,0">
@@ -150,7 +151,7 @@
                         <TextBlock Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="26"
                                    Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"
                                    Margin="0,0,0,16"/>
-                        <TextBlock Text="Lecture des éléments de démarrage…" FontSize="15" FontWeight="SemiBold"
+                        <TextBlock Text="{loc:Translate Startup.Loading}" FontSize="15" FontWeight="SemiBold"
                                    TextAlignment="Center"/>
                         <ProgressBar IsIndeterminate="True" Width="180" Height="4"
                                      Foreground="{DynamicResource Accent}" Background="{DynamicResource BgMain}"
@@ -162,9 +163,9 @@
                         <TextBlock x:Name="EmptyIcon" Text="&#xE768;" FontFamily="Segoe MDL2 Assets" FontSize="26"
                                    Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"
                                    Margin="0,0,0,16"/>
-                        <TextBlock x:Name="EmptyTitle" Text="Aucun élément de démarrage détecté." FontSize="15"
+                        <TextBlock x:Name="EmptyTitle" Text="{loc:Translate Startup.EmptyTitle}" FontSize="15"
                                    FontWeight="SemiBold" TextAlignment="Center"/>
-                        <TextBlock x:Name="EmptyDescription" Text="Les programmes lancés à l'ouverture de session apparaîtront ici."
+                        <TextBlock x:Name="EmptyDescription" Text="{loc:Translate Startup.EmptyDescription}"
                                    FontSize="12" Foreground="{DynamicResource TextSecond}"
                                    TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"
                                    MaxWidth="360"/>
@@ -185,11 +186,11 @@
                                    TextWrapping="Wrap" Margin="0,4,0,0"/>
                     </StackPanel>
                     <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
-                        <Button x:Name="RefreshBtn" Content="Actualiser"
+                        <Button x:Name="RefreshBtn" Content="{loc:Translate Startup.Refresh}"
                                 Style="{StaticResource SecondBtnStyle}" Click="Refresh_Click" Margin="0,0,8,0"/>
-                        <Button x:Name="DisableBtn" Content="Désactiver"
+                        <Button x:Name="DisableBtn" Content="{loc:Translate Startup.Disable}"
                                 Style="{StaticResource DangerBtnStyle}" Click="Disable_Click" IsEnabled="False" Margin="0,0,8,0"/>
-                        <Button x:Name="EnableBtn" Content="Réactiver"
+                        <Button x:Name="EnableBtn" Content="{loc:Translate Startup.Enable}"
                                 Style="{StaticResource AccentBtnStyle}" Click="Enable_Click" IsEnabled="False"/>
                     </WrapPanel>
                 </Grid>

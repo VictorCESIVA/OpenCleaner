@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using System.Windows.Media;
 using OpenCleaner.Core.Tools;
+using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
@@ -10,9 +11,11 @@ internal sealed class InstalledProgramRow : INotifyPropertyChanged
 
     public InstalledProgramRow(InstalledProgram program) => Program = program;
 
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     public InstalledProgram Program { get; }
     public string Name => Program.Name;
-    public string SourceLabel => Program.SourceLabel;
+    public string SourceLabel => T(Program.MachineWide ? "Uninstall.Row.Machine" : "Uninstall.Row.User");
     public string? IconPath => Program.IconPath;
     public bool CanUninstall => Program.CanUninstall;
 
@@ -22,7 +25,7 @@ internal sealed class InstalledProgramRow : INotifyPropertyChanged
         {
             string? publisher = string.IsNullOrWhiteSpace(Program.Publisher) ? null : Program.Publisher.Trim();
             string? version = string.IsNullOrWhiteSpace(Program.Version) ? null : "v" + Program.Version.Trim();
-            if (publisher == null && version == null) return "Éditeur non renseigné";
+            if (publisher == null && version == null) return T("Uninstall.NoPublisher");
             if (publisher == null) return version!;
             if (version == null) return publisher;
             return publisher + " · " + version;
@@ -30,6 +33,12 @@ internal sealed class InstalledProgramRow : INotifyPropertyChanged
     }
 
     public string SizeLabel => string.IsNullOrEmpty(Program.SizeLabel) ? "—" : Program.SizeLabel;
+
+    internal void RefreshLocalization()
+    {
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(SourceLabel)));
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Meta)));
+    }
 
     public string Initials
     {

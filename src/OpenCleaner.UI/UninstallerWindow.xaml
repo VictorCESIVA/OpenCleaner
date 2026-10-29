@@ -1,6 +1,7 @@
 <UserControl x:Class="OpenCleaner.UI.UninstallerWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:loc="clr-namespace:OpenCleaner.UI.Localization">
     <Border Background="{DynamicResource BgMain}" Padding="28,26">
         <Grid>
             <Grid.RowDefinitions>
@@ -11,9 +12,9 @@
             </Grid.RowDefinitions>
 
             <StackPanel Grid.Row="0" Margin="0,0,0,12">
-                <TextBlock Text="Désinstaller des applications" FontSize="26" FontWeight="SemiBold"
+                <TextBlock Text="{loc:Translate Uninstall.Title}" FontSize="26" FontWeight="SemiBold"
                            Foreground="{DynamicResource TextPrimary}"/>
-                <TextBlock Text="Liste des programmes installés. Le désinstalleur officiel de chaque éditeur est lancé après confirmation."
+                <TextBlock Text="{loc:Translate Uninstall.Subtitle}"
                            FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,4,0,0" TextWrapping="Wrap"/>
             </StackPanel>
 
@@ -22,11 +23,11 @@
                          Background="{DynamicResource BgCard}" Foreground="{DynamicResource TextPrimary}"
                          BorderBrush="{DynamicResource Border}" BorderThickness="1" Padding="36,7,12,7"
                          VerticalContentAlignment="Center"
-                         TextChanged="Filter_Changed" AutomationProperties.Name="Filtrer les applications"/>
+                         TextChanged="Filter_Changed" AutomationProperties.Name="{loc:Translate Uninstall.FilterAutomation}"/>
                 <TextBlock Text="&#xE721;" FontFamily="Segoe MDL2 Assets" FontSize="14"
                            Foreground="{DynamicResource TextSecond}" Margin="12,0,0,0"
                            HorizontalAlignment="Left" VerticalAlignment="Center" IsHitTestVisible="False"/>
-                <TextBlock Text="Rechercher une application…" Margin="38,0,0,0"
+                <TextBlock Text="{loc:Translate Uninstall.SearchPlaceholder}" Margin="38,0,0,0"
                            FontSize="12" Foreground="{DynamicResource TextSecond}"
                            VerticalAlignment="Center" IsHitTestVisible="False">
                     <TextBlock.Style>
@@ -51,7 +52,7 @@
                              VirtualizingPanel.IsVirtualizing="True"
                              VirtualizingPanel.VirtualizationMode="Recycling"
                              SelectionMode="Single" SelectionChanged="ProgramsList_SelectionChanged"
-                             AutomationProperties.Name="Applications installées">
+                             AutomationProperties.Name="{loc:Translate Uninstall.ListAutomation}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
                                 <Grid Height="66" Margin="12,0">
@@ -111,7 +112,7 @@
                         <TextBlock Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="26"
                                    Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"
                                    Margin="0,0,0,16"/>
-                        <TextBlock Text="Lecture des applications…" FontSize="15" FontWeight="SemiBold"
+                        <TextBlock Text="{loc:Translate Uninstall.Loading}" FontSize="15" FontWeight="SemiBold"
                                    TextAlignment="Center"/>
                         <ProgressBar IsIndeterminate="True" Width="180" Height="4"
                                      Foreground="{DynamicResource Accent}" Background="{DynamicResource BgMain}"
@@ -123,9 +124,9 @@
                         <TextBlock x:Name="EmptyIcon" Text="&#xE71D;" FontFamily="Segoe MDL2 Assets" FontSize="26"
                                    Foreground="{DynamicResource Accent}" HorizontalAlignment="Center"
                                    Margin="0,0,0,16"/>
-                        <TextBlock x:Name="EmptyTitle" Text="Aucune application détectée." FontSize="15"
+                        <TextBlock x:Name="EmptyTitle" Text="{loc:Translate Uninstall.EmptyTitle}" FontSize="15"
                                    FontWeight="SemiBold" TextAlignment="Center"/>
-                        <TextBlock x:Name="EmptyDescription" Text="La liste des programmes installés apparaîtra ici."
+                        <TextBlock x:Name="EmptyDescription" Text="{loc:Translate Uninstall.EmptyDescription}"
                                    FontSize="12" Foreground="{DynamicResource TextSecond}"
                                    TextWrapping="Wrap" TextAlignment="Center" Margin="0,6,0,0"
                                    MaxWidth="360"/>
@@ -146,9 +147,9 @@
                                    TextWrapping="Wrap" Margin="0,4,0,0"/>
                     </StackPanel>
                     <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
-                        <Button x:Name="RefreshBtn" Content="Actualiser"
+                        <Button x:Name="RefreshBtn" Content="{loc:Translate Uninstall.Refresh}"
                                 Style="{StaticResource SecondBtnStyle}" Click="Refresh_Click" Margin="0,0,8,0"/>
-                        <Button x:Name="UninstallBtn" Content="Désinstaller"
+                        <Button x:Name="UninstallBtn" Content="{loc:Translate Uninstall.Uninstall}"
                                 Style="{StaticResource DangerBtnStyle}" Click="Uninstall_Click" IsEnabled="False"/>
                     </WrapPanel>
                 </Grid>

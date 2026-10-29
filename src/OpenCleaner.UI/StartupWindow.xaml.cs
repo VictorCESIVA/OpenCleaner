@@ -4,11 +4,14 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using OpenCleaner.Core.Tools;
+using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
 public partial class StartupWindow : UserControl
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     private readonly ObservableCollection<StartupItemRow> _items = [];
     private IReadOnlyList<StartupItemRow> _all = [];
     private bool _busy;
@@ -20,6 +23,7 @@ public partial class StartupWindow : UserControl
     {
         InitializeComponent();
         StartupList.ItemsSource = _items;
+        LocalizationService.Instance.LanguageChanged += OnLanguageChanged;
         Loaded += async (_, _) =>
         {
             if (_loaded) return;
@@ -28,26 +32,32 @@ public partial class StartupWindow : UserControl
         };
     }
 
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        foreach (StartupItemRow row in _all) row.RefreshLocalization();
+        ApplyFilter();
+    }
+
     private async Task LoadAsync()
     {
         _loadFailed = false;
         _loadError = null;
         SetBusy(true);
-        StatusText.Text = "Lecture des éléments de démarrage…";
+        StatusText.Text = T("Startup.Status.Loading");
         try
         {
             IReadOnlyList<StartupItem> items = await Task.Run(StartupItemService.GetItems);
             _all = items.Select(item => new StartupItemRow(item)).ToList();
             ApplyFilter();
             StatusText.Text = _all.Count == 0
-                ? "Aucun élément de démarrage détecté."
-                : "Sélectionnez un élément pour l'activer ou le désactiver.";
+                ? T("Startup.Status.None")
+                : T("Startup.Status.Ready");
         }
         catch (Exception ex)
         {
             _loadFailed = true;
             _loadError = ex.Message;
-            StatusText.Text = "Lecture impossible : " + ex.Message;
+            StatusText.Text = T("Startup.Status.LoadFailed", ex.Message);
         }
         finally { SetBusy(false); }
         if (_all.Count > 0) _ = LoadIconsAsync(_all);
@@ -74,8 +84,10 @@ public partial class StartupWindow : UserControl
         _items.Clear();
         foreach (StartupItemRow item in ordered) _items.Add(item);
         int highImpact = _items.Count(row => row.Item.Impact == StartupImpact.High);
-        CountText.Text = _items.Count == 1 ? "1 élément" : $"{_items.Count:N0} éléments";
-        if (highImpact > 0) CountText.Text += $" • {highImpact} à impact élevé";
+        CountText.Text = _items.Count == 1
+            ? T("Startup.Count.One")
+            : T("Startup.Count.Many", _items.Count.ToString("N0"));
+        if (highImpact > 0) CountText.Text += T("Startup.Count.HighImpact", highImpact);
         UpdateEmptyState();
         UpdateSelection();
     }
@@ -100,8 +112,8 @@ public partial class StartupWindow : UserControl
         if (_loadFailed)
         {
             EmptyIcon.Text = "\uE783";
-            EmptyTitle.Text = "Lecture impossible";
-            EmptyDescription.Text = _loadError ?? "Les éléments de démarrage n'ont pas pu être lus.";
+            EmptyTitle.Text = T("Startup.Empty.LoadFailedTitle");
+            EmptyDescription.Text = _loadError ?? T("Startup.Empty.LoadFailedDescription");
             EmptyState.Visibility = Visibility.Visible;
             return;
         }
@@ -109,10 +121,10 @@ public partial class StartupWindow : UserControl
         string query = FilterBox.Text.Trim();
         bool filtering = query.Length > 0 && _all.Count > 0;
         EmptyIcon.Text = filtering ? "\uE721" : "\uE768";
-        EmptyTitle.Text = filtering ? "Aucun résultat" : "Aucun élément de démarrage détecté";
+        EmptyTitle.Text = filtering ? T("Startup.Empty.NoResults") : T("Startup.EmptyTitle");
         EmptyDescription.Text = filtering
-            ? $"Aucun élément ne correspond à « {query} »."
-            : "Les programmes lancés à l'ouverture de session apparaîtront ici.";
+            ? T("Startup.Empty.NoMatch", query)
+            : T("Startup.EmptyDescription");
         EmptyState.Visibility = Visibility.Visible;
     }
 
@@ -126,9 +138,9 @@ public partial class StartupWindow : UserControl
         DisableBtn.IsEnabled = !_busy && row.IsEnabled && row.CanToggle;
         EnableBtn.IsEnabled = !_busy && !row.IsEnabled && row.CanToggle;
         if (!_busy && !row.CanToggle)
-            StatusText.Text = "Cet élément ne peut pas être modifié depuis OpenCleaner.";
+            StatusText.Text = T("Startup.Status.NotEditable");
         else if (!_busy && row.IsMachine && !ElevatedStartup.IsElevated())
-            StatusText.Text = "Une autorisation administrateur sera demandée pour modifier cet élément machine.";
+            StatusText.Text = T("Startup.Status.ElevationRequired");
     }
 
     private void Filter_Changed(object sender, TextChangedEventArgs e)
@@ -160,18 +172,17 @@ public partial class StartupWindow : UserControl
         if (row.IsMachine)
         {
             if (MessageBox.Show(Window.GetWindow(this),
-                    $"Désactiver « {row.Name} » au démarrage ?\n\n" +
-                    "Une sauvegarde sera créée dans le registre et une autorisation administrateur sera demandée.",
-                    "Désactiver le démarrage", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                    T("Startup.ConfirmMachine", row.Name),
+                    T("Startup.DisableTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
                     MessageBoxResult.No) != MessageBoxResult.Yes) return;
             await ToggleMachineAsync(row, disable: true);
             return;
         }
         if (MessageBox.Show(Window.GetWindow(this),
-                $"Désactiver « {row.Name} » au démarrage ?\n\nL'élément sera conservé dans une sauvegarde OpenCleaner.",
-                "Désactiver le démarrage", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                T("Startup.ConfirmUser", row.Name),
+                T("Startup.DisableTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
-        await ToggleAsync(() => StartupItemService.Disable(row.Item), "Élément désactivé.");
+        await ToggleAsync(() => StartupItemService.Disable(row.Item), T("Startup.Disabled"));
     }
 
     private async void Enable_Click(object sender, RoutedEventArgs e)
@@ -182,14 +193,14 @@ public partial class StartupWindow : UserControl
             await ToggleMachineAsync(row, disable: false);
             return;
         }
-        await ToggleAsync(() => StartupItemService.Enable(row.Item), "Élément réactivé.");
+        await ToggleAsync(() => StartupItemService.Enable(row.Item), T("Startup.Enabled"));
     }
 
     private async Task ToggleMachineAsync(StartupItemRow row, bool disable)
     {
         if (string.IsNullOrWhiteSpace(row.Item.ValueName))
         {
-            StatusText.Text = "Cet élément ne possède pas de valeur de registre modifiable.";
+            StatusText.Text = T("Startup.NoRegistryValue");
             return;
         }
 
@@ -199,8 +210,8 @@ public partial class StartupWindow : UserControl
             : new MachineStartupRequest(MachineStartupAction.Enable, key, row.Item.ValueName);
         SetBusy(true);
         StatusText.Text = disable
-            ? "Désactivation de l'élément machine…"
-            : "Réactivation de l'élément machine…";
+            ? T("Startup.DisableProgress")
+            : T("Startup.EnableProgress");
         try
         {
             MachineStartupResult result = ElevatedStartup.IsElevated()
@@ -215,11 +226,11 @@ public partial class StartupWindow : UserControl
         }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
         {
-            StatusText.Text = "Autorisation administrateur annulée. Aucun changement effectué.";
+            StatusText.Text = T("Startup.Cancelled");
         }
         catch (Exception ex)
         {
-            StatusText.Text = "Opération impossible : " + ex.Message;
+            StatusText.Text = T("Startup.Failed", ex.Message);
         }
         finally { SetBusy(false); }
     }
@@ -238,7 +249,7 @@ public partial class StartupWindow : UserControl
             bool success = await Task.Run(action);
             if (!success)
             {
-                StatusText.Text = "L'opération a échoué (droits insuffisants ou élément déjà modifié).";
+                StatusText.Text = T("Startup.FailedRights");
                 return;
             }
             _loaded = false;

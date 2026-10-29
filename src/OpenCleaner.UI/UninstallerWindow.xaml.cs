@@ -2,11 +2,14 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Controls;
 using OpenCleaner.Core.Tools;
+using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
 public partial class UninstallerWindow : UserControl
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     private readonly ObservableCollection<InstalledProgramRow> _items = [];
     private IReadOnlyList<InstalledProgramRow> _all = [];
     private bool _busy;
@@ -18,6 +21,7 @@ public partial class UninstallerWindow : UserControl
     {
         InitializeComponent();
         ProgramsList.ItemsSource = _items;
+        LocalizationService.Instance.LanguageChanged += OnLanguageChanged;
         Loaded += async (_, _) =>
         {
             if (_loaded) return;
@@ -26,12 +30,18 @@ public partial class UninstallerWindow : UserControl
         };
     }
 
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        foreach (InstalledProgramRow row in _all) row.RefreshLocalization();
+        ApplyFilter();
+    }
+
     private async Task LoadAsync()
     {
         _loadFailed = false;
         _loadError = null;
         SetBusy(true);
-        StatusText.Text = "Lecture des applications installées…";
+        StatusText.Text = T("Uninstall.Status.Loading");
         try
         {
             IReadOnlyList<InstalledProgram> programs =
@@ -39,14 +49,14 @@ public partial class UninstallerWindow : UserControl
             _all = programs.Select(program => new InstalledProgramRow(program)).ToList();
             ApplyFilter();
             StatusText.Text = _all.Count == 0
-                ? "Aucune application détectée."
-                : "Sélectionnez une application pour lancer son désinstalleur.";
+                ? T("Uninstall.Status.None")
+                : T("Uninstall.Status.Ready");
         }
         catch (Exception ex)
         {
             _loadFailed = true;
             _loadError = ex.Message;
-            StatusText.Text = "Lecture impossible : " + ex.Message;
+            StatusText.Text = T("Uninstall.Status.LoadFailed", ex.Message);
         }
         finally { SetBusy(false); }
         if (_all.Count > 0) _ = LoadIconsAsync(_all);
@@ -66,7 +76,9 @@ public partial class UninstallerWindow : UserControl
                 (row.Program.Version?.Contains(query, StringComparison.CurrentCultureIgnoreCase) ?? false));
         _items.Clear();
         foreach (InstalledProgramRow program in filtered) _items.Add(program);
-        CountText.Text = _items.Count == 1 ? "1 application" : $"{_items.Count:N0} applications";
+        CountText.Text = _items.Count == 1
+            ? T("Uninstall.Count.One")
+            : T("Uninstall.Count.Many", _items.Count.ToString("N0"));
         UpdateEmptyState();
         UpdateSelection();
     }
@@ -91,8 +103,8 @@ public partial class UninstallerWindow : UserControl
         if (_loadFailed)
         {
             EmptyIcon.Text = "\uE783";
-            EmptyTitle.Text = "Lecture impossible";
-            EmptyDescription.Text = _loadError ?? "La liste des programmes n'a pas pu être lue.";
+            EmptyTitle.Text = T("Uninstall.Empty.LoadFailedTitle");
+            EmptyDescription.Text = _loadError ?? T("Uninstall.Empty.LoadFailedDescription");
             EmptyState.Visibility = Visibility.Visible;
             return;
         }
@@ -100,10 +112,10 @@ public partial class UninstallerWindow : UserControl
         string query = FilterBox.Text.Trim();
         bool filtering = query.Length > 0 && _all.Count > 0;
         EmptyIcon.Text = filtering ? "\uE721" : "\uE71D";
-        EmptyTitle.Text = filtering ? "Aucun résultat" : "Aucune application détectée";
+        EmptyTitle.Text = filtering ? T("Uninstall.Empty.NoResults") : T("Uninstall.EmptyTitle");
         EmptyDescription.Text = filtering
-            ? $"Aucune application ne correspond à « {query} »."
-            : "La liste des programmes installés apparaîtra ici.";
+            ? T("Uninstall.Empty.NoMatch", query)
+            : T("Uninstall.EmptyDescription");
         EmptyState.Visibility = Visibility.Visible;
     }
 
@@ -112,7 +124,7 @@ public partial class UninstallerWindow : UserControl
         InstalledProgramRow? selected = ProgramsList.SelectedItem as InstalledProgramRow;
         UninstallBtn.IsEnabled = !_busy && selected is { CanUninstall: true };
         if (!_busy && selected is { CanUninstall: false })
-            StatusText.Text = "Aucune commande de désinstallation n'est disponible pour cette application.";
+            StatusText.Text = T("Uninstall.NoCommand");
     }
 
     private void Filter_Changed(object sender, TextChangedEventArgs e)
@@ -129,22 +141,25 @@ public partial class UninstallerWindow : UserControl
     {
         if (_busy || ProgramsList.SelectedItem is not InstalledProgramRow row) return;
         InstalledProgram program = row.Program;
-        string prompt = $"Lancer le désinstalleur de « {program.Name} » ?\n\n" +
-            (program.Publisher is { Length: > 0 } publisher ? publisher + "\n\n" : "") +
-            "Le programme de désinstallation de l'éditeur sera exécuté. OpenCleaner ne peut pas annuler cette action.";
-        if (MessageBox.Show(Window.GetWindow(this), prompt, "Désinstaller", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+        string publisherLine = program.Publisher is { Length: > 0 } publisher
+            ? T("Uninstall.PublisherLine", publisher)
+            : "";
+        string prompt = T("Uninstall.Confirm", program.Name, publisherLine);
+        if (MessageBox.Show(Window.GetWindow(this), prompt, T("Uninstall.DialogTitle"),
+                MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
         try
         {
             if (InstalledProgramService.LaunchUninstall(program))
-                StatusText.Text = $"Désinstalleur lancé pour « {program.Name} ». Actualisez la liste après la fin.";
+                StatusText.Text = T("Uninstall.Launched", program.Name);
             else
-                MessageBox.Show(Window.GetWindow(this), "Aucune commande de désinstallation n'est disponible pour ce programme.",
-                    "Désinstaller", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Window.GetWindow(this), T("Uninstall.NoCommandInfo"),
+                    T("Uninstall.DialogTitle"), MessageBoxButton.OK, MessageBoxImage.Information);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(Window.GetWindow(this), ex.Message, "Désinstaller", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(Window.GetWindow(this), ex.Message, T("Uninstall.DialogTitle"),
+                MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 }

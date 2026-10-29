@@ -1,11 +1,14 @@
 using System.Windows.Controls;
 using System.Windows;
 using OpenCleaner.Core.Tools;
+using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
 public partial class UpdatesWindow : UserControl
 {
+    private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
+
     private const string CheckArguments =
         "upgrade --accept-source-agreements --disable-interactivity";
 
@@ -16,8 +19,8 @@ public partial class UpdatesWindow : UserControl
     private async void Upgrade_Click(object sender, RoutedEventArgs e)
     {
         if (MessageBox.Show(Window.GetWindow(this),
-                "Mettre à jour les applications dont winget connaît la version ?\n\nWindows demandera une autorisation administrateur. Certaines applications peuvent être fermées ou nécessiter un redémarrage.",
-                "Mises à jour", MessageBoxButton.YesNo, MessageBoxImage.Warning,
+                T("Updates.Confirm"),
+                T("Updates.DialogTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
                 MessageBoxResult.No) != MessageBoxResult.Yes) return;
         await RunAsync(upgrade: true);
     }
@@ -32,12 +35,14 @@ public partial class UpdatesWindow : UserControl
             SetBusy(true);
             Output.Text = "";
             OutputPlaceholder.Visibility = Visibility.Collapsed;
-            StatusText.Text = upgrade ? "En attente de l'autorisation administrateur…" : "Recherche des mises à jour…";
+            StatusText.Text = upgrade ? T("Updates.Status.WaitingElevation") : T("Updates.Status.Searching");
             try
             {
                 var progress = operation.CreateProgress<string>(line =>
                 {
-                    StatusText.Text = upgrade ? "Mise à jour des applications en cours…" : "Recherche des mises à jour…";
+                    StatusText.Text = upgrade
+                        ? T("Updates.Status.Upgrading")
+                        : T("Updates.Status.Searching");
                     Output.AppendText(line + Environment.NewLine);
                     Output.ScrollToEnd();
                 });
@@ -45,25 +50,25 @@ public partial class UpdatesWindow : UserControl
                     ? ElevatedWinget.RunAsync(progress, operation.Token)
                     : WingetService.RunAsync(CheckArguments, progress, operation.Token), operation.Token);
                 StatusText.Text = result.ExitCode == 0
-                    ? "Terminé."
-                    : $"Terminé avec le code {result.ExitCode}. Consultez la sortie.";
-                if (string.IsNullOrWhiteSpace(Output.Text)) Output.Text = "(aucune sortie)";
+                    ? T("Updates.Status.Done")
+                    : T("Updates.Status.DoneCode", result.ExitCode);
+                if (string.IsNullOrWhiteSpace(Output.Text)) Output.Text = T("Updates.NoOutput");
             }
             catch (OperationCanceledException)
             {
-                StatusText.Text = "Opération annulée.";
+                StatusText.Text = T("Updates.Cancelled");
             }
             catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 1223)
             {
-                StatusText.Text = "Autorisation administrateur refusée : aucune mise à jour n'a été lancée.";
+                StatusText.Text = T("Updates.ElevationDenied");
             }
             catch (System.ComponentModel.Win32Exception ex) when (ex.NativeErrorCode == 2)
             {
-                StatusText.Text = "winget est introuvable. Installez ou réparez le Programme d'installation d'applications Windows.";
+                StatusText.Text = T("Updates.WingetMissing");
             }
             catch (Exception ex)
             {
-                StatusText.Text = "Échec : " + ex.Message;
+                StatusText.Text = T("Updates.Failed", ex.Message);
             }
             finally
             {

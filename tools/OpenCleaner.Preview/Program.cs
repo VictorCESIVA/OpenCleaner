@@ -146,9 +146,17 @@ internal class Program
             diskEn.ShowPreviewData(PreviewDiskUsage(), "apps", PreviewApplications());
             var healthEn = new HealthWindow();
             healthEn.PopulatePreview(PreviewSystemInfo(), PreviewHealthMetrics());
+            var startupEn = new StartupWindow();
+            SeedStartup(startupEn);
+            var uninstallerEn = new UninstallerWindow();
+            SeedUninstaller(uninstallerEn);
+            var updatesEn = new UpdatesWindow();
             Render(diskEn,Path.Combine(output,"DiskSpaceWindow-apps-en.png"),1048,824);
             Render(healthEn,Path.Combine(output,"HealthWindow-en.png"),1048,824);
             Render(healthEn,Path.Combine(output,"HealthWindow-en-full.png"),1048,1600);
+            Render(startupEn,Path.Combine(output,"StartupWindow-en.png"),1048,824);
+            Render(uninstallerEn,Path.Combine(output,"UninstallerWindow-en.png"),1048,824);
+            Render(updatesEn,Path.Combine(output,"UpdatesWindow-en.png"),1048,824);
             OpenCleaner.UI.Localization.LocalizationService.Instance.SetLanguage("fr");
         }
         main.ShowLowSpaceForPreview(new DiskSpaceAlert("C:\\", 42L*1024*1024*1024, 500L*1024*1024*1024, 42.0/500));
@@ -302,8 +310,8 @@ internal class Program
         list.ItemsSource=rows;
         int index=rows.FindIndex(row=>row.CanUninstall);
         list.SelectedIndex=index>=0?index:0;
-        ((TextBlock)window.FindName("CountText")).Text=rows.Count==1?"1 application":$"{rows.Count:N0} applications";
-        ((TextBlock)window.FindName("StatusText")).Text="Sélectionnez une application pour lancer son désinstalleur.";
+        ((TextBlock)window.FindName("CountText")).Text=rows.Count==1?Loc("Uninstall.Count.One"):Loc("Uninstall.Count.Many",rows.Count.ToString("N0"));
+        ((TextBlock)window.FindName("StatusText")).Text=Loc("Uninstall.Status.Ready");
     }
 
     static void RenderToolStates(UninstallerWindow uninstaller,StartupWindow startup,string output)
@@ -337,9 +345,12 @@ internal class Program
         var list=(ListBox)window.FindName("StartupList");
         list.ItemsSource=rows;
         list.SelectedIndex=rows.Count>0?0:-1;
-        ((TextBlock)window.FindName("CountText")).Text=rows.Count==1?"1 élément":$"{rows.Count:N0} éléments";
-        ((TextBlock)window.FindName("StatusText")).Text="Sélectionnez un élément pour l'activer ou le désactiver.";
+        ((TextBlock)window.FindName("CountText")).Text=rows.Count==1?Loc("Startup.Count.One"):Loc("Startup.Count.Many",rows.Count.ToString("N0"));
+        ((TextBlock)window.FindName("StatusText")).Text=Loc("Startup.Status.Ready");
     }
+
+    static string Loc(string key, params object?[] args) =>
+        OpenCleaner.UI.Localization.LocalizationService.Instance.Get(key, args);
 
     static void Render(FrameworkElement window,string output,double width,double height)
     {
