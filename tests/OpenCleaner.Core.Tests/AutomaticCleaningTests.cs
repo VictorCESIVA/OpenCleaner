@@ -125,5 +125,6 @@ public sealed class AutomaticCleaningTests
         Assert.Throws<ArgumentException>(() => new ScheduleConfig { PluginIds = null! }.Validate());
         Assert.Throws<ArgumentOutOfRangeException>(() => new ScheduleConfig { TimeOfDay = TimeSpan.FromDays(1) }.Validate());
         new ScheduleConfig { IsEnabled = true, PluginIds = ["system.temp", "browser.chrome"] }.Validate();
+        new ScheduleConfig { IsEnabled = true, PluginIds = ["applications.caches"] }.Validate();
     }
 }

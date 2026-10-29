@@ -97,6 +97,7 @@
                                 <CheckBox x:Name="PlugThumb"   Content="Miniatures"           Tag="system.thumbnailcache"  Margin="0,4,20,4"/>
                                 <CheckBox x:Name="PlugOffice"  Content="Microsoft Office"               Tag="applications.office"    Margin="0,4,20,4"/>
                                 <CheckBox x:Name="PlugSteam"   Content="Steam"                Tag="games.steam"            Margin="0,4,20,4"/>
+                                <CheckBox x:Name="PlugAppCaches" Content="Caches d'applications" Tag="applications.caches" Margin="0,4,20,4"/>
                             </WrapPanel>
                         </StackPanel>
                     </Border>

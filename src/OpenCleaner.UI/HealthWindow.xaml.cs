@@ -297,10 +297,10 @@ public partial class HealthWindow : UserControl, IThemeAware
         _trendPoints = trend.Points;
         TrendTitle.Text = $"Espace libre · {trend.Drive.TrimEnd('\\')}";
         TrendStart.Text = trend.Points.Count > 0
-            ? trend.Points[0].DateUtc.ToLocalTime().ToString("d MMM")
+            ? trend.Points[0].Date.ToString("d MMM")
             : "";
         TrendEnd.Text = trend.Points.Count > 0
-            ? trend.Points[^1].DateUtc.ToLocalTime().ToString("d MMM")
+            ? trend.Points[^1].Date.ToString("d MMM")
             : "";
         TrendEmpty.Visibility = trend.HasEnoughData ? Visibility.Collapsed : Visibility.Visible;
 

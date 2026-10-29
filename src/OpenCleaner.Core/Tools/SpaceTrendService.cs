@@ -3,7 +3,7 @@ using System.Text.Json;
 
 namespace OpenCleaner.Core.Tools;
 
-public sealed record SpaceTrendPoint(DateTime DateUtc, long FreeBytes);
+public sealed record SpaceTrendPoint(DateTime Date, long FreeBytes);
 
 public sealed record SpaceTrendResult(
     string Drive,
@@ -39,7 +39,7 @@ public sealed class SpaceTrendService
         ArgumentNullException.ThrowIfNull(disks);
         if (days <= 0) throw new ArgumentOutOfRangeException(nameof(days));
         if (string.IsNullOrWhiteSpace(primaryDrive)) primaryDrive = "C:";
-        DateTime today = nowUtc.ToUniversalTime().Date;
+        DateTime today = nowUtc.ToLocalTime().Date;
         string todayKey = today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
 
         lock (Gate)
@@ -72,7 +72,7 @@ public sealed class SpaceTrendService
         foreach (var (key, freeBytes) in series)
         {
             if (!DateTime.TryParseExact(key, "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                    DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime date))
+                    DateTimeStyles.None, out DateTime date))
                 continue;
             if (date.Date < cutoff) continue;
             points.Add(new SpaceTrendPoint(date.Date, freeBytes));
@@ -88,7 +88,7 @@ public sealed class SpaceTrendService
         DateTime cutoff = today.AddDays(-RetentionDays);
         var stale = series.Keys
             .Where(key => DateTime.TryParseExact(key, "yyyy-MM-dd", CultureInfo.InvariantCulture,
-                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal, out DateTime date) &&
+                DateTimeStyles.None, out DateTime date) &&
                 date.Date < cutoff)
             .ToList();
         foreach (string key in stale) series.Remove(key);

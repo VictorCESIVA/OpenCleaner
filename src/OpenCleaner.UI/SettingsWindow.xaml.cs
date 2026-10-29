@@ -45,7 +45,7 @@ public partial class SettingsWindow : UserControl
         }
 
         // Plugins
-        var plugBoxes = new[] { PlugSystem, PlugWinUpd, PlugBrowser, PlugThumb, PlugOffice, PlugSteam };
+        var plugBoxes = new[] { PlugSystem, PlugWinUpd, PlugBrowser, PlugThumb, PlugOffice, PlugSteam, PlugAppCaches };
         foreach (var cb in plugBoxes)
             cb.IsChecked = cb != PlugWinUpd && config.PluginIds.Contains((string)cb.Tag);
 
@@ -87,7 +87,7 @@ public partial class SettingsWindow : UserControl
         }
 
         // Plugins cochés
-        var plugBoxes = new[] { PlugSystem, PlugWinUpd, PlugBrowser, PlugThumb, PlugOffice, PlugSteam };
+        var plugBoxes = new[] { PlugSystem, PlugWinUpd, PlugBrowser, PlugThumb, PlugOffice, PlugSteam, PlugAppCaches };
         var pluginIds = plugBoxes
             .Where(cb => cb != PlugWinUpd && cb.IsChecked == true)
             .Select(cb => (string)cb.Tag)

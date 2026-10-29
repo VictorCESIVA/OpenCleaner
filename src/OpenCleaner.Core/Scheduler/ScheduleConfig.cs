@@ -8,7 +8,8 @@ public sealed record ScheduleConfig
 {
     private static readonly HashSet<string> AutomaticPluginIds = new(StringComparer.Ordinal)
     {
-        "system.temp", "browser.chrome", "system.thumbnailcache", "applications.office", "games.steam"
+        "system.temp", "browser.chrome", "system.thumbnailcache", "applications.office", "games.steam",
+        "applications.caches"
     };
     public static bool IsAutomaticPlugin(string id) => AutomaticPluginIds.Contains(id);
     public bool         IsEnabled   { get; init; } = false;

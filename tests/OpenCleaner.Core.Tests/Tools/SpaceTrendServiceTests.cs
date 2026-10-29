@@ -132,6 +132,16 @@ public sealed class SpaceTrendServiceTests : IDisposable
     }
 
     [Fact]
+    public void DatesAreBucketedByTheLocalCalendarDay()
+    {
+        DateTime lateUtc = new(2026, 10, 29, 23, 30, 0, DateTimeKind.Utc);
+
+        SpaceTrendResult result = Service().RecordAndGet([Disk("C:\\", 10_000)], lateUtc, "C:");
+
+        Assert.Equal(lateUtc.ToLocalTime().Date, Assert.Single(result.Points).Date);
+    }
+
+    [Fact]
     public void InvalidPeriodIsRejected() =>
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             Service().RecordAndGet([Disk("C:\\", 1)], _anchor, "C:", days: 0));

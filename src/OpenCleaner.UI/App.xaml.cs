@@ -204,6 +204,8 @@ public partial class App : System.Windows.Application
                                                    logFactory.CreateLogger<OfficeCleanerPlugin>()),
                         "games.steam"      => new SteamCleanerPlugin(fileGuardian,
                                                    logFactory.CreateLogger<SteamCleanerPlugin>()),
+                        "applications.caches" => new AppCacheCleanerPlugin(fileGuardian,
+                                                   logFactory.CreateLogger<AppCacheCleanerPlugin>()),
                         _                   => null
                     };
 

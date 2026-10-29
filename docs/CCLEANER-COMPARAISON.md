@@ -20,7 +20,7 @@ Comparaison établie à partir des fonctions publiques de CCleaner pour Windows 
 | Disk Analyzer | Oui | Carte proportionnelle, navigation instantanée dans l'arborescence scannée, liste, plus gros fichiers et vue Applications (taille mesurée ou estimée). |
 | Duplicate Finder | Oui | SHA-256 avec pré-empreinte, conservation vérifiée de l'original et refus des fichiers à plusieurs liens physiques. |
 | Registry Cleaner | Partiel | Historiques HKCU ciblés, export avant suppression, liste blanche. |
-| Scheduled Cleaning | Oui | Tâche Windows dans le contexte utilisateur. |
+| Scheduled Cleaning | Oui | Tâche Windows dans le contexte utilisateur, limitée aux fichiers Safe de catégories autorisées, caches d'applications compris. |
 | Smart Clean | Partiel | Analyse rapide et nettoyage des fichiers Safe ; pas de déclenchement automatique à la fermeture du navigateur. |
 | Drive Wiper | Partiel | Effacement sécurisé de fichiers sélectionnés (3 passes), pas d'effacement de l'espace libre d'un disque entier. |
 | Restauration | Oui | Sauvegardes chiffrées, code de récupération, quarantaine et restauration. |
