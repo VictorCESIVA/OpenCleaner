@@ -37,6 +37,7 @@ public partial class MainWindow : Window
         ["browser"] = ("Navigateurs", "Choisissez les données à analyser dans Chrome, Edge, Brave, Firefox, Opera et Vivaldi"),
         ["steam"] = ("Steam", "Caches de téléchargement — vos jeux sont conservés"),
         ["office"] = ("Office et Thunderbird", "Journaux Office et caches Thunderbird — les documents de récupération sont conservés"),
+        ["appcaches"] = ("Caches d'applications", "Caches et journaux de Slack, Notion, WhatsApp, Signal, Zoom, Store, OneDrive et rapports de plantage"),
         ["registry"] = ("Registre Windows", "Analyse experte — vérifiez chaque résultat avant toute modification"),
     };
 
@@ -151,6 +152,7 @@ public partial class MainWindow : Window
             "browser" => new ChromeCleanerPlugin(guardian, GetLogger<ChromeCleanerPlugin>()),
             "steam" => new SteamCleanerPlugin(guardian, GetLogger<SteamCleanerPlugin>()),
             "office" => new OfficeCleanerPlugin(guardian, GetLogger<OfficeCleanerPlugin>()),
+            "appcaches" => new AppCacheCleanerPlugin(guardian, GetLogger<AppCacheCleanerPlugin>()),
             "registry" => new RegistryCleanerPlugin(App.Services.GetRequiredService<IRegistryGuardian>(),
                 GetLogger<RegistryCleanerPlugin>()),
             _ => null

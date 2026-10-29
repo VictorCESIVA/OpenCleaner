@@ -12,6 +12,7 @@ Comparaison établie à partir des fonctions publiques de CCleaner pour Windows 
 | Corbeille | Oui | Consultation du volume et vidage explicite et irréversible. |
 | Prefetch | Oui | Cible experte, fichiers de plus de 30 jours. |
 | Applications (Office, Thunderbird, caches dev) | Oui | Office, Thunderbird, npm, Yarn, NuGet, pip, Gradle, VS Code, Teams, Discord, Spotify, JetBrains. |
+| Caches d'applications tierces | Oui | Slack, Notion, WhatsApp, Signal, Zoom, Microsoft Store, OneDrive et rapports de plantage Crashpad, uniquement des caches et journaux. |
 | Outils IA | Oui | Caches et journaux de Cursor, Claude et ChatGPT. |
 | Startup Manager | Oui | HKCU Run/RunOnce, dossier Démarrage et clés machine HKLM Run/RunOnce avec sauvegarde, autorisation administrateur et impact estimé ; le dossier Démarrage commun reste en lecture seule. |
 | Apps Uninstaller | Oui | Liste, recherche, portée, taille et lancement du désinstalleur officiel. |
