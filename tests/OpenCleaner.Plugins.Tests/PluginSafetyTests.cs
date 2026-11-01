@@ -173,9 +173,12 @@ public sealed class PluginSafetyTests : IDisposable
         var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
         var items = await scanner.AnalyzeAsync();
 
-        // a-keeper is retained; b-linked and c-second-name share one physical file and free nothing;
-        // only the independent copy remains a proposal.
-        Assert.Equal(Path.Combine(_root, "d-real-copy.txt"), Assert.Single(items).Path);
+        // a and d are independent names; b/c share one physical file and are never proposed.
+        Assert.Equal(2, items.Count);
+        Assert.Contains(items, item => item.Path == Path.Combine(_root, "a-keeper.txt"));
+        Assert.Contains(items, item => item.Path == Path.Combine(_root, "d-real-copy.txt"));
+        Assert.DoesNotContain(items, item => item.Path == linkedCopy || item.Path == secondName);
+        Assert.Single(items.Select(item => item.DuplicateGroupId).Distinct());
     }
 
     [Fact]
@@ -186,7 +189,8 @@ public sealed class PluginSafetyTests : IDisposable
         Write("a.txt", content);
         string copy = Write("b.txt", content);
         var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
-        var item = Assert.Single(await scanner.AnalyzeAsync());
+        var items = await scanner.AnalyzeAsync();
+        var item = items.Single(candidate => candidate.Path == copy);
 
         string extraName = Path.Combine(_root, "b-alias.txt");
         Assert.True(CreateHardLink(extraName, copy, IntPtr.Zero),
@@ -221,7 +225,7 @@ public sealed class PluginSafetyTests : IDisposable
 
         var items = await scanner.AnalyzeAsync(progress);
 
-        Assert.Equal(5, items.Count);
+        Assert.Equal(6, items.Count);
         Assert.All(items, item => Assert.Equal(Path.Combine(_root, "copy0.txt"), item.OriginalPath));
         Assert.Single(items.Select(item => item.DuplicateGroupId).Distinct());
         Assert.Equal(6, hashed.Count);
@@ -268,7 +272,8 @@ public sealed class PluginSafetyTests : IDisposable
         var keeper = Write("a.txt", content);
         Write("b.txt", content);
         var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
-        var item = Assert.Single(await scanner.AnalyzeAsync());
+        var items = await scanner.AnalyzeAsync();
+        var item = items.Single(candidate => candidate.Path != keeper);
         Assert.Equal(keeper, item.OriginalPath);
         Assert.NotNull(item.DuplicateGroupId);
         Assert.Equal(RiskLevel.ExpertOnly, item.RiskLevel);
@@ -284,7 +289,8 @@ public sealed class PluginSafetyTests : IDisposable
         var keeper = Write("a.txt", content);
         Write("b.txt", content);
         var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
-        var item = Assert.Single(await scanner.AnalyzeAsync());
+        var items = await scanner.AnalyzeAsync();
+        var item = items.Single(candidate => candidate.Path != keeper);
         _guardian.Setup(g => g.SafeDeleteAsync(item.Path, true, It.IsAny<CancellationToken>()))
             .Callback(() => { if (OperatingSystem.IsWindows()) Assert.Throws<IOException>(() => File.Delete(keeper)); })
             .ReturnsAsync(new OperationResult(true, "fixture", Guid.NewGuid(), ItemsProcessed: 1, BytesRecovered: 0));
@@ -346,8 +352,98 @@ public sealed class PluginSafetyTests : IDisposable
         Assert.Empty(await scanner.AnalyzeAsync()); // Default is 1 MB
 
         scanner.MinFileSizeBytes = 100 * 1024; // 100 KB
-        var item = Assert.Single(await scanner.AnalyzeAsync());
-        Assert.Equal(200 * 1024, item.Size);
+        var items = await scanner.AnalyzeAsync();
+        Assert.Equal(2, items.Count);
+        Assert.All(items, item => Assert.Equal(200 * 1024, item.Size));
+    }
+
+    [Fact]
+    public async Task DuplicateCleanupSkipsDeletedMembersWhenChoosingTheSurvivor()
+    {
+        var content = new string('u', 1024 * 1024);
+        string first = Write("a.txt", content);
+        string second = Write("b.txt", content);
+        string last = Write("c.txt", content);
+        var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
+        var items = await scanner.AnalyzeAsync();
+        var toDelete = items.Single(item => item.Path == second);
+
+        // Simulate an earlier cleanup that already removed the path-order survivor.
+        File.Delete(first);
+        Assert.True((await scanner.CleanAsync([toDelete], _backup)).Success);
+        _guardian.Verify(g => g.SafeDeleteAsync(second, true, It.IsAny<CancellationToken>()), Times.Once);
+        _guardian.Verify(g => g.SafeDeleteAsync(last, It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DuplicateCleanupRequiresASurvivingCopy()
+    {
+        var content = new string('s', 1024 * 1024);
+        Write("a.txt", content);
+        Write("b.txt", content);
+        var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
+        var items = await scanner.AnalyzeAsync();
+        Assert.Equal(2, items.Count);
+
+        Assert.False((await scanner.CleanAsync(items, _backup)).Success);
+        _guardian.Verify(g => g.SafeDeleteAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task DuplicateCleanupCanKeepAChosenCopy()
+    {
+        var content = new string('t', 1024 * 1024);
+        string first = Write("a.txt", content);
+        string chosen = Write("b.txt", content);
+        string last = Write("c.txt", content);
+        var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
+        var items = await scanner.AnalyzeAsync();
+        Assert.Equal(3, items.Count);
+
+        var toDelete = items.Where(item => item.Path != chosen).ToList();
+        Assert.True((await scanner.CleanAsync(toDelete, _backup)).Success);
+        _guardian.Verify(g => g.SafeDeleteAsync(first, true, It.IsAny<CancellationToken>()), Times.Once);
+        _guardian.Verify(g => g.SafeDeleteAsync(last, true, It.IsAny<CancellationToken>()), Times.Once);
+        _guardian.Verify(g => g.SafeDeleteAsync(chosen, It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        Assert.All(items, item => Assert.DoesNotContain("conservée", item.Description));
+    }
+
+    [Fact]
+    public async Task DuplicateCleanupKeepsEveryGroupIndependent()
+    {
+        string a1 = Write("a1.txt", new string('a', 1024 * 1024));
+        string a2 = Write("a2.txt", new string('a', 1024 * 1024));
+        string b1 = Write("b1.txt", new string('b', 1024 * 1024));
+        string b2 = Write("b2.txt", new string('b', 1024 * 1024));
+        var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
+        var items = await scanner.AnalyzeAsync();
+        Assert.Equal(2, items.Select(item => item.DuplicateGroupId).Distinct().Count());
+
+        // Keep a2 and b1, delete one copy in each group.
+        var toDelete = new[] { items.Single(item => item.Path == a1), items.Single(item => item.Path == b2) };
+        Assert.True((await scanner.CleanAsync(toDelete, _backup)).Success);
+        _guardian.Verify(g => g.SafeDeleteAsync(a1, true, It.IsAny<CancellationToken>()), Times.Once);
+        _guardian.Verify(g => g.SafeDeleteAsync(b2, true, It.IsAny<CancellationToken>()), Times.Once);
+        _guardian.Verify(g => g.SafeDeleteAsync(a2, It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+        _guardian.Verify(g => g.SafeDeleteAsync(b1, It.IsAny<bool>(), It.IsAny<CancellationToken>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task DuplicateCleanupRefusesWhenTheChosenSurvivorIsGone()
+    {
+        var content = new string('v', 1024 * 1024);
+        string first = Write("a.txt", content);
+        string second = Write("b.txt", content);
+        string chosen = Write("c.txt", content);
+        var scanner = new DuplicateFinderPlugin(_guardian.Object, NullLogger<DuplicateFinderPlugin>.Instance, [_root]);
+        var items = await scanner.AnalyzeAsync();
+        var toDelete = items.Where(item => item.Path != chosen).ToList();
+
+        File.Delete(chosen);
+        Assert.False((await scanner.CleanAsync(toDelete, _backup)).Success);
+        _guardian.Verify(g => g.SafeDeleteAsync(It.IsAny<string>(), It.IsAny<bool>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     public void Dispose()

@@ -8,6 +8,7 @@ using OpenCleaner.UI;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Health;
 using OpenCleaner.Core.Scheduler;
+using OpenCleaner.Core.Theming;
 using OpenCleaner.Core.Tools;
 using OpenCleaner.Core;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,7 @@ internal class Program
         Directory.CreateDirectory(output);
         var app=new App { PreviewMode = true };app.InitializeComponent();app.ShutdownMode=ShutdownMode.OnExplicitShutdown;
         typeof(App).GetMethod("BuildServices",BindingFlags.Static|BindingFlags.NonPublic)!.Invoke(null,null);
+        ThemeService.ApplyPreview(true, ThemeCatalog.DefaultId);
         if (args.Contains("--live-health"))
         {
             System.Threading.SynchronizationContext.SetSynchronizationContext(
@@ -123,7 +125,33 @@ internal class Program
         settings.ShowScheduleForPreview(
             new ScheduledRunRecord(DateTime.UtcNow.AddDays(-1), 1_240, 512L * 1024 * 1024, 0),
             DateTime.Now.Date.AddDays(2).AddHours(3));
-        var windows=new FrameworkElement[]{main,settings,new RestoreWindow(),new PrivacyWindow(),new DuplicateWindow(),disk,new DevCleanerWindow(),new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION",false),health,uninstaller,startup,new UpdatesWindow(),new ShredderWindow(),new CleanupConfirmationWindow(Loc("Cleanup.FileCount", 123))};
+        var duplicatesPreview = PreviewDuplicates();
+        var updates = new UpdatesWindow();
+        updates.ShowPreviewData("list");
+        const string updateNotes = "# Nouveautés\n\n- **Nettoyage** plus rapide et plus sûr\n- Correctifs de stabilité\n- [Notes complètes](https://github.com/VictorCESIVA/OpenCleaner/releases)\n\n> Aucun redémarrage automatique.";
+        var updateChecking = PreviewUpdateWindow(UpdateState.Checking, null, 0, null, UpdateErrorCode.None);
+        var updateDownloading = PreviewUpdateWindow(UpdateState.Downloading, "1.7.0", 42, updateNotes, UpdateErrorCode.None);
+        var updateReady = PreviewUpdateWindow(UpdateState.Ready, "1.7.0", 100, updateNotes, UpdateErrorCode.None);
+        var updateError = PreviewUpdateWindow(UpdateState.Error, "1.7.0", 0, updateNotes, UpdateErrorCode.Network);
+        var updateUpToDate = PreviewUpdateWindow(UpdateState.UpToDate, null, 0, null, UpdateErrorCode.None);
+        var windows=new FrameworkElement[]{main,settings,new RestoreWindow(),new PrivacyWindow(),duplicatesPreview,disk,new DevCleanerWindow(),new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION",false),health,uninstaller,startup,updates,new ShredderWindow(),new CleanupConfirmationWindow(Loc("Cleanup.FileCount", 123))};
+        if (((TreeView)duplicatesPreview.FindName("DupTree")).Items.Count != 1 ||
+            ((TextBlock)duplicatesPreview.FindName("DupFiles")).Text != "2")
+            throw new InvalidOperationException("Duplicate preview groups were not built");
+        var dupTree = (TreeView)duplicatesPreview.FindName("DupTree");
+        var dupBoxes = ((TreeViewItem)dupTree.Items[0]!).Items.OfType<CheckBox>().ToList();
+        if (dupBoxes.Count != 2) throw new InvalidOperationException("Duplicate group rows are missing");
+        typeof(DuplicateWindow).GetMethod("AutoSelect_Click", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(duplicatesPreview, [null, new RoutedEventArgs()]);
+        if (dupBoxes[0].IsChecked != false || dupBoxes[1].IsChecked != true)
+            throw new InvalidOperationException("Check all must keep one copy per group");
+        dupBoxes[0].IsChecked = true;
+        bool keepsOne = (bool)typeof(DuplicateWindow)
+            .GetMethod("EveryGroupKeepsACopy", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(duplicatesPreview, null)!;
+        if (keepsOne) throw new InvalidOperationException("Deleting every copy must be refused");
+        dupBoxes[0].IsChecked = false;
+        dupBoxes[1].IsChecked = false;
         foreach(var window in windows)
         {
             var name=window.GetType().Name;
@@ -131,6 +159,26 @@ internal class Program
             Render(window,Path.Combine(output,name+"-minimum.png"),window is Window mw ? mw.MinWidth : 808,window is Window mh ? mh.MinHeight-(mh is MainWindow ? 0 : 36) : 704);
             Console.WriteLine(name+" instantiated and rendered");
         }
+        var updatePreviews = new (string Name, AppUpdateWindow Window)[]
+        {
+            ("AppUpdateWindow-checking", updateChecking),
+            ("AppUpdateWindow-downloading", updateDownloading),
+            ("AppUpdateWindow-ready", updateReady),
+            ("AppUpdateWindow-error", updateError),
+            ("AppUpdateWindow-up-to-date", updateUpToDate)
+        };
+        foreach (var preview in updatePreviews)
+        {
+            Render(preview.Window, Path.Combine(output, preview.Name + ".png"),
+                preview.Window.Width, preview.Window.Height);
+            Console.WriteLine(preview.Name + " instantiated and rendered");
+        }
+        var updatesNoUpdates = new UpdatesWindow();
+        updatesNoUpdates.ShowPreviewData("empty");
+        Render(updatesNoUpdates,Path.Combine(output,"UpdatesWindow-no-updates.png"),1048,824);
+        var updatesUpdating = new UpdatesWindow();
+        updatesUpdating.ShowPreviewData("updating");
+        Render(updatesUpdating,Path.Combine(output,"UpdatesWindow-updating.png"),1048,824);
         Render(health,Path.Combine(output,"HealthWindow-full.png"),1048,1500);
         Render(settings,Path.Combine(output,"SettingsWindow-full.png"),1048,1200);
         ((Border)main.FindName("BrowserOptionsPanel")).Visibility=Visibility.Visible;
@@ -149,6 +197,10 @@ internal class Program
         files.ItemsSource=previewItems;
         ((StackPanel)main.FindName("EmptyState")).Visibility=Visibility.Collapsed;
         Render(main,Path.Combine(output,"MainWindow-example-data.png"),main.Width,main.Height);
+        main.ShowUpdateBannerForPreview(new UpdateSnapshot(UpdateState.Downloading, "1.6.1", "1.7.0",
+            42, null, UpdateErrorCode.None, true));
+        Render(main,Path.Combine(output,"MainWindow-update-banner.png"),main.Width,main.Height);
+        main.ShowUpdateBannerForPreview(UpdateSnapshot.Initial("1.6.1"));
         if (OpenCleaner.UI.Localization.LocalizationService.Instance.SetLanguage("en"))
         {
             var mainEn = new MainWindow();
@@ -172,9 +224,14 @@ internal class Program
             var uninstallerEn = new UninstallerWindow();
             SeedUninstaller(uninstallerEn);
             var updatesEn = new UpdatesWindow();
+            updatesEn.ShowPreviewData("list");
+            var updatesEnNoUpdates = new UpdatesWindow();
+            updatesEnNoUpdates.ShowPreviewData("empty");
+            var updatesEnUpdating = new UpdatesWindow();
+            updatesEnUpdating.ShowPreviewData("updating");
             var restoreEn = new RestoreWindow();
             var privacyEn = new PrivacyWindow();
-            var duplicateEn = new DuplicateWindow();
+            var duplicateEn = PreviewDuplicates();
             var devEn = new DevCleanerWindow();
             var shredderEn = new ShredderWindow();
             var recoveryEn = new RecoveryKeyWindow("OC-EXEMPLE-CODE-RECUPERATION", false);
@@ -186,6 +243,8 @@ internal class Program
             Render(startupEn,Path.Combine(output,"StartupWindow-en.png"),1048,824);
             Render(uninstallerEn,Path.Combine(output,"UninstallerWindow-en.png"),1048,824);
             Render(updatesEn,Path.Combine(output,"UpdatesWindow-en.png"),1048,824);
+            Render(updatesEnNoUpdates,Path.Combine(output,"UpdatesWindow-en-no-updates.png"),1048,824);
+            Render(updatesEnUpdating,Path.Combine(output,"UpdatesWindow-en-updating.png"),1048,824);
             Render(restoreEn,Path.Combine(output,"RestoreWindow-en.png"),1048,824);
             Render(privacyEn,Path.Combine(output,"PrivacyWindow-en.png"),1048,824);
             Render(duplicateEn,Path.Combine(output,"DuplicateWindow-en.png"),1048,824);
@@ -207,7 +266,7 @@ internal class Program
         Render(main,Path.Combine(output,"MainWindow-health-minimum.png"),main.MinWidth,main.MinHeight);
         main.ShowCleaner("system");
         var lightHosts = new List<Window>();
-        typeof(MainWindow).GetMethod("ApplyTheme",BindingFlags.Instance|BindingFlags.NonPublic)!.Invoke(main,new object[]{false});
+        main.ApplyPreviewTheme(false, ThemeCatalog.DefaultId);
         files.ItemsSource = null;
         Render(main,Path.Combine(output,"MainWindow-light.png"),main.Width,main.Height);
         files.ItemsSource = previewItems;
@@ -255,6 +314,40 @@ internal class Program
         Render(disk,Path.Combine(output,"DiskSpaceWindow-carte.png"),1048,824);
         if (((TreemapControl)disk.FindName("Treemap")).RenderedTileCount < 5)
             throw new InvalidOperationException("Treemap did not render its tiles");
+        var themeHost = new Window
+        {
+            ShowActivated = false, Opacity = 0, Left = -10000, Top = -10000,
+            WindowStartupLocation = WindowStartupLocation.Manual
+        };
+        foreach (ThemePreset preset in ThemeCatalog.Presets)
+        {
+            foreach (bool dark in new[] { true, false })
+            {
+                ThemeService.ApplyPreview(dark, preset.Id);
+                settings.ShowAppearanceForPreview(dark, preset.Id);
+                health.ApplyTheme(ThemeService.Current);
+                disk.ApplyTheme(ThemeService.Current);
+                string mode = dark ? "dark" : "light";
+                Render(main, Path.Combine(output, $"MainWindow-theme-{preset.Id}-{mode}.png"),
+                    main.Width, main.Height);
+                themeHost.Content = settings;
+                Render(settings, Path.Combine(output, $"SettingsWindow-theme-{preset.Id}-{mode}.png"),
+                    1048, 824);
+                themeHost.Content = null;
+                if (preset.Id is "mint" or "violet")
+                {
+                    themeHost.Content = health;
+                    Render(health, Path.Combine(output, $"HealthWindow-theme-{preset.Id}-{mode}.png"),
+                        1048, 824);
+                    themeHost.Content = disk;
+                    Render(disk, Path.Combine(output, $"DiskSpaceWindow-theme-{preset.Id}-{mode}.png"),
+                        1048, 824);
+                    themeHost.Content = null;
+                }
+                Console.WriteLine($"Theme {preset.Id} {mode} rendered");
+            }
+        }
+        ThemeService.ApplyPreview(true, ThemeCatalog.DefaultId);
         Console.WriteLine("Read-only WPF constructor and rendering smoke passed; no startup, scans, cleaning or scheduling invoked.");
         (App.Services as IDisposable)?.Dispose();
     }
@@ -283,7 +376,8 @@ internal class Program
             try
             {
                 var deleted = new CleanableItem("deleted", Path.Combine(root, "deleted.tmp"), 6L * 1024 * 1024 * 1024,
-                    "Cache — deleted", RiskLevel.Safe, ItemType.File);
+                    "Cache — deleted", RiskLevel.Safe, ItemType.File)
+                    { DuplicateGroupId = "preview-group" };
                 var remaining = deleted with { Id = "remaining", Path = Path.Combine(root, "locked.tmp"), Size = 64 };
                 File.WriteAllBytes(remaining.Path, new byte[64]);
                 var items = new List<CleanableItem> { deleted, remaining };
@@ -310,7 +404,9 @@ internal class Program
                 Expect(window, "StatusText", Loc("Main.ItemsFound", 1, SizeFormatter.Format(64)));
                 Expect(dev, "EstimateText", SizeFormatter.Format(64));
                 Expect(privacy, "StatTotal", "1");
-                Expect(duplicates, "DupFiles", "1");
+                // One copy left: it is no longer a duplicate group, so the view hides it.
+                Expect(duplicates, "DupFiles", "0");
+                Expect(duplicates, "DupGroups", "0");
                 if (((ListView)window.FindName("FilesListView")).Items.Count != 1 ||
                     !((TextBlock)window.FindName("SmartCleanResult")).Text.Contains(SizeFormatter.Format(64)))
                     throw new InvalidOperationException("Partial cleanup results are stale");
@@ -345,6 +441,36 @@ internal class Program
             if (((TextBlock)view.FindName(name)).Text != expected)
                 throw new InvalidOperationException($"Stale cleanup counter: {view.GetType().Name}.{name}");
         }
+    }
+
+    static AppUpdateWindow PreviewUpdateWindow(UpdateState state, string? target, int percent,
+        string? notes, UpdateErrorCode errorCode)
+    {
+        var window = new AppUpdateWindow();
+        window.ShowPreviewState(new UpdateSnapshot(state, "1.6.1", target, percent, notes,
+            errorCode, state == UpdateState.Downloading));
+        return window;
+    }
+
+    static DuplicateWindow PreviewDuplicates()
+    {
+        var window = new DuplicateWindow();
+        var items = new List<CleanableItem>
+        {
+            new("dup-a", @"C:\Exemple\Documents\photo.jpg", 1024 * 1024,
+                "Identique à « photo.jpg » — copie conservée : C:\\Exemple\\Documents\\photo.jpg",
+                RiskLevel.ExpertOnly, ItemType.File, null, null, "preview-group",
+                @"C:\Exemple\Documents\photo.jpg"),
+            new("dup-b", @"C:\Exemple\Sauvegardes\photo.jpg", 1024 * 1024,
+                "Identique à « photo.jpg » — copie conservée : C:\\Exemple\\Documents\\photo.jpg",
+                RiskLevel.ExpertOnly, ItemType.File, null, null, "preview-group",
+                @"C:\Exemple\Documents\photo.jpg")
+        };
+        typeof(DuplicateWindow).GetField("_allItems", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .SetValue(window, items);
+        typeof(DuplicateWindow).GetMethod("ShowResults", BindingFlags.Instance | BindingFlags.NonPublic)!
+            .Invoke(window, null);
+        return window;
     }
 
     static SystemHealthInfo PreviewSystemInfo() => new("Windows 11", "24H2", "26100", "Processeur exemple", 8,

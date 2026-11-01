@@ -44,41 +44,71 @@ public sealed class CleanupHistoryService
             using var connection = new SqliteConnection(connectionString);
             connection.Open();
             using var command = connection.CreateCommand();
-            command.CommandText = """
-                SELECT t.CreatedAt,
-                       COALESCE(SUM(o.ItemsProcessed), 0),
-                       COALESCE(SUM(o.OriginalSize), 0)
+            const string qualifying = """
+                SELECT t.Id, t.CreatedAt,
+                       COALESCE(SUM(o.ItemsProcessed), 0) AS Files,
+                       COALESCE(SUM(o.OriginalSize), 0) AS Bytes
                 FROM Transactions t
                 LEFT JOIN Operations o ON o.TransactionId = t.Id AND o.Success = 1
                 WHERE t.State = @Committed AND t.CreatedAt >= @Cutoff
                 GROUP BY t.Id
                 HAVING COALESCE(SUM(o.ItemsProcessed), 0) > 0
                     OR COALESCE(SUM(o.OriginalSize), 0) > 0
-                ORDER BY t.CreatedAt DESC;
                 """;
             command.Parameters.AddWithValue("@Committed", (int)TransactionState.Committed);
             command.Parameters.AddWithValue("@Cutoff",
                 (DateTime.UtcNow - period).ToString("O", CultureInfo.InvariantCulture));
 
-            var entries = new List<CleanupHistoryEntry>();
-            using var reader = command.ExecuteReader();
-            while (reader.Read())
+            command.CommandText = $"""
+                WITH Qualifying AS ({qualifying})
+                SELECT COUNT(*),
+                       COALESCE(SUM(MIN(MAX(Files, 0), 2147483647)), 0),
+                       COALESCE(SUM(MAX(Bytes, 0)), 0),
+                       MAX(CreatedAt)
+                FROM Qualifying;
+                """;
+            int cleanups;
+            long totalFiles;
+            long totalBytes;
+            string? lastCreatedAt;
+            using (var reader = command.ExecuteReader())
             {
+                if (!reader.Read()) return CleanupHistorySummary.Empty;
                 ct.ThrowIfCancellationRequested();
-                DateTime timestamp = ParseTimestamp(reader.GetString(0));
-                int files = reader.IsDBNull(1) ? 0 : (int)Math.Clamp(reader.GetInt64(1), 0, int.MaxValue);
-                long bytes = reader.IsDBNull(2) ? 0 : Math.Max(0, reader.GetInt64(2));
-                entries.Add(new CleanupHistoryEntry(timestamp, files, bytes));
+                cleanups = (int)Math.Min(reader.GetInt64(0), int.MaxValue);
+                totalFiles = reader.GetInt64(1);
+                totalBytes = reader.GetInt64(2);
+                lastCreatedAt = reader.IsDBNull(3) ? null : reader.GetString(3);
+            }
+            if (cleanups == 0 || lastCreatedAt == null) return CleanupHistorySummary.Empty;
+
+            command.CommandText = $"""
+                WITH Qualifying AS ({qualifying})
+                SELECT CreatedAt, Files, Bytes
+                FROM Qualifying
+                ORDER BY CreatedAt DESC
+                LIMIT @Limit;
+                """;
+            command.Parameters.AddWithValue("@Limit", Math.Max(0, maxEntries));
+            var recent = new List<CleanupHistoryEntry>(Math.Min(cleanups, Math.Max(0, maxEntries)));
+            using (var reader = command.ExecuteReader())
+            {
+                while (reader.Read())
+                {
+                    ct.ThrowIfCancellationRequested();
+                    DateTime timestamp = ParseTimestamp(reader.GetString(0));
+                    int files = (int)Math.Clamp(reader.GetInt64(1), 0, int.MaxValue);
+                    long bytes = Math.Max(0, reader.GetInt64(2));
+                    recent.Add(new CleanupHistoryEntry(timestamp, files, bytes));
+                }
             }
 
-            if (entries.Count == 0) return CleanupHistorySummary.Empty;
-            int cleanups = entries.Count;
-            int totalFiles = entries.Aggregate(0, (sum, entry) =>
-                entry.Files > int.MaxValue - sum ? int.MaxValue : sum + entry.Files);
-            long totalBytes = entries.Aggregate(0L, (sum, entry) =>
-                entry.Bytes > long.MaxValue - sum ? long.MaxValue : sum + entry.Bytes);
-            return new CleanupHistorySummary(cleanups, totalFiles, totalBytes, entries[0].TimestampUtc,
-                entries.Take(Math.Max(0, maxEntries)).ToList());
+            return new CleanupHistorySummary(
+                cleanups,
+                (int)Math.Min(totalFiles, int.MaxValue),
+                totalBytes,
+                ParseTimestamp(lastCreatedAt),
+                recent);
         }
         catch (Exception ex) when (ex is SqliteException or IOException or UnauthorizedAccessException
                                        or InvalidCastException or FormatException)

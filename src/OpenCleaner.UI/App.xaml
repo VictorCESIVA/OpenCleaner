@@ -18,6 +18,17 @@
         <SolidColorBrush x:Key="HeroBorder" Color="#355A4C"/>
         <SolidColorBrush x:Key="HeroText" Color="#F2FFF8"/>
         <SolidColorBrush x:Key="HeroMuted" Color="#BCD5C9"/>
+        <SolidColorBrush x:Key="HeroArtFolderFill" Color="#376D57"/>
+        <SolidColorBrush x:Key="HeroArtFolderStroke" Color="#72AD91"/>
+        <SolidColorBrush x:Key="HeroArtPaper" Color="#D9F6E7"/>
+        <SolidColorBrush x:Key="HeroArtLine" Color="#6FAD8D"/>
+        <SolidColorBrush x:Key="HeroArtGradientStart" Color="#85CFA6"/>
+        <SolidColorBrush x:Key="HeroArtGradientEnd" Color="#4C9B76"/>
+        <SolidColorBrush x:Key="HeroArtCheckFill" Color="#CBF7DF"/>
+        <SolidColorBrush x:Key="HeroArtCheckStroke" Color="#203D35"/>
+        <SolidColorBrush x:Key="HeroArtCheckMark" Color="#245A40"/>
+        <SolidColorBrush x:Key="HeroArtSparkle" Color="#BCEDD1"/>
+        <SolidColorBrush x:Key="HeroArtDot" Color="#9BE7C4"/>
         <SolidColorBrush x:Key="Violet" Color="#BDA9EF"/>
         <SolidColorBrush x:Key="VioletSoft" Color="#18BDA9EF"/>
         <SolidColorBrush x:Key="WarnSoft" Color="#24F4C27A"/>
@@ -32,6 +43,16 @@
         <SolidColorBrush x:Key="SizeMed" Color="#E7D88A"/>
         <SolidColorBrush x:Key="SizeSmall" Color="#85E0B4"/>
         <SolidColorBrush x:Key="WarnColor" Color="#F4C27A"/>
+        <SolidColorBrush x:Key="Warning" Color="#F4C27A"/>
+        <SolidColorBrush x:Key="Danger" Color="#F5A0A4"/>
+        <LinearGradientBrush x:Key="HeroGradient" StartPoint="0,0" EndPoint="1,0.8">
+            <GradientStop Color="#203D35" Offset="0"/>
+            <GradientStop Color="#182624" Offset="1"/>
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="HeroArtGradient" StartPoint="0,0" EndPoint="0.8,1">
+            <GradientStop Color="#85CFA6" Offset="0"/>
+            <GradientStop Color="#4C9B76" Offset="1"/>
+        </LinearGradientBrush>
 
         <Style TargetType="Window">
             <Setter Property="Background" Value="{DynamicResource BgMain}"/>
@@ -172,6 +193,54 @@
                             <Trigger Property="IsChecked" Value="True"><Setter TargetName="Box" Property="Background" Value="{DynamicResource Accent}"/><Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Accent}"/><Setter TargetName="Tick" Property="Visibility" Value="Visible"/></Trigger>
                             <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Accent}"/><Setter TargetName="Box" Property="BorderThickness" Value="2"/></Trigger>
                             <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="RadioButton">
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="FontSize" Value="12"/>
+            <Setter Property="Padding" Value="8,0,0,0"/>
+            <Setter Property="VerticalContentAlignment" Value="Center"/>
+            <Setter Property="MinHeight" Value="26"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid Background="Transparent">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="18"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <Ellipse x:Name="Ring" Width="18" Height="18" Fill="{DynamicResource BgMain}" Stroke="{DynamicResource TextSecond}" StrokeThickness="1.5"/>
+                            <Ellipse x:Name="Dot" Width="8" Height="8" Fill="{DynamicResource Accent}" Visibility="Collapsed"/>
+                            <ContentPresenter Grid.Column="1" Margin="{TemplateBinding Padding}" VerticalAlignment="Center" RecognizesAccessKey="True"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsChecked" Value="True"><Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource Accent}"/><Setter TargetName="Dot" Property="Visibility" Value="Visible"/></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource Accent}"/><Setter TargetName="Ring" Property="StrokeThickness" Value="2.5"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.45"/></Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ThemeSwatch" TargetType="RadioButton">
+            <Setter Property="Width" Value="44"/>
+            <Setter Property="Height" Value="44"/>
+            <Setter Property="Margin" Value="0,0,10,8"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="FocusVisualStyle" Value="{x:Null}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="RadioButton">
+                        <Grid Width="44" Height="44" Background="Transparent">
+                            <Border x:Name="Ring" CornerRadius="22" BorderBrush="{DynamicResource Border}" BorderThickness="2" Background="Transparent"/>
+                            <Border x:Name="Core" Width="32" Height="32" CornerRadius="16" Background="{TemplateBinding Background}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="Check" Text="&#xE73E;" FontFamily="Segoe MDL2 Assets" FontSize="12" Foreground="{TemplateBinding Foreground}" HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
+                        </Grid>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Accent}"/></Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True"><Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource Accent}"/><Setter TargetName="Ring" Property="BorderThickness" Value="3"/></Trigger>
+                            <Trigger Property="IsChecked" Value="True"><Setter TargetName="Ring" Property="BorderBrush" Value="{DynamicResource TextPrimary}"/><Setter TargetName="Check" Property="Visibility" Value="Visible"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>

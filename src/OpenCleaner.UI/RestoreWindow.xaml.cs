@@ -9,40 +9,81 @@ using System.Windows.Controls;
 
 namespace OpenCleaner.UI;
 
-public partial class RestoreWindow : UserControl
+public partial class RestoreWindow : UserControl, IReleaseData
 {
     private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
 
     private bool _isBusy;
+    private bool _released;
+    private int _quarantinedCount;
+    private int _loadVersion;
     private IReadOnlyList<BackupInfo> _allBackups = [];
 
     public RestoreWindow()
     {
         InitializeComponent();
-        LocalizationService.Instance.LanguageChanged += (_, _) => _ = LoadBackupsAsync();
+        Loaded += OnLoaded;
+        Unloaded += OnUnloaded;
         _ = LoadBackupsAsync();
+    }
+
+    private void OnLoaded(object sender, RoutedEventArgs e)
+    {
+        LocalizationService.Instance.LanguageChanged -= OnLanguageChanged;
+        LocalizationService.Instance.LanguageChanged += OnLanguageChanged;
+        if (!_released) return;
+        _released = false;
+        _ = LoadBackupsAsync();
+    }
+
+    private void OnUnloaded(object sender, RoutedEventArgs e) =>
+        LocalizationService.Instance.LanguageChanged -= OnLanguageChanged;
+
+    private void OnLanguageChanged(object? sender, EventArgs e)
+    {
+        RefreshSummary();
+        ApplyFilter();
+    }
+
+    public void ReleaseData()
+    {
+        _released = true;
+        _loadVersion++;
+        _allBackups = [];
+        _quarantinedCount = 0;
+        BackupsListView.ItemsSource = null;
+        SetBusy(false);
+    }
+
+    private void RefreshSummary()
+    {
+        var totalBytes = _allBackups.Sum(b => b.Size);
+        string summary = _allBackups.Count == 0
+            ? T("Restore.SummaryNone")
+            : T("Restore.Summary", _allBackups.Count.ToString("N0"), SizeFormatter.Format(totalBytes));
+        if (_quarantinedCount > 0)
+            summary += T("Restore.QuarantinedSuffix", _quarantinedCount.ToString("N0"));
+        BackupSummaryText.Text = summary;
     }
 
     private async Task LoadBackupsAsync()
     {
+        int version = ++_loadVersion;
         try
         {
             IBackupManager manager = App.Services.GetRequiredService<IBackupManager>();
-            _allBackups = await manager.GetAllBackupsAsync();
-            var totalBytes = _allBackups.Sum(b => b.Size);
-            BackupSummaryText.Text = _allBackups.Count == 0
-                ? T("Restore.SummaryNone")
-                : T("Restore.Summary", _allBackups.Count.ToString("N0"), SizeFormatter.Format(totalBytes));
-            int quarantined = 0;
+            IReadOnlyList<BackupInfo> backups = await manager.GetAllBackupsAsync();
+            if (version != _loadVersion) return;
+            _allBackups = backups;
+            _quarantinedCount = 0;
             try
             {
                 if (Directory.Exists(manager.QuarantineRoot))
-                    quarantined = Directory.EnumerateDirectories(manager.QuarantineRoot).Count();
+                    _quarantinedCount = Directory.EnumerateDirectories(manager.QuarantineRoot).Count();
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             { System.Diagnostics.Debug.WriteLine($"Quarantine listing failed: {ex}"); }
-            if (quarantined > 0)
-                BackupSummaryText.Text += T("Restore.QuarantinedSuffix", quarantined.ToString("N0"));
+            RefreshSummary();
             ApplyFilter();
         }
         catch (ObjectDisposedException)

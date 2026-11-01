@@ -11,6 +11,7 @@ using OpenCleaner.Contracts;
 using OpenCleaner.Core;
 using OpenCleaner.Core.Health;
 using OpenCleaner.Core.Security;
+using OpenCleaner.Core.Theming;
 using OpenCleaner.Core.Tools;
 using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System.Plugins;
@@ -138,11 +139,14 @@ public partial class HealthWindow : UserControl, IThemeAware
         StatusText.Text = HealthLocalization.T("Health.Status.System");
         try
         {
-            SystemHealthInfo info = await Task.Run(SystemInfoService.Get);
-            RecycleBinInfo? bin = null;
-            try { bin = await Task.Run(RecycleBinService.Query); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
-            IReadOnlyList<StartupItem> startup = await Task.Run(StartupItemService.GetItems);
+            Task<SystemHealthInfo> infoTask = Task.Run(SystemInfoService.Get);
+            Task<RecycleBinInfo?> binTask = QueryRecycleBinAsync();
+            Task<IReadOnlyList<StartupItem>> startupTask = Task.Run(StartupItemService.GetItems);
+            await Task.WhenAll(infoTask, binTask, startupTask).ConfigureAwait(true);
+
+            SystemHealthInfo info = infoTask.Result;
+            RecycleBinInfo? bin = binTask.Result;
+            IReadOnlyList<StartupItem> startup = startupTask.Result;
 
             _hasRecycleItems = bin is { ItemCount: > 0 };
             RecycleText.Text = bin == null
@@ -154,11 +158,16 @@ public partial class HealthWindow : UserControl, IThemeAware
             ShowReport(HealthScoreCalculator.Evaluate(baseMetrics), baseMetrics, info);
             StatusText.Text = HealthLocalization.T("Health.Status.Base");
 
+            Task<CleanupHistorySummary> historyTask = Task.Run(
+                () => new CleanupHistoryService().GetSummary(TimeSpan.FromDays(30)));
+            string primaryDrive = Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\";
+            Task<SpaceTrendResult> trendTask = Task.Run(() =>
+                new SpaceTrendService().RecordAndGet(info.Disks, DateTime.UtcNow, primaryDrive, 30));
+            Task<(CacheSnapshot Cache, string Note)> cacheTask = MeasureCachesAsync();
+
             try
             {
-                CleanupHistorySummary history = await Task.Run(
-                    () => new CleanupHistoryService().GetSummary(TimeSpan.FromDays(30)));
-                PopulateHistory(history);
+                PopulateHistory(await historyTask.ConfigureAwait(true));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -167,10 +176,7 @@ public partial class HealthWindow : UserControl, IThemeAware
 
             try
             {
-                string primaryDrive = Path.GetPathRoot(Environment.SystemDirectory) ?? "C:\\";
-                SpaceTrendResult trend = await Task.Run(() =>
-                    new SpaceTrendService().RecordAndGet(info.Disks, DateTime.UtcNow, primaryDrive, 30));
-                PopulateTrend(trend);
+                PopulateTrend(await trendTask.ConfigureAwait(true));
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
             {
@@ -183,7 +189,7 @@ public partial class HealthWindow : UserControl, IThemeAware
             string cacheNote = "";
             try
             {
-                (cache, cacheNote) = await MeasureCachesAsync();
+                (cache, cacheNote) = await cacheTask.ConfigureAwait(true);
             }
             catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
             {
@@ -204,6 +210,12 @@ public partial class HealthWindow : UserControl, IThemeAware
         {
             SetBusy(false);
         }
+    }
+
+    private static async Task<RecycleBinInfo?> QueryRecycleBinAsync()
+    {
+        try { return await Task.Run(RecycleBinService.Query).ConfigureAwait(false); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return null; }
     }
 
     private async Task<(CacheSnapshot Cache, string Note)> MeasureCachesAsync()
@@ -578,9 +590,9 @@ public partial class HealthWindow : UserControl, IThemeAware
         Cursor = busy ? System.Windows.Input.Cursors.Wait : System.Windows.Input.Cursors.Arrow;
     }
 
-    public void ApplyTheme(bool dark)
+    public void ApplyTheme(ThemePalette palette)
     {
-        ScoreRing.RefreshTheme();
+        ScoreRing.ApplyTheme(palette);
         if (_report == null || _metrics == null) return;
         RenderSections(_report);
         RenderFindings(_report);

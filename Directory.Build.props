@@ -4,5 +4,9 @@
     <NuGetAuditMode>all</NuGetAuditMode>
     <WarningsAsErrors>$(WarningsAsErrors);NU1900;NU1901;NU1902;NU1903;NU1904</WarningsAsErrors>
     <Deterministic>true</Deterministic>
+    <SatelliteResourceLanguages>en;fr</SatelliteResourceLanguages>
+    <!-- Opt-in publish variants: -p:PublishReadyToRun=true or -p:EnableCompressionInSingleFile=true. -->
+    <PublishReadyToRun Condition="'$(PublishReadyToRun)' == ''">false</PublishReadyToRun>
+    <EnableCompressionInSingleFile Condition="'$(EnableCompressionInSingleFile)' == ''">false</EnableCompressionInSingleFile>
   </PropertyGroup>
 </Project>

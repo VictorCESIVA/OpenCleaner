@@ -22,6 +22,26 @@ public sealed class PreferencesStoreTests : IDisposable
 
         Assert.True(preferences.DarkTheme);
         Assert.Equal(AppPreferences.DefaultLowSpacePercent, preferences.LowSpaceThresholdPercent);
+        Assert.True(preferences.BackgroundUpdateDownload);
+    }
+
+    [Fact]
+    public void BackgroundUpdateDownloadDefaultsToTrue()
+    {
+        File.WriteAllText(_file, "{\"DarkTheme\":false}");
+
+        Assert.True(PreferencesStore.Load(_file).BackgroundUpdateDownload);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void BackgroundUpdateDownloadRoundTrips(bool enabled)
+    {
+        Assert.True(PreferencesStore.Save(
+            new AppPreferences { BackgroundUpdateDownload = enabled }, _file));
+
+        Assert.Equal(enabled, PreferencesStore.Load(_file).BackgroundUpdateDownload);
     }
 
     [Fact]
@@ -86,6 +106,77 @@ public sealed class PreferencesStoreTests : IDisposable
             new AppPreferences { LowSpaceThresholdPercent = 99 }, _file));
 
         Assert.Equal(AppPreferences.MaximumLowSpacePercent, PreferencesStore.Load(_file).LowSpaceThresholdPercent);
+    }
+
+    [Fact]
+    public void AccentRoundTrips()
+    {
+        Assert.True(PreferencesStore.Save(new AppPreferences { Accent = "azure" }, _file));
+
+        AppPreferences actual = PreferencesStore.Load(_file);
+
+        Assert.Equal("azure", actual.Accent);
+        Assert.Null(actual.AccentHex);
+    }
+
+    [Theory]
+    [InlineData("AZURE", "azure")]
+    [InlineData("Mint", "mint")]
+    [InlineData("", "mint")]
+    [InlineData(null, "mint")]
+    public void AccentIsNormalized(string? stored, string expected)
+    {
+        File.WriteAllText(_file, $"{{\"Accent\":{(stored == null ? "null" : $"\"{stored}\"")}}}");
+
+        Assert.Equal(expected, PreferencesStore.Load(_file).Accent);
+    }
+
+    [Fact]
+    public void InvalidAccentFallsBackToMint()
+    {
+        File.WriteAllText(_file, "{\"Accent\":\"not-a-theme\"}");
+
+        Assert.Equal("mint", PreferencesStore.Load(_file).Accent);
+    }
+
+    [Fact]
+    public void InvalidAccentHexIsCleared()
+    {
+        Assert.True(PreferencesStore.Save(
+            new AppPreferences { Accent = "custom", AccentHex = "not-hex" }, _file));
+
+        AppPreferences actual = PreferencesStore.Load(_file);
+
+        Assert.Equal("mint", actual.Accent);
+        Assert.Null(actual.AccentHex);
+    }
+
+    [Fact]
+    public void LegacyJsonWithoutAccentUsesMint()
+    {
+        File.WriteAllText(_file, "{\"DarkTheme\":false,\"Language\":\"en\",\"LowSpaceThresholdPercent\":15}");
+
+        AppPreferences actual = PreferencesStore.Load(_file);
+
+        Assert.False(actual.DarkTheme);
+        Assert.Equal("en", actual.Language);
+        Assert.Equal("mint", actual.Accent);
+        Assert.Null(actual.AccentHex);
+    }
+
+    [Theory]
+    [InlineData("#abc", "#AABBCC")]
+    [InlineData("112233", "#112233")]
+    [InlineData(" #fff ", "#FFFFFF")]
+    public void CustomAccentHexIsNormalizedAndPreserved(string stored, string expected)
+    {
+        Assert.True(PreferencesStore.Save(
+            new AppPreferences { Accent = "mint", AccentHex = stored }, _file));
+
+        AppPreferences actual = PreferencesStore.Load(_file);
+
+        Assert.Equal("custom", actual.Accent);
+        Assert.Equal(expected, actual.AccentHex);
     }
 
     public void Dispose()

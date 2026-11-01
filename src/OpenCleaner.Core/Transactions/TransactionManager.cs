@@ -8,6 +8,7 @@ namespace OpenCleaner.Core.Transactions;
 
 public sealed class TransactionManager : ITransactionManager, IDisposable
 {
+    private const int SchemaVersion = 1;
     private readonly IBackupManager _backupManager;
     private readonly ILogger<TransactionManager> _logger;
     private readonly string _connectionString;
@@ -53,6 +54,8 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
                 FOREIGN KEY (TransactionId) REFERENCES Transactions(Id) ON DELETE CASCADE);
             """;
         command.ExecuteNonQuery();
+        command.CommandText = "PRAGMA user_version;";
+        int schemaVersion = Convert.ToInt32(command.ExecuteScalar());
         command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('Transactions') WHERE name = 'CreateBackup';";
         if (Convert.ToInt32(command.ExecuteScalar()) == 0)
         {
@@ -71,6 +74,15 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
             command.CommandText = $"ALTER TABLE Operations ADD COLUMN {name} {type};";
             command.ExecuteNonQuery();
         }
+
+        command.CommandText = """
+            CREATE INDEX IF NOT EXISTS IX_Transactions_State_CreatedAt ON Transactions(State, CreatedAt);
+            CREATE INDEX IF NOT EXISTS IX_Operations_TransactionId_Success ON Operations(TransactionId, Success);
+            """;
+        command.ExecuteNonQuery();
+
+        // The path-to-BackupId rewrite is a one-time legacy migration.
+        if (schemaVersion >= SchemaVersion) return;
 
         command.CommandText = """
             SELECT Id, BackupPath FROM Operations
@@ -98,7 +110,11 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
                 backupParameter.Value = (object?)ExtractBackupId(backupPath) ?? DBNull.Value;
                 command.ExecuteNonQuery();
             }
+            command.Parameters.Clear();
         }
+
+        command.CommandText = $"PRAGMA user_version = {SchemaVersion};";
+        command.ExecuteNonQuery();
     }
 
     public Guid BeginTransaction(bool createBackup = true)
@@ -201,18 +217,19 @@ public sealed class TransactionManager : ITransactionManager, IDisposable
         finally { gate.Release(); }
     }
 
-    public Task<int> PurgeOldTransactionsAsync(TimeSpan maxAge, CancellationToken ct = default)
+    public async Task<int> PurgeOldTransactionsAsync(TimeSpan maxAge, CancellationToken ct = default)
     {
         if (maxAge <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(maxAge));
         ct.ThrowIfCancellationRequested();
-        using var connection = OpenConnection();
-        using var command = connection.CreateCommand();
+        await using var connection = new SqliteConnection(_connectionString);
+        await connection.OpenAsync(ct).ConfigureAwait(false);
+        await using var command = connection.CreateCommand();
         command.CommandText = "DELETE FROM Transactions WHERE CreatedAt < @Cutoff AND State IN (@Committed, @RolledBack);";
         command.Parameters.AddWithValue("@Committed", (int)TransactionState.Committed);
         command.Parameters.AddWithValue("@RolledBack", (int)TransactionState.RolledBack);
         command.Parameters.AddWithValue("@Cutoff",
             (DateTime.UtcNow - maxAge).ToString("O", CultureInfo.InvariantCulture));
-        return Task.FromResult(command.ExecuteNonQuery());
+        return await command.ExecuteNonQueryAsync(ct).ConfigureAwait(false);
     }
 
     public async Task RollbackAsync(Guid transactionId, CancellationToken ct = default)

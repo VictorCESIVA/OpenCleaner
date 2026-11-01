@@ -55,7 +55,8 @@
                              AutomationProperties.Name="{loc:Translate Uninstall.ListAutomation}">
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid Height="66" Margin="12,0">
+                                <Grid Height="66" Margin="12,0" Loaded="Row_Loaded"
+                                      DataContextChanged="Row_DataContextChanged">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto"/>
                                         <ColumnDefinition Width="*"/>
@@ -116,7 +117,7 @@
                                    TextAlignment="Center"/>
                         <ProgressBar IsIndeterminate="True" Width="180" Height="4"
                                      Foreground="{DynamicResource Accent}" Background="{DynamicResource BgMain}"
-                                     Margin="0,14,0,0"/>
+                                     Margin="0,14,0,0" AutomationProperties.Name="{loc:Translate Common.ProgressAutomation}"/>
                     </StackPanel>
 
                     <StackPanel x:Name="EmptyState" HorizontalAlignment="Center" VerticalAlignment="Center"
@@ -144,7 +145,7 @@
                         <TextBlock x:Name="CountText" FontSize="12" FontWeight="SemiBold"
                                    Foreground="{DynamicResource TextPrimary}" Text="—"/>
                         <TextBlock x:Name="StatusText" FontSize="11" Foreground="{DynamicResource TextSecond}"
-                                   TextWrapping="Wrap" Margin="0,4,0,0"/>
+                                   TextWrapping="Wrap" Margin="0,4,0,0" AutomationProperties.LiveSetting="Polite"/>
                     </StackPanel>
                     <WrapPanel Grid.Column="1" HorizontalAlignment="Right">
                         <Button x:Name="RefreshBtn" Content="{loc:Translate Uninstall.Refresh}"

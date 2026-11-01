@@ -19,7 +19,9 @@ Migré :
 - fenêtre Paramètres complète : planification, exécutions, langue, exclusions, seuil d'alerte, sauvegardes, mises à jour, messages et dialogues ;
 - Espace disque complet : statistiques, lecteurs, barre d'outils, carte proportionnelle, liste, plus gros fichiers, applications, légendes et infobulles ;
 - Santé du PC complète : score, sections, constats du moteur, recommandations, historique, tendance, disques, mémoire, actions rapides et export ;
-- Démarrage, Désinstallation et Mises à jour : en-têtes, recherche, tri, états, libellés de lignes, confirmations et statuts ;
+- Démarrage, Désinstallation et Mises à jour : en-têtes, recherche, tri, états, libellés de lignes, confirmations et statuts ; la liste visuelle des mises à jour, les sélections, les versions inconnues et le panneau de détails techniques ;
+- fenêtre de mise à jour d'OpenCleaner : vérification, téléchargement, progression, notes de version, états d'erreur et boutons de redémarrage ;
+- apparence : thème clair/sombre, six accents, noms accessibles et statut d'enregistrement ;
 - Restauration, Confidentialité et Doublons : en-têtes, listes, aperçu, confirmations, progression, résultats et états vides ;
 - Caches développeur, Effacement sécurisé et code de récupération : catégories, avertissements, confirmations, progression et messages ;
 - messages applicatifs : récupération des nettoyages interrompus, sauvegardes corrompues/verrouillées, opération déjà en cours, mises à jour et instance déjà ouverte ;
@@ -64,6 +66,10 @@ Reste hors interface traduite :
 
 ![Mises à jour en anglais](preview/updates-en.png)
 
+![Fenêtre de mise à jour d'OpenCleaner en anglais](preview/app-update-ready-1.7.png)
+
+![Apparence et accents dans les paramètres](preview/settings-appearance-1.7.png)
+
 ![Restauration en anglais](preview/restore-en.png)
 
 ![Confidentialité en anglais](preview/privacy-en.png)
@@ -78,7 +84,7 @@ Reste hors interface traduite :
 
 ## Limites
 
-- L'anglais est **partiel** : les écrans non listés ci-dessus restent en français jusqu'à leur migration.
-- Les descriptions d'éléments produites par les plugins (« Fichier temporaire », « Cookies du navigateur »…) restent en français.
-- Les textes anglais peuvent être plus courts ou plus longs ; les largeurs minimales sont vérifiées au fil des migrations.
+- L'anglais couvre les fenêtres et messages livrés ; les sorties externes (winget, programmes tiers) et les exceptions techniques restent dans leur langue d'origine.
+- Les textes anglais peuvent être plus courts ou plus longs ; les largeurs minimales sont vérifiées par l'aperçu WPF.
+- Les nouvelles clés 1.7.0 (`Updates.*`, `UpdateDialog.*`, `Settings.Appearance.*`, `Theme.*`) sont présentes dans les deux catalogues avec les mêmes paramètres.
 - Aucune télémétrie ni ressource distante : les catalogues sont embarqués.

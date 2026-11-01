@@ -17,6 +17,10 @@ public partial class App : System.Windows.Application
     public static IServiceProvider Services { get; private set; } = null!;
     public static AppPreferences Preferences { get; private set; } = new();
     internal bool PreviewMode { get; init; }
+    private static AppPreferences? _startupPreferences;
+
+    internal static void SetStartupPreferences(AppPreferences preferences) =>
+        _startupPreferences = (preferences ?? new AppPreferences()).Normalize();
 
     public static void SetPreferences(AppPreferences preferences)
     {
@@ -31,7 +35,8 @@ public partial class App : System.Windows.Application
 
         DispatcherUnhandledException += (s, args) =>
         {
-            MessageBox.Show($"Une erreur inattendue est survenue :\n\n{args.Exception.Message}", "Erreur critique", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(LocalizationService.Instance.Get("App.CrashMessage", args.Exception.Message),
+                LocalizationService.Instance.Get("App.CrashTitle"), MessageBoxButton.OK, MessageBoxImage.Error);
             args.Handled = true;
         };
 
@@ -41,6 +46,7 @@ public partial class App : System.Windows.Application
         };
 
         BuildServices();
+        ThemeService.Apply(Preferences);
 
         // ── Mode background (lancé par le planificateur Windows) ──────────
         if (e.Args.Contains("--background"))
@@ -51,7 +57,9 @@ public partial class App : System.Windows.Application
 
         // ── Mode normal UI ────────────────────────────────────────────────
         new MainWindow().Show();
-
+        StartupTrace.Mark("window-shown");
+        _ = Task.Run(UpdateService.CheckForUpdatesOnStartupAsync);
+        StartupTrace.Mark("update-check-started");
         _ = InitializeAsync();
     }
 
@@ -61,8 +69,10 @@ public partial class App : System.Windows.Application
 
     private static void BuildServices()
     {
-        Preferences = PreferencesStore.Load();
-        LocalizationService.Instance.SetLanguage(Preferences.Language);
+        bool useStartupPreferences = _startupPreferences != null;
+        Preferences = _startupPreferences ?? PreferencesStore.Load();
+        _startupPreferences = null;
+        if (!useStartupPreferences) LocalizationService.Instance.SetLanguage(Preferences.Language);
         CleaningExclusions.Load();
         var services = new ServiceCollection();
         services.AddLogging(b => b.AddDebug());
@@ -87,71 +97,120 @@ public partial class App : System.Windows.Application
         services.AddTransient<DiskAnalyzerPlugin>();
 
         Services = services.BuildServiceProvider();
+        StartupTrace.Mark("services-built");
     }
 
     // ─────────────────────────────────────────────────────────────────────
     //  MODE BACKGROUND (planificateur)
     // ─────────────────────────────────────────────────────────────────────
 
-    private static async Task PurgeTransactionJournalAsync()
+    private static async Task PurgeTransactionJournalAsync(ITransactionManager transactions)
     {
         try
         {
-            ITransactionManager transactions = Services.GetRequiredService<ITransactionManager>();
-            await transactions.PurgeOldTransactionsAsync(TimeSpan.FromDays(30));
+            await Task.Run(() => transactions.PurgeOldTransactionsAsync(TimeSpan.FromDays(30)))
+                .ConfigureAwait(false);
+            StartupTrace.Mark("purge-done");
         }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Transaction purge failed: {ex}"); }
     }
 
     private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
 
+    private static Task RunOnUiThreadAsync(Action action) =>
+        Current.Dispatcher.InvokeAsync(action).Task;
+
+    private static Task<T> RunOnUiThreadAsync<T>(Func<T> action) =>
+        Current.Dispatcher.InvokeAsync(action).Task;
+
     private static async Task InitializeAsync()
     {
-        await UpgradeBackupStorageAsync();
+        StartupTrace.Mark("init-start");
+        await UpgradeBackupStorageAsync().ConfigureAwait(false);
         try
         {
-            var transactions = Services.GetRequiredService<ITransactionManager>();
-            var pending = await transactions.GetUnfinishedTransactionsAsync();
-            if (pending.Count > 0 && MessageBox.Show(
-                    T("App.Recovery.Pending", pending.Count),
-                    T("App.Recovery.Title"), MessageBoxButton.YesNo, MessageBoxImage.Warning) == MessageBoxResult.Yes)
+            (ITransactionManager transactions, IReadOnlyList<Guid> pending) = await Task.Run(async () =>
             {
-                if (UiOperation.TryBegin(Current.MainWindow, out var operation))
-                    using (operation)
-                        foreach (var id in pending) await transactions.RollbackAsync(id);
+                ITransactionManager manager = Services.GetRequiredService<ITransactionManager>();
+                return (manager, await manager.GetUnfinishedTransactionsAsync().ConfigureAwait(false));
+            }).ConfigureAwait(false);
+            StartupTrace.Mark("transaction-init-done");
+
+            if (pending.Count > 0)
+            {
+                MessageBoxResult recovery = await RunOnUiThreadAsync(() => MessageBox.Show(
+                    T("App.Recovery.Pending", pending.Count),
+                    T("App.Recovery.Title"), MessageBoxButton.YesNo, MessageBoxImage.Warning))
+                    .ConfigureAwait(false);
+                if (recovery == MessageBoxResult.Yes)
+                {
+                    UiOperation? operation = await RunOnUiThreadAsync<UiOperation?>(() =>
+                        UiOperation.TryBegin(Current.MainWindow, out var candidate) ? candidate : null)
+                        .ConfigureAwait(false);
+                    if (operation != null)
+                    {
+                        try
+                        {
+                            foreach (Guid id in pending)
+                                await Task.Run(() => transactions.RollbackAsync(id)).ConfigureAwait(false);
+                        }
+                        finally
+                        {
+                            await RunOnUiThreadAsync(operation.Dispose).ConfigureAwait(false);
+                        }
+                    }
+                }
             }
-            await PurgeTransactionJournalAsync();
+            await PurgeTransactionJournalAsync(transactions).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
-            MessageBox.Show(T("App.Recovery.Incomplete", ex.Message),
-                T("App.Recovery.ErrorTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            await RunOnUiThreadAsync(() => MessageBox.Show(
+                T("App.Recovery.Incomplete", ex.Message),
+                T("App.Recovery.ErrorTitle"), MessageBoxButton.OK, MessageBoxImage.Warning))
+                .ConfigureAwait(false);
         }
-        _ = UpdateService.CheckForUpdatesOnStartupAsync();
     }
+
+    private sealed record BackupStartupResult(
+        BackupUpgradeResult Upgrade,
+        string? RecoveryCode,
+        BackupKeyUnavailableException? KeyFailure,
+        bool HasRecoveryCode);
 
     private static async Task UpgradeBackupStorageAsync()
     {
         try
         {
             IBackupManager manager = Services.GetRequiredService<IBackupManager>();
-            BackupUpgradeResult upgrade = await manager.UpgradeLegacyBackupsAsync();
-            if (upgrade.Quarantined > 0)
+            BackupStartupResult result = await Task.Run(async () =>
             {
-                MessageBox.Show(
-                    T("App.Backup.Corrupt", upgrade.Quarantined, manager.QuarantineRoot),
-                    T("App.Backup.CorruptTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                BackupUpgradeResult upgrade = await manager.UpgradeLegacyBackupsAsync().ConfigureAwait(false);
+                string? recoveryCode = null;
+                BackupKeyUnavailableException? keyFailure = null;
+                try { recoveryCode = await manager.EnsureRecoveryCodeAsync().ConfigureAwait(false); }
+                catch (BackupKeyUnavailableException ex) { keyFailure = ex; }
+                return new BackupStartupResult(upgrade, recoveryCode, keyFailure, manager.HasRecoveryCode);
+            }).ConfigureAwait(false);
+            StartupTrace.Mark("backup-upgrade-done");
+
+            if (result.Upgrade.Quarantined > 0)
+            {
+                await RunOnUiThreadAsync(() => MessageBox.Show(
+                    T("App.Backup.Corrupt", result.Upgrade.Quarantined, manager.QuarantineRoot),
+                    T("App.Backup.CorruptTitle"), MessageBoxButton.OK, MessageBoxImage.Warning))
+                    .ConfigureAwait(false);
             }
-            string? recoveryCode;
-            try { recoveryCode = await manager.EnsureRecoveryCodeAsync(); }
-            catch (BackupKeyUnavailableException)
+            if (result.KeyFailure != null)
             {
-                MessageBox.Show(
-                    manager.HasRecoveryCode ? T("App.Backup.Locked") : T("App.Backup.KeyMissing"),
-                    T("App.Backup.LockedTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+                await RunOnUiThreadAsync(() => MessageBox.Show(
+                    result.HasRecoveryCode ? T("App.Backup.Locked") : T("App.Backup.KeyMissing"),
+                    T("App.Backup.LockedTitle"), MessageBoxButton.OK, MessageBoxImage.Warning))
+                    .ConfigureAwait(false);
                 return;
             }
-            if (recoveryCode != null) ShowRecoveryCode(recoveryCode);
+            if (result.RecoveryCode is { } recoveryCode)
+                await RunOnUiThreadAsync(() => ShowRecoveryCode(recoveryCode)).ConfigureAwait(false);
         }
         catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"Backup upgrade failed: {ex}"); }
     }

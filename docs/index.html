@@ -21,8 +21,8 @@
     <link rel="canonical" href="https://victorcesiva.github.io/OpenCleaner/" />
     <title>OpenCleaner — De l’air pour votre PC.</title>
     <link rel="icon" type="image/svg+xml" href="assets/mark.svg" />
-    <link rel="stylesheet" href="styles.css?v=1.6.0" />
-    <script src="script.js?v=1.6.0" defer></script>
+<link rel="stylesheet" href="styles.css?v=1.7.0" />
+<script src="script.js?v=1.7.0" defer></script>
   </head>
   <body>
     <a class="skip-link" href="#main">Aller au contenu</a>
@@ -136,7 +136,7 @@
               ><span data-icon="check"></span> Vous gardez la main</span
             >
           </div>
-          <p class="preview-disclaimer">Interface 1.6 : sauvegarde à votre choix avant chaque nettoyage.</p>
+          <p class="preview-disclaimer">Interface 1.7 : sauvegarde à votre choix, accents personnalisables et mises à jour lisibles.</p>
           <div class="orbit-label" aria-hidden="true">
             <span data-icon="leaf"></span> Gardez l’essentiel.
           </div>
@@ -235,8 +235,10 @@
             <span class="feature-icon"><span data-icon="copy"></span></span>
             <h3>Une copie suffit.</h3>
             <p>
-              Repérez les doublons par empreinte SHA-256. L’original conservé
-              est identifié et revérifié avant de supprimer les copies.
+              Repérez les doublons par empreinte SHA-256. OpenCleaner laisse
+              choisir la copie à conserver, sans prétendre identifier un
+              original : au moins une copie reste par groupe et elle est
+              revérifiée avant la suppression des autres.
             </p>
             <span class="feature-label">Détection de doublons</span>
           </article>
@@ -254,7 +256,8 @@
             <h3>Le quotidien, simplifié.</h3>
             <p>
               Gérez les applications au démarrage, lancez un désinstalleur
-              officiel ou vérifiez les mises à jour de vos logiciels.
+              officiel ou vérifiez les mises à jour de vos logiciels dans une
+              liste par application, avec sélection et état de chaque opération.
             </p>
             <span class="feature-label">Outils système</span>
           </article>
@@ -288,7 +291,25 @@
             <a href="preview/cleanup-choice.png" target="_blank" rel="noopener" aria-label="Agrandir le choix de sauvegarde avant nettoyage (nouvel onglet)">
               <img src="preview/cleanup-choice.png" width="740" height="394" loading="lazy" decoding="async" alt="Confirmation du nettoyage : Annuler, Supprimer sans sauvegarde, ou Sauvegarder et supprimer.">
             </a>
-            <figcaption><h3>La sauvegarde, c’est votre choix.</h3><p>Supprimez définitivement sans créer de copie, ou gardez une sauvegarde chiffrée pour pouvoir restaurer vos fichiers. Le choix est redemandé à chaque nettoyage manuel.</p><span>Confirmation du nettoyage · version 1.6</span></figcaption>
+            <figcaption><h3>La sauvegarde, c’est votre choix.</h3><p>Supprimez définitivement sans créer de copie, ou gardez une sauvegarde chiffrée pour pouvoir restaurer vos fichiers. Le choix est redemandé à chaque nettoyage manuel.</p><span>Confirmation du nettoyage · version 1.7</span></figcaption>
+          </figure>
+          <figure class="preview-card">
+            <a href="preview/updates-1.7.png" target="_blank" rel="noopener" aria-label="Agrandir la capture Mises à jour des applications (nouvel onglet)">
+              <img src="preview/updates-1.7.png" width="1048" height="824" loading="lazy" decoding="async" alt="Liste des mises à jour avec sélection par application, versions installée et disponible, source et état.">
+            </a>
+            <figcaption><h3>Les mises à jour, sans console.</h3><p>Choisissez les applications à mettre à jour, suivez chaque état et gardez la sortie technique repliée si vous en avez besoin.</p><span>Mises à jour · données d’exemple</span></figcaption>
+          </figure>
+          <figure class="preview-card">
+            <a href="preview/app-update-ready-1.7.png" target="_blank" rel="noopener" aria-label="Agrandir la fenêtre de mise à jour d’OpenCleaner (nouvel onglet)">
+              <img src="preview/app-update-ready-1.7.png" width="740" height="680" loading="lazy" decoding="async" alt="Fenêtre de mise à jour d’OpenCleaner : versions actuelle et cible, progression, notes de version et bouton Redémarrer et installer.">
+            </a>
+            <figcaption><h3>Une mise à jour qui se voit.</h3><p>Progression, notes de version et téléchargement en arrière-plan optionnel ; l’installation attend votre clic.</p><span>Mise à jour d’OpenCleaner · aperçu</span></figcaption>
+          </figure>
+          <figure class="preview-card">
+            <a href="preview/settings-appearance-1.7.png" target="_blank" rel="noopener" aria-label="Agrandir la capture Apparence et couleurs d’accent (nouvel onglet)">
+              <img src="preview/settings-appearance-1.7.png" width="1048" height="824" loading="lazy" decoding="async" alt="Paramètres Apparence : mode clair ou sombre et six couleurs d’accent, avec la couleur sélectionnée entourée.">
+            </a>
+            <figcaption><h3>À votre couleur.</h3><p>Six accents, un mode clair ou sombre et un contraste vérifié ; les couleurs de risque restent lisibles et inchangées.</p><span>Apparence · aperçu</span></figcaption>
           </figure>
         </div>
       </section>
@@ -467,11 +488,11 @@
           </details>
           <details>
             <summary>Peut-on changer la langue et le thème ? <span aria-hidden="true">+</span></summary>
-            <p>Oui. Le français et l’anglais sont disponibles depuis Paramètres &gt; Langue, sans redémarrage. Le thème clair ou sombre se choisit dans la barre latérale. La nouvelle interface respecte le réglage d’animations de Windows.</p>
+            <p>Oui. Le français et l’anglais sont disponibles depuis Paramètres &gt; Langue, sans redémarrage. Le thème clair ou sombre se choisit dans la barre latérale, et Paramètres &gt; Apparence propose six couleurs d'accent. La nouvelle interface respecte le réglage d’animations de Windows.</p>
           </details>
           <details>
             <summary>Comment mettre OpenCleaner à jour ? <span aria-hidden="true">+</span></summary>
-            <p>Dans Paramètres, choisissez Vérifier les mises à jour. Les versions installées recherchent aussi les mises à jour au démarrage. L’application demande votre accord avant de redémarrer pour appliquer une mise à jour. Pour une version portable, téléchargez la nouvelle archive depuis <a href="https://github.com/VictorCESIVA/OpenCleaner/releases/latest">GitHub Releases</a>.</p>
+            <p>Dans Paramètres, choisissez Vérifier les mises à jour. Les versions installées recherchent aussi les mises à jour au démarrage et peuvent les télécharger en arrière-plan si l'option est activée. L’application attend votre clic sur Redémarrer et installer. Pour une version portable, téléchargez la nouvelle archive depuis <a href="https://github.com/VictorCESIVA/OpenCleaner/releases/latest">GitHub Releases</a>.</p>
           </details>
           <details>
             <summary>

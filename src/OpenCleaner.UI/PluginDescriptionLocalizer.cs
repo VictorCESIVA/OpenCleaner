@@ -94,12 +94,8 @@ public static class PluginDescriptionLocalizer
         if (Exact.TryGetValue(description, out string? key)) return T(key);
 
         if (description.StartsWith("Identique à « ", StringComparison.Ordinal) &&
-            description.LastIndexOf(" » — copie conservée : ", StringComparison.Ordinal) is int copySeparator and > 0)
-        {
-            string original = description["Identique à « ".Length..copySeparator];
-            string kept = description[(copySeparator + " » — copie conservée : ".Length)..];
-            return T("PluginItem.Duplicate", original, kept);
-        }
+            description.EndsWith(" »", StringComparison.Ordinal))
+            return T("PluginItem.Duplicate", description["Identique à « ".Length..^2]);
         if (description.StartsWith("Nom à vérifier — « ", StringComparison.Ordinal) &&
             description.EndsWith(" »", StringComparison.Ordinal))
         {

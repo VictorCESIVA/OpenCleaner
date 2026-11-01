@@ -22,13 +22,19 @@ internal static class Program
             return;
         }
         Velopack.VelopackApp.Build().Run();
-        try { LocalizationService.Instance.SetLanguage(PreferencesStore.Load().Language); }
+        AppPreferences preferences;
+        try { preferences = PreferencesStore.Load(); }
+        catch { preferences = new AppPreferences().Normalize(); }
+        try { LocalizationService.Instance.SetLanguage(preferences.Language); }
         catch { /* Fall back to the default language. */ }
+        StartupTrace.Mark("prefs-loaded");
+        App.SetStartupPreferences(preferences);
         var userId = System.Security.Principal.WindowsIdentity.GetCurrent().User?.Value ?? Environment.UserName;
         using var mutex = new Mutex(false, @"Global\OpenCleaner-" + userId);
         bool ownsMutex;
         try { ownsMutex = mutex.WaitOne(0); }
         catch (AbandonedMutexException) { ownsMutex = true; }
+        StartupTrace.Mark(ownsMutex ? "mutex-acquired" : "mutex-busy");
         if (!ownsMutex)
         {
             if (!args.Contains("--background"))

@@ -8,11 +8,17 @@ permissions:
 jobs:
   validate:
     runs-on: windows-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Build.props
+            global.json
       - name: Restore and audit dependencies
         run: dotnet restore OpenCleaner.sln -p:NuGetAudit=true -p:NuGetAuditMode=all
       - name: Build
@@ -20,7 +26,7 @@ jobs:
       - name: Test
         run: dotnet test OpenCleaner.sln -c Release --no-build --logger trx --collect:"XPlat Code Coverage"
       - name: Validate WPF windows and render previews
-        run: dotnet run --project tools/OpenCleaner.Preview -c Release -- artifacts/ui-preview
+        run: dotnet run --project tools/OpenCleaner.Preview -c Release --no-build --no-restore -- artifacts/ui-preview
       - name: Save test results
         if: always()
         uses: actions/upload-artifact@v4

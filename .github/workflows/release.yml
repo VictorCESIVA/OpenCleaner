@@ -7,11 +7,17 @@ permissions:
 jobs:
   release:
     runs-on: windows-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+          cache: true
+          cache-dependency-path: |
+            **/*.csproj
+            Directory.Build.props
+            global.json
       - name: Validate version
         id: version
         shell: pwsh
@@ -25,25 +31,36 @@ jobs:
           "version=$version" >> $env:GITHUB_OUTPUT
       - name: Restore and audit dependencies
         run: |
-          dotnet restore OpenCleaner.sln -p:NuGetAudit=true -p:NuGetAuditMode=all
+          dotnet restore OpenCleaner.sln -p:NuGetAudit=true -p:NuGetAuditMode=all -r win-x64
       - name: Build
         run: dotnet build OpenCleaner.sln -c Release --no-restore --warnaserror
       - name: Test
         run: dotnet test OpenCleaner.sln -c Release --no-build --logger trx
+      # Publish is RID-specific (win-x64) while the solution build above is RID-agnostic,
+      # so --no-build is not safe. ReadyToRun needs its own restore with the property set.
+      # Multi-file self-contained keeps unchanged framework assemblies stable across
+      # releases, so Velopack delta packages stay small. Single-file bundles would make
+      # every delta nearly a full download.
+      - name: Restore publish runtime
+        run: dotnet restore src/OpenCleaner.UI/OpenCleaner.UI.csproj -r win-x64 -p:PublishReadyToRun=true
       - name: Publish application
         env:
           APP_VERSION: ${{ steps.version.outputs.version }}
-        run: dotnet publish src/OpenCleaner.UI/OpenCleaner.UI.csproj -c Release -o publish -r win-x64 --self-contained true -p:PublishSingleFile=true -p:Version=$env:APP_VERSION
+        run: dotnet publish src/OpenCleaner.UI/OpenCleaner.UI.csproj -c Release -o publish -r win-x64 --self-contained true -p:PublishSingleFile=false -p:PublishReadyToRun=true -p:Version=$env:APP_VERSION --no-restore
       - name: Install Velopack
         run: dotnet tool install -g vpk --version 1.2.161
       - name: Download previous release for delta packages
+        id: previous
         continue-on-error: true
         env:
           RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         shell: pwsh
         run: |
           vpk download github --repoUrl "https://github.com/$env:GITHUB_REPOSITORY" --channel win-x64 --token $env:RELEASE_TOKEN
-      - name: Package and release
+          $previous = @(Get-ChildItem -Path "Releases" -Filter "*-full.nupkg" -File -ErrorAction SilentlyContinue)
+          $hasPrevious = if ($previous.Count -gt 0) { "true" } else { "false" }
+          "hasPrevious=$hasPrevious" >> $env:GITHUB_OUTPUT
+      - name: Package and verify
         env:
           APP_VERSION: ${{ steps.version.outputs.version }}
           RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -83,6 +100,92 @@ jobs:
             }
           }
           if ($packExit -ne 0) { throw "Packaging failed." }
+          $setup = Get-ChildItem -Path "Releases" -Filter "*-Setup.exe" |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $setup) { throw "No Setup.exe found in Releases." }
+          $signature = Get-AuthenticodeSignature -LiteralPath $setup.FullName
+          if ($env:SIGNING_CERTIFICATE_BASE64) {
+            if ($signature.Status -ne 'Valid') {
+              throw "Setup signature is $($signature.Status): $($signature.StatusMessage)"
+            }
+            $signingNote = "signed ($($signature.SignerCertificate.Subject), $($signature.Status))"
+            Write-Host "Code signing: $signingNote"
+          }
+          else {
+            $signingNote = "unsigned"
+            Write-Warning "SIGNING_CERTIFICATE_BASE64 is not configured; $($setup.Name) is unsigned."
+          }
+          $verifyArgs = @("-Path", $setup.FullName)
+          if ($env:SIGNING_CERTIFICATE_BASE64) { $verifyArgs += "-RequireValidSignature" }
+          & pwsh -NoProfile -File (Join-Path $env:GITHUB_WORKSPACE "tools/verify-release.ps1") @verifyArgs
+          if ($LASTEXITCODE -ne 0) { throw "Release verification failed for $($setup.Name)." }
+          if ($env:GITHUB_STEP_SUMMARY) {
+            "Code signing: $signingNote" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+      - name: Report package sizes
+        env:
+          PREVIOUS_RELEASE: ${{ steps.previous.outputs.hasPrevious }}
+        shell: pwsh
+        run: |
+          function Format-Size([long]$bytes) {
+            if ($bytes -ge 1MB) { return "{0:N2} MiB" -f ($bytes / 1MB) }
+            if ($bytes -ge 1KB) { return "{0:N1} KiB" -f ($bytes / 1KB) }
+            return "$bytes B"
+          }
+          $rows = [System.Collections.Generic.List[string]]::new()
+          $publishSize = (Get-ChildItem -LiteralPath "publish" -Recurse -File -ErrorAction SilentlyContinue |
+            Measure-Object -Property Length -Sum).Sum
+          if ($null -eq $publishSize) { $publishSize = 0 }
+          $rows.Add("| Publish folder | ``publish`` | $(Format-Size $publishSize) |")
+          $mainExe = Get-Item -LiteralPath "publish/OpenCleaner.UI.exe" -ErrorAction SilentlyContinue
+          if ($mainExe) {
+            $rows.Add("| Launcher (apphost) | ``$($mainExe.Name)`` | $(Format-Size $mainExe.Length) |")
+          }
+          $mainDll = Get-Item -LiteralPath "publish/OpenCleaner.UI.dll" -ErrorAction SilentlyContinue
+          if ($mainDll) {
+            $rows.Add("| Application assembly | ``$($mainDll.Name)`` | $(Format-Size $mainDll.Length) |")
+          }
+          $setup = Get-ChildItem -Path "Releases" -Filter "*-Setup.exe" -File |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($setup) {
+            $rows.Add("| Installer | ``$($setup.Name)`` | $(Format-Size $setup.Length) |")
+          }
+          $portable = Get-ChildItem -Path "Releases" -Filter "*-Portable.zip" -File |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($portable) {
+            $rows.Add("| Portable archive | ``$($portable.Name)`` | $(Format-Size $portable.Length) |")
+          }
+          $full = Get-ChildItem -Path "Releases" -Filter "*-full.nupkg" -File |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($full) {
+            $rows.Add("| Full package | ``$($full.Name)`` | $(Format-Size $full.Length) |")
+          }
+          $delta = Get-ChildItem -Path "Releases" -Filter "*-delta.nupkg" -File |
+            Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if ($delta) {
+            $rows.Add("| Delta package | ``$($delta.Name)`` | $(Format-Size $delta.Length) |")
+          }
+          # Non-first releases should produce a delta. We warn instead of failing
+          # because Velopack clients fall back to the full package, and a transient
+          # download failure must not block an otherwise valid release.
+          elseif ($env:PREVIOUS_RELEASE -eq "true") {
+            Write-Warning "A previous package was downloaded but vpk produced no *-delta.nupkg; clients will download the full package."
+            $rows.Add("| Delta package | - | missing (warning) |")
+          }
+          else {
+            $rows.Add("| Delta package | - | missing (first release) |")
+          }
+          $lines = @("", "### Release artifacts", "", "| Artifact | File | Size |", "| --- | --- | ---: |") + $rows
+          if ($env:GITHUB_STEP_SUMMARY) {
+            $lines | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+          $lines | Write-Output
+      - name: Upload release
+        env:
+          APP_VERSION: ${{ steps.version.outputs.version }}
+          RELEASE_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: pwsh
+        run: |
           $uploadArgs = @(
             "upload", "github",
             "--repoUrl", "https://github.com/$env:GITHUB_REPOSITORY",

@@ -27,7 +27,7 @@
   <img src="docs/preview/readme-dark.png" width="1360" alt="Écran de nettoyage OpenCleaner : analyse rapide, catégories de fichiers et résultats à vérifier avant suppression.">
 </picture>
 
-*Captures de la version 1.6.0, disponible au téléchargement.*
+*Captures de la version 1.7.0, disponible au téléchargement.*
 
 ## Télécharger et installer
 
@@ -47,10 +47,10 @@ Si vous utilisez les sauvegardes, conservez le **code de récupération** dans u
 | --- | --- |
 | Faire un premier tri | **Nettoyage rapide** analyse les caches et les fichiers temporaires à faible risque. |
 | Nettoyer une catégorie précise | **Fichiers temporaires**, **Navigateurs**, **Miniatures** et caches d’applications permettent un nettoyage ciblé. |
-| Comprendre où part l’espace | **Espace disque** affiche une carte des dossiers, les plus gros fichiers et les applications associées. Cette analyse ne supprime rien. |
+| Comprendre où part l’espace | **Espace disque** affiche une carte des dossiers, les plus gros fichiers et les applications associées. Les tailles sont des **tailles logiques estimées** : liens physiques, fichiers compressés ou ignorés peuvent les faire différer de l’espace alloué. Cette analyse ne supprime rien. |
 | Faire le point sur le PC | **Santé du PC** présente un score expliqué, les points à vérifier et l’historique des nettoyages. |
-| Repérer des copies de fichiers | **Doublons** compare leur contenu et identifie l’original à conserver avant de proposer les copies à supprimer. |
-| Gérer les logiciels | **Démarrage**, **Désinstaller** et **Mises à jour** réunissent les actions courantes. |
+| Repérer des copies de fichiers | **Doublons** compare leur contenu et propose les copies à supprimer ; les copies non cochées sont conservées, et au moins une copie par groupe doit rester. La copie conservée est revérifiée avant la suppression des autres. |
+| Gérer les logiciels | **Démarrage**, **Désinstaller** et **Mises à jour** réunissent les actions courantes. **Mises à jour** affiche les applications à mettre à jour, avec sélection par application et état de chaque opération. **Désinstaller** lance le désinstalleur officiel de l’application : OpenCleaner ne détecte ni ne supprime les résidus. Pour un nettoyage approfondi, utilisez BCU, Revo Uninstaller ou HiBit Uninstaller. |
 | Choisir comment supprimer | Avant chaque nettoyage, choisissez **Sauvegarder et supprimer** ou **Supprimer sans sauvegarde**. |
 | Retrouver un fichier sauvegardé | **Restauration** permet de restaurer uniquement les fichiers dont vous avez conservé une sauvegarde. |
 | Adapter le nettoyage | **Paramètres** permet d’exclure des dossiers et de planifier un nettoyage à faible risque, avec ou sans sauvegarde. |
@@ -61,6 +61,12 @@ Si vous utilisez les sauvegardes, conservez le **code de récupération** dans u
 
 *Les vues Santé du PC et Espace disque ci-dessus utilisent des données d’exemple.*
 
+| Mises à jour des applications | Mise à jour d’OpenCleaner |
+| --- | --- |
+| ![Liste des mises à jour avec sélection par application, versions et états.](docs/preview/updates-1.7.png) | ![Fenêtre de mise à jour d’OpenCleaner avec progression et notes de version.](docs/preview/app-update-ready-1.7.png) |
+
+*La liste des mises à jour utilise des données d’exemple. La fenêtre de mise à jour ne s’installe jamais sans action explicite.*
+
 <details>
 <summary><strong>Navigateurs et applications pris en charge</strong></summary>
 
@@ -70,7 +76,9 @@ Si vous utilisez les sauvegardes, conservez le **code de récupération** dans u
 
 La prise en charge porte sur des emplacements de caches ou de journaux précis. Selon la version et le mode d’installation de l’application, certains éléments peuvent ne pas être détectés.
 
-Les cookies et l’historique des navigateurs restent des options explicites. Leur suppression peut vous déconnecter de vos sites. Fermez vos navigateurs avant de nettoyer leurs fichiers.
+Le détail des chemins ciblés, du risque et des données conservées figure dans le [catalogue des cibles de nettoyage](docs/CATALOG.md).
+
+Les cookies et l’historique des navigateurs restent des options explicites, désactivées par défaut. La suppression des cookies porte sur **tous les cookies des profils ciblés** : OpenCleaner ne propose pas de conserver certains sites. Elle peut vous déconnecter de vos sites. Fermez vos navigateurs avant de nettoyer leurs fichiers.
 
 </details>
 
@@ -110,7 +118,7 @@ OpenCleaner ne remplace pas un antivirus, une sauvegarde de vos documents ni un 
 
 ## À votre façon
 
-Choisissez le **thème clair ou sombre** depuis la barre latérale. Dans **Paramètres > Langue**, passez du français à l’anglais sans redémarrer l’application. Les transitions respectent le réglage d’animations de Windows.
+Choisissez le **thème clair ou sombre** depuis la barre latérale. Dans **Paramètres > Apparence**, choisissez aussi l’une des six couleurs d’accent (menthe, azur, violet, turquoise, rose ou graphite) ; le changement s’applique immédiatement et le contraste des textes est vérifié. Dans **Paramètres > Langue**, passez du français à l’anglais sans redémarrer l’application. Les transitions respectent le réglage d’animations de Windows.
 
 Un bandeau vous prévient lorsqu’un disque manque d’espace. Le seuil est réglable dans les paramètres ; l’alerte ne lance aucun nettoyage.
 
@@ -129,14 +137,14 @@ Un bandeau vous prévient lorsqu’un disque manque d’espace. Le seuil est ré
 <details>
 <summary><strong>Comment mettre OpenCleaner à jour ?</strong></summary>
 
-Dans **Paramètres**, cliquez sur **Vérifier les mises à jour**. Une installation via **Setup.exe** recherche également les mises à jour au démarrage. L’application demande votre accord avant de redémarrer pour appliquer une mise à jour. Pour une version portable, téléchargez la nouvelle version depuis [GitHub Releases](https://github.com/VictorCESIVA/OpenCleaner/releases/latest).
+Dans **Paramètres**, cliquez sur **Vérifier les mises à jour** : une fenêtre dédiée affiche la progression, les notes de version et l’état de l’opération. Une installation via **Setup.exe** recherche aussi les mises à jour au démarrage et peut les télécharger en arrière-plan si l’option est activée ; l’installation ne démarre qu’après votre clic sur **Redémarrer et installer**. Pour une version portable, téléchargez la nouvelle version depuis [GitHub Releases](https://github.com/VictorCESIVA/OpenCleaner/releases/latest).
 
 </details>
 
 <details>
 <summary><strong>Pourquoi Windows affiche-t-il un avertissement au lancement ?</strong></summary>
 
-Certaines versions ne sont pas signées numériquement et peuvent déclencher un avertissement SmartScreen. Vérifiez que le fichier provient des [versions officielles du projet](https://github.com/VictorCESIVA/OpenCleaner/releases). Le caractère open source ne garantit pas à lui seul la sûreté d’un fichier téléchargé.
+Certaines versions ne sont pas signées numériquement et peuvent déclencher un avertissement SmartScreen. Vérifiez que le fichier provient des [versions officielles du projet](https://github.com/VictorCESIVA/OpenCleaner/releases). Le caractère open source ne garantit pas à lui seul la sûreté d’un fichier téléchargé. Pour contrôler un fichier téléchargé (SHA-256 et signature), utilisez [`tools/verify-release.ps1`](tools/verify-release.ps1) ; les contrôles effectués avant publication sont décrits dans la [checklist de publication](docs/RELEASE-CHECKLIST.md).
 
 </details>
 

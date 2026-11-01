@@ -9,11 +9,12 @@ namespace OpenCleaner.Plugins.System.Plugins;
 /// <summary>Personal-file duplicates require explicit review; application data is excluded.</summary>
 public sealed class DuplicateFinderPlugin : ICleanerPlugin
 {
-    private sealed record DuplicateEvidence(string OriginalPath, string Hash);
+    private sealed record DuplicateEvidence(string GroupId, string Hash);
     private readonly IFileGuardian _fileGuardian;
     private readonly ILogger<DuplicateFinderPlugin> _logger;
     private readonly string[] _roots;
     private readonly ScannedFileSelection _selection = new();
+    private readonly Dictionary<string, string[]> _members = new(StringComparer.Ordinal);
     private Dictionary<string, DuplicateEvidence> _evidence = new(StringComparer.Ordinal);
     private const long DefaultMinSizeBytes = 1024 * 1024;
     private long _minSizeBytes = DefaultMinSizeBytes;
@@ -55,6 +56,7 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
     {
         _selection.Reset();
         _evidence = new(StringComparer.Ordinal);
+        _members.Clear();
         var candidates = new Dictionary<string, FileInfo>(StringComparer.OrdinalIgnoreCase);
         foreach (var root in _roots)
             foreach (var info in PluginFileSafety.EnumerateFileInfos(root, "*", recursive: true, ct))
@@ -152,11 +154,8 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
                      .OrderBy(group => group.Key, StringComparer.Ordinal))
         {
             ct.ThrowIfCancellationRequested();
-            // Stable order designates a keeper, without pretending to infer which file is the original.
-            var ordered = group.Value.OrderBy(f => f.FullName, StringComparer.OrdinalIgnoreCase).ToArray();
-            var original = ordered[0].FullName;
-            var groupId = Guid.NewGuid().ToString();
-            foreach (var copy in ordered.Skip(1))
+            var eligible = new List<FileInfo>(group.Value.Count);
+            foreach (var copy in group.Value.OrderBy(f => f.FullName, StringComparer.OrdinalIgnoreCase))
             {
                 copy.Refresh();
                 if (!copy.Exists) continue;
@@ -166,12 +165,24 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
                     _logger.LogDebug("Doublon ignoré : plusieurs liens physiques ({Path})", copy.FullName);
                     continue;
                 }
+                eligible.Add(copy);
+            }
+            if (eligible.Count < 2) continue;
+
+            // Stable order only names the reference copy shown in the description. When several
+            // copies are left unchecked, the first surviving one is verified; no file is ever
+            // inferred to be the "original".
+            string reference = eligible[0].FullName;
+            string groupId = Guid.NewGuid().ToString();
+            _members[groupId] = eligible.Select(file => file.FullName).ToArray();
+            foreach (var copy in eligible)
+            {
                 var item = new CleanableItem(Guid.NewGuid().ToString(), copy.FullName, copy.Length,
-                    $"Identique à « {Path.GetFileName(original)} » — copie conservée : {original}",
-                    RiskLevel.ExpertOnly, ItemType.File, copy.LastAccessTime, Id, groupId, original);
+                    $"Identique à « {Path.GetFileName(reference)} »",
+                    RiskLevel.ExpertOnly, ItemType.File, copy.LastAccessTime, Id, groupId, reference);
                 items.Add(item);
                 published.Add((item, copy.LastWriteTimeUtc));
-                _evidence[item.Id] = new DuplicateEvidence(original, group.Key);
+                _evidence[item.Id] = new DuplicateEvidence(groupId, group.Key);
             }
         }
         ct.ThrowIfCancellationRequested();
@@ -183,24 +194,38 @@ public sealed class DuplicateFinderPlugin : ICleanerPlugin
     public async Task<OperationResult> CleanAsync(IEnumerable<CleanableItem> items, IBackupManager backupManager,
         IProgress<double>? progress = null, CancellationToken ct = default)
     {
+        var requested = items.DistinctBy(item => item.Id).ToList();
+        var deletedPaths = new HashSet<string>(requested.Select(item => item.Path), StringComparer.OrdinalIgnoreCase);
+        var keepersByGroup = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var (groupId, members) in _members)
+        {
+            // At least one copy must survive. The first unchecked copy that still exists is the
+            // keeper, so the user can keep any copy without ever nominating an "original".
+            string? keeper = members.FirstOrDefault(member =>
+                !deletedPaths.Contains(member) && File.Exists(member));
+            if (keeper != null) keepersByGroup[groupId] = keeper;
+        }
+
         var keepers = new Dictionary<string, (FileStream Stream, string Hash)>(StringComparer.OrdinalIgnoreCase);
         try
         {
-            return await _selection.CleanAsync(items, _fileGuardian, _logger, progress, ct, async (item, token) =>
+            return await _selection.CleanAsync(requested, _fileGuardian, _logger, progress, ct, async (item, token) =>
             {
                 if (!_evidence.TryGetValue(item.Id, out var evidence) ||
-                    !PluginFileSafety.IsRegularPath(evidence.OriginalPath)) return false;
+                    !keepersByGroup.TryGetValue(evidence.GroupId, out string? keeperPath) ||
+                    string.Equals(item.Path, keeperPath, StringComparison.OrdinalIgnoreCase) ||
+                    !PluginFileSafety.IsRegularPath(keeperPath)) return false;
                 // Recheck the physical names: a hard link added after the scan frees nothing.
                 if (!HardLinkInspector.HasSingleLink(item.Path)) return false;
-                if (!keepers.TryGetValue(evidence.OriginalPath, out var keeper))
+                if (!keepers.TryGetValue(keeperPath, out var keeper))
                 {
                     // Keep the surviving copy open without write/delete sharing throughout the cleanup,
                     // and compute its SHA-256 once while locked.
-                    var stream = new FileStream(evidence.OriginalPath, FileMode.Open, FileAccess.Read, FileShare.Read,
+                    var stream = new FileStream(keeperPath, FileMode.Open, FileAccess.Read, FileShare.Read,
                         81920, FileOptions.Asynchronous | FileOptions.SequentialScan);
                     var hash = Convert.ToHexString(await SHA256.HashDataAsync(stream, token));
                     keeper = (stream, hash);
-                    keepers[evidence.OriginalPath] = keeper;
+                    keepers[keeperPath] = keeper;
                 }
                 var copyHash = await HashHelper.ComputeHashAsync(item.Path, token);
                 return keeper.Hash.Equals(evidence.Hash, StringComparison.OrdinalIgnoreCase) &&

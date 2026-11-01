@@ -1,3 +1,5 @@
+using OpenCleaner.Core.Theming;
+
 namespace OpenCleaner.UI;
 
 /// <summary>
@@ -5,5 +7,5 @@ namespace OpenCleaner.UI;
 /// </summary>
 internal interface IThemeAware
 {
-    void ApplyTheme(bool dark);
+    void ApplyTheme(ThemePalette palette);
 }

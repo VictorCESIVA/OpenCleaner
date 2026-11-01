@@ -22,8 +22,7 @@ public sealed class DuplicateGroup : INotifyPropertyChanged
     public string Hash      { get; }
     public long   Size      { get; }
     public int    Count     => Files.Count;
-    public string Label     => T("Dup.GroupLabel", Count, SizeFormatter.Format(Size),
-        Files.FirstOrDefault()?.Item.OriginalPath ?? "");
+    public string Label     => T("Dup.GroupLabel", Count, SizeFormatter.Format(Size));
     public ObservableCollection<DuplicateFile> Files { get; } = [];
 
     public DuplicateGroup(string hash, long size) { Hash = hash; Size = size; }
@@ -49,7 +48,7 @@ public sealed class DuplicateFile
 
 // ─── Fenêtre ────────────────────────────────────────────────────────────────
 
-public partial class DuplicateWindow : UserControl
+public partial class DuplicateWindow : UserControl, IReleaseData
 {
     private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
 
@@ -72,6 +71,23 @@ public partial class DuplicateWindow : UserControl
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
         foreach (DuplicateGroup group in _groups) group.RefreshLocalization();
+    }
+
+    public void ReleaseData()
+    {
+        _allItems = [];
+        _groups.Clear();
+        DupTree.Items.Clear();
+        ClearPreview();
+        DupGroups.Text = "—";
+        DupFiles.Text = "—";
+        DupSize.Text = "—";
+        ScanProgress.Text = "";
+        CurrentFileText.Text = "";
+        AutoSelectBtn.IsEnabled = false;
+        UnselectAllBtn.IsEnabled = false;
+        DeleteBtn.IsEnabled = false;
+        StatusText.Text = T("Dup.Hint");
     }
 
     // ─── SCAN ───────────────────────────────────────────────────────────
@@ -120,7 +136,7 @@ public partial class DuplicateWindow : UserControl
             // On re-groupe en cherchant les doublons avec le même nom de fichier d'original
             ShowResults();
             var groups     = _groups.Count;
-            var files      = _allItems.Count;
+            var files      = _groups.Sum(group => group.Count);
 
             ScanProgress.Text = "";
             CurrentFileText.Text = "";
@@ -149,9 +165,9 @@ public partial class DuplicateWindow : UserControl
         _groups.Clear();
         BuildTree(_allItems);
         DupGroups.Text = _groups.Count.ToString();
-        DupFiles.Text = _allItems.Count.ToString();
-        DupSize.Text = SizeFormatter.Format(_allItems.Sum(item => item.Size));
-        AutoSelectBtn.IsEnabled = UnselectAllBtn.IsEnabled = _plugin != null && _allItems.Count > 0;
+        DupFiles.Text = _groups.Sum(group => group.Count).ToString();
+        DupSize.Text = SizeFormatter.Format(_groups.Sum(group => group.Files.Sum(file => file.Item.Size)));
+        AutoSelectBtn.IsEnabled = UnselectAllBtn.IsEnabled = _plugin != null && _groups.Count > 0;
         DeleteBtn.IsEnabled = false;
         ClearPreview();
     }
@@ -161,7 +177,8 @@ public partial class DuplicateWindow : UserControl
         _allItems = await Task.Run(() => CleanupResults.GetRemainingItems(_allItems));
         ShowResults();
         if (!IsVisible && _plugin != null)
-            StatusText.Text = _allItems.Count == 0 ? T("Dup.NoDuplicates") : T("Dup.Found", _allItems.Count, _groups.Count);
+            StatusText.Text = _groups.Count == 0 ? T("Dup.NoDuplicates")
+                : T("Dup.Found", _groups.Sum(group => group.Count), _groups.Count);
     }
 
     private void Plugin_OnFileHashing(string path)
@@ -177,6 +194,7 @@ public partial class DuplicateWindow : UserControl
         // On regroupe simplement par chemin du fichier original extrait de la description
         var byOriginal = items
             .GroupBy(i => i.DuplicateGroupId ?? i.OriginalPath ?? i.Id)
+            .Where(group => group.Count() > 1)
             .ToList();
 
         foreach (var grp in byOriginal)
@@ -218,12 +236,13 @@ public partial class DuplicateWindow : UserControl
 
     private void AutoSelect_Click(object sender, RoutedEventArgs e)
     {
-        // Coche toutes les copies (les cases dans le TreeView)
+        // Coche toutes les copies sauf la première de chaque groupe : au moins une copie reste.
         foreach (TreeViewItem node in DupTree.Items)
         {
+            int index = 0;
             foreach (var child in node.Items)
             {
-                if (child is CheckBox cb) cb.IsChecked = true;
+                if (child is CheckBox cb) cb.IsChecked = index++ > 0;
             }
         }
     }
@@ -255,6 +274,11 @@ public partial class DuplicateWindow : UserControl
     {
         var toDelete = GetCheckedItems();
         if (toDelete.Count == 0) return;
+        if (!EveryGroupKeepsACopy())
+        {
+            StatusText.Text = T("Dup.KeepOne");
+            return;
+        }
 
         bool? createBackup = CleanupConfirmationWindow.Confirm(Window.GetWindow(this),
             T("Dup.ConfirmDelete", toDelete.Count));
@@ -380,5 +404,15 @@ public partial class DuplicateWindow : UserControl
                 if (child is CheckBox { IsChecked: true, Tag: DuplicateFile f })
                     list.Add(f.Item);
         return list;
+    }
+
+    private bool EveryGroupKeepsACopy()
+    {
+        foreach (TreeViewItem node in DupTree.Items)
+        {
+            var boxes = node.Items.OfType<CheckBox>().ToList();
+            if (boxes.Count > 0 && boxes.All(box => box.IsChecked == true)) return false;
+        }
+        return true;
     }
 }

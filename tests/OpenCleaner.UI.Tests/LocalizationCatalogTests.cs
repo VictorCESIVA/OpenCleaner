@@ -47,6 +47,65 @@ public sealed class LocalizationCatalogTests
     }
 
     [Fact]
+    public void CatalogsCoverTheAccessibilityAutomationKeys()
+    {
+        var french = French();
+        var english = English();
+        foreach (string key in new[]
+                 {
+                     "Main.ProgressAutomation", "Main.RiskFilterAutomation", "Main.ResultsAutomation",
+                     "Nav.ThemeAutomation", "Common.ProgressAutomation", "Health.MemoryAutomation",
+                     "Privacy.ListAutomation", "Dev.ListAutomation",
+                     "Shred.ListAutomation", "Disk.DriveAutomation"
+                 })
+        {
+            Assert.True(french.TryGet(key, out _), "Clé d'accessibilité absente du français : " + key);
+            Assert.True(english.TryGet(key, out _), "Clé d'accessibilité absente de l'anglais : " + key);
+        }
+    }
+
+    [Fact]
+    public void CatalogsCoverTheAppearanceKeys()
+    {
+        var french = French();
+        var english = English();
+        foreach (string key in new[]
+                 {
+                     "Theme.Mint", "Theme.Azure", "Theme.Violet", "Theme.Teal",
+                     "Theme.Rose", "Theme.Graphite",
+                     "Settings.AppearanceTitle", "Settings.AppearanceDesc",
+                     "Settings.ThemeMode", "Settings.ThemeDark", "Settings.ThemeLight",
+                     "Settings.Accent", "Settings.AccentAutomation", "Settings.AppearanceSaved"
+                 })
+        {
+            Assert.True(french.TryGet(key, out _), "Clé d'apparence absente du français : " + key);
+            Assert.True(english.TryGet(key, out _), "Clé d'apparence absente de l'anglais : " + key);
+        }
+    }
+
+    [Fact]
+    public void CatalogsCoverTheTruthfulScopeCopy()
+    {
+        var french = French();
+        var english = English();
+        foreach (string key in new[]
+                 {
+                     "Main.CookieScopeNote", "Dup.KeepOne", "Disk.LogicalSizeNote",
+                     "App.CrashTitle", "App.CrashMessage"
+                 })
+        {
+            Assert.True(french.TryGet(key, out _), "Clé de portée absente du français : " + key);
+            Assert.True(english.TryGet(key, out _), "Clé de portée absente de l'anglais : " + key);
+        }
+
+        // The duplicate finder designates a copy to keep; it never identifies an "original".
+        Assert.DoesNotContain("origin", french.Format("Dup.GroupLabel", 2, "1 Mo"), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("origin", english.Format("Dup.GroupLabel", 2, "1 MB"), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("origin", french.Format("Dup.ConfirmDelete", 2), StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("origin", english.Format("Dup.ConfirmDelete", 2), StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void CatalogsCoverTheHealthKeysGeneratedByTheCore()
     {
         var french = French();
@@ -115,6 +174,42 @@ public sealed class LocalizationCatalogTests
         {
             Assert.True(french.TryGet(key, out _), "Clé absente du français : " + key);
             Assert.True(english.TryGet(key, out _), "Clé absente de l'anglais : " + key);
+        }
+    }
+
+    [Fact]
+    public void CatalogsCoverTheVisualUpdatesWindowKeys()
+    {
+        var french = French();
+        var english = English();
+        foreach (string key in new[]
+                 {
+                     "Updates.SelectAll", "Updates.SelectNone", "Updates.UpdateSelected",
+                     "Updates.Details", "Updates.DetailsEmpty", "Updates.Progress",
+                     "Updates.ProgressAutomation", "Updates.ListAutomation", "Updates.DetailsAutomation",
+                     "Updates.LogAutomation", "Updates.AlertAutomation", "Updates.StatusAutomation",
+                     "Updates.SelectionAutomation", "Updates.Count.Selected", "Updates.Count.None",
+                     "Updates.Source.Winget", "Updates.Source.Store", "Updates.UnknownVersion",
+                     "Updates.Row.Ready", "Updates.Row.Unknown", "Updates.Row.Running",
+                     "Updates.Row.Succeeded", "Updates.Row.Failed", "Updates.Row.FailedCode",
+                     "Updates.Row.Cancelled", "Updates.Row.Skipped",
+                     "Updates.Status.Initial", "Updates.Status.Found", "Updates.Status.UpToDate",
+                     "Updates.Status.UpgradingOne", "Updates.Status.AllDone", "Updates.Status.Partial",
+                     "Updates.Status.FailedCount", "Updates.Status.Cancelling", "Updates.Status.CheckFailed",
+                     "Updates.NoSelection", "Updates.TooMany", "Updates.ConfirmSelected",
+                     "Updates.State.InitialTitle", "Updates.State.InitialDescription",
+                     "Updates.State.CheckingTitle", "Updates.State.CheckingDescription",
+                     "Updates.State.NoUpdatesTitle", "Updates.State.NoUpdatesDescription",
+                     "Updates.State.ParseFailedTitle", "Updates.State.ParseFailedDescription",
+                     "Updates.State.CheckFailedTitle", "Updates.State.CheckFailedDescription",
+                     "Updates.State.WingetMissingTitle", "Updates.State.ElevationDeniedTitle",
+                     "Updates.State.ErrorTitle", "Updates.State.CancelledTitle",
+                     "Updates.State.CancelledDescription", "Updates.Warnings",
+                     "Updates.Preview.FailureDetail"
+                 })
+        {
+            Assert.True(french.TryGet(key, out _), "Clé de mises à jour absente du français : " + key);
+            Assert.True(english.TryGet(key, out _), "Clé de mises à jour absente de l'anglais : " + key);
         }
     }
 

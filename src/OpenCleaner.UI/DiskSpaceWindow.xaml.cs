@@ -7,6 +7,7 @@ using System.Windows.Media;
 using Microsoft.Extensions.DependencyInjection;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Security;
+using OpenCleaner.Core.Theming;
 using OpenCleaner.Core.Tools;
 using OpenCleaner.UI.Localization;
 
@@ -83,7 +84,7 @@ public sealed class ApplicationSpaceRow
         size >= 10_485_760 ? "SizeMed" : "SizeSmall";
 }
 
-public partial class DiskSpaceWindow : UserControl, IThemeAware
+public partial class DiskSpaceWindow : UserControl, IThemeAware, IReleaseData
 {
     private enum DiskView { Map, List, Files, Apps }
 
@@ -124,9 +125,9 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         if (DriveCombo.Items.Count > 0) DriveCombo.SelectedIndex = 0;
     }
 
-    public void ApplyTheme(bool dark)
+    public void ApplyTheme(ThemePalette palette)
     {
-        Treemap.RefreshTheme();
+        Treemap.ApplyTheme(palette);
         if (_current != null) ShowNode(_current);
         if (_view == DiskView.Files) ReloadLargest();
     }
@@ -175,6 +176,12 @@ public partial class DiskSpaceWindow : UserControl, IThemeAware
         EmptyState.Visibility = Visibility.Visible;
         ClearStats();
         MapHint.Text = DefaultHint;
+    }
+
+    public void ReleaseData()
+    {
+        ResetScan();
+        StatusText.Text = T("Disk.StatusReady");
     }
 
     // ─── SCAN ───────────────────────────────────────────────────────────

@@ -4,19 +4,27 @@ using Microsoft.Win32;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core.Scheduler;
 using OpenCleaner.Core.Security;
+using OpenCleaner.Core.Theming;
 using OpenCleaner.UI.Localization;
 using System.Collections.ObjectModel;
 using System.Windows;
+using System.Windows.Automation;
 using System.Windows.Controls;
+using System.Windows.Media;
 
 namespace OpenCleaner.UI;
 
 public partial class SettingsWindow : UserControl
 {
-    private readonly SchedulerService _scheduler;
+    private SchedulerService? _scheduler;
     private readonly ObservableCollection<string> _exclusions = [];
     private bool _loadingPreferences;
     private bool _loadingLanguage;
+    private bool _schedulerInitialized;
+    private bool _previewScheduleShown;
+    private readonly List<RadioButton> _accentSwatches = [];
+    private bool _loadingAppearance;
+    private bool _appearancePreview;
 
     private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
 
@@ -27,22 +35,47 @@ public partial class SettingsWindow : UserControl
         LoadExclusions();
         LoadPreferences();
         LoadLanguage();
+        BuildAccentSwatches();
+        LoadAppearance();
         LocalizationService.Instance.LanguageChanged += OnLanguageChanged;
+        ThemeService.ThemeChanged += OnThemeChanged;
         var version = typeof(App).Assembly.GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
             .OfType<System.Reflection.AssemblyInformationalVersionAttribute>().FirstOrDefault()?.InformationalVersion.Split('+')[0];
         ApplicationVersionText.Text = "OpenCleaner " + (version ?? typeof(App).Assembly.GetName().Version?.ToString(3));
-        _scheduler = new SchedulerService(
-            App.Services.GetRequiredService<ILogger<SchedulerService>>());
-        LoadConfig();
         RegenerateRecoveryBtn.IsEnabled =
             App.Services.GetRequiredService<IBackupManager>().IsBackupKeyAvailable;
+        Loaded += async (_, _) => await InitializeSchedulerAsync();
     }
 
     // ─── CHARGEMENT ─────────────────────────────────────────────────────
 
-    private void LoadConfig()
+    private async Task InitializeSchedulerAsync()
     {
-        var config = SchedulerService.LoadConfig(out string? configError);
+        if (_schedulerInitialized) return;
+        _schedulerInitialized = true;
+        SchedulerService scheduler = _scheduler = new SchedulerService(
+            App.Services.GetRequiredService<ILogger<SchedulerService>>());
+        try
+        {
+            var loaded = await Task.Run(() =>
+            {
+                ScheduleConfig config = SchedulerService.LoadConfig(out string? configError);
+                bool taskExists = configError == null && scheduler.GetScheduledTask() != null;
+                ScheduledRunRecord? lastRun = ScheduledRunJournal.ReadLatest(1).FirstOrDefault();
+                return (config, configError, taskExists, lastRun);
+            });
+            ApplyConfig(loaded.config, loaded.configError, loaded.taskExists);
+            if (!_previewScheduleShown)
+                UpdateRunSummary(loaded.config, loaded.lastRun);
+        }
+        catch (Exception ex)
+        {
+            SaveStatus.Text = T("Settings.ConfigUnreadable", ex.Message);
+        }
+    }
+
+    private void ApplyConfig(ScheduleConfig config, string? configError, bool taskExists)
+    {
         if (configError != null)
             SaveStatus.Text = T("Settings.ConfigUnreadable", configError);
 
@@ -63,16 +96,10 @@ public partial class SettingsWindow : UserControl
         foreach (var cb in plugBoxes)
             cb.IsChecked = cb != PlugWinUpd && config.PluginIds.Contains((string)cb.Tag);
 
-        UpdateRunSummary(config);
-
-        if (configError == null)
-        {
-            bool taskExists = _scheduler.GetScheduledTask() != null;
-            if (config.IsEnabled != taskExists)
-                SaveStatus.Text = config.IsEnabled
-                    ? T("Settings.TaskMissing")
-                    : T("Settings.TaskOrphan");
-        }
+        if (configError == null && config.IsEnabled != taskExists)
+            SaveStatus.Text = config.IsEnabled
+                ? T("Settings.TaskMissing")
+                : T("Settings.TaskOrphan");
     }
 
     // ─── SAVE ────────────────────────────────────────────────────────────
@@ -134,7 +161,9 @@ public partial class SettingsWindow : UserControl
             SchedulerService.SaveConfig(config);
             try
             {
-                _scheduler.CreateOrUpdateScheduledTask(config);
+                SchedulerService scheduler = _scheduler ??= new SchedulerService(
+                    App.Services.GetRequiredService<ILogger<SchedulerService>>());
+                scheduler.CreateOrUpdateScheduledTask(config);
             }
             catch
             {
@@ -228,23 +257,10 @@ public partial class SettingsWindow : UserControl
 
     // ─── MISES À JOUR ────────────────────────────────────────────────────
 
-    private async void CheckUpdate_Click(object sender, RoutedEventArgs e)
+    private void CheckUpdate_Click(object sender, RoutedEventArgs e)
     {
-        CheckUpdateBtn.IsEnabled = false;
-        UpdateStatus.Text = "…";
-        try
-        {
-            var applied = await UpdateService.CheckForUpdatesManualAsync(
-                status => Dispatcher.Invoke(() => UpdateStatus.Text = status),
-                msg => MessageBoxResult.Yes == MessageBox.Show(msg, T("Settings.UpdateTitle"),
-                    MessageBoxButton.YesNo, MessageBoxImage.Question));
-            if (applied)
-                Application.Current.Shutdown();
-        }
-        finally
-        {
-            CheckUpdateBtn.IsEnabled = true;
-        }
+        UpdateStatus.Text = "";
+        new AppUpdateWindow { Owner = Window.GetWindow(this) }.ShowDialog();
     }
 
     // ─── ENABLE TOGGLE ──────────────────────────────────────────────────
@@ -261,9 +277,11 @@ public partial class SettingsWindow : UserControl
         PlugAppCaches.IsEnabled = on;
     }
 
-    private void UpdateRunSummary(ScheduleConfig config)
+    private void UpdateRunSummary(ScheduleConfig config) =>
+        UpdateRunSummary(config, ScheduledRunJournal.ReadLatest(1).FirstOrDefault());
+
+    private void UpdateRunSummary(ScheduleConfig config, ScheduledRunRecord? last)
     {
-        ScheduledRunRecord? last = ScheduledRunJournal.ReadLatest(1).FirstOrDefault();
         LastRunText.Text = last == null
             ? T("Settings.NoRuns")
             : FormatLastRun(last);
@@ -280,6 +298,7 @@ public partial class SettingsWindow : UserControl
 
     internal void ShowScheduleForPreview(ScheduledRunRecord lastRun, DateTime nextRun)
     {
+        _previewScheduleShown = true;
         LastRunText.Text = FormatLastRun(lastRun);
         NextRunText.Text = T("Settings.NextRun", nextRun);
     }
@@ -304,6 +323,8 @@ public partial class SettingsWindow : UserControl
     private void OnLanguageChanged(object? sender, EventArgs e)
     {
         LoadLanguage();
+        BuildAccentSwatches();
+        LoadAppearance();
         UpdateExclusionsStatus(null);
         UpdateRunSummary(SchedulerService.LoadConfig());
         SaveStatus.Text = "";
@@ -316,6 +337,110 @@ public partial class SettingsWindow : UserControl
         string language = LocalizationService.NormalizeLanguage(tag);
         App.SetPreferences(App.Preferences with { Language = language });
         LocalizationService.Instance.SetLanguage(language);
+    }
+
+    // ─── APPARENCE ──────────────────────────────────────────────────────
+
+    private void BuildAccentSwatches()
+    {
+        AccentSwatches.Children.Clear();
+        _accentSwatches.Clear();
+        foreach (ThemePreset preset in ThemeCatalog.Presets)
+        {
+            var swatch = new RadioButton
+            {
+                GroupName = "ThemeAccent",
+                Tag = preset.Id,
+                Style = (Style)FindResource("ThemeSwatch")
+            };
+            string name = T(preset.DisplayNameKey);
+            swatch.ToolTip = name;
+            AutomationProperties.SetName(swatch, name);
+            AutomationProperties.SetHelpText(swatch, T("Settings.AccentAutomation", name));
+            swatch.Checked += AccentSwatch_Checked;
+            AccentSwatches.Children.Add(swatch);
+            _accentSwatches.Add(swatch);
+        }
+    }
+
+    private void LoadAppearance()
+    {
+        _loadingAppearance = true;
+        _appearancePreview = false;
+        DarkThemeRadio.IsChecked = App.Preferences.DarkTheme;
+        LightThemeRadio.IsChecked = !App.Preferences.DarkTheme;
+        string accent = App.Preferences.Accent;
+        foreach (RadioButton swatch in _accentSwatches)
+            swatch.IsChecked = string.Equals(swatch.Tag as string, accent,
+                StringComparison.OrdinalIgnoreCase);
+        RefreshSwatchColors(ThemeService.Current);
+        _loadingAppearance = false;
+    }
+
+    private void RefreshSwatchColors(ThemePalette palette)
+    {
+        foreach (RadioButton swatch in _accentSwatches)
+        {
+            ThemePalette preset = ThemePalette.Build(palette.IsDark, swatch.Tag as string);
+            swatch.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString(preset.Accent));
+            swatch.Foreground = new SolidColorBrush((Color)ColorConverter.ConvertFromString(preset.AccentForeground));
+        }
+    }
+
+    private void OnThemeChanged(object? sender, ThemePalette palette)
+    {
+        if (_appearancePreview)
+        {
+            RefreshSwatchColors(palette);
+            return;
+        }
+        _loadingAppearance = true;
+        DarkThemeRadio.IsChecked = palette.IsDark;
+        LightThemeRadio.IsChecked = !palette.IsDark;
+        foreach (RadioButton swatch in _accentSwatches)
+            swatch.IsChecked = string.Equals(swatch.Tag as string, App.Preferences.Accent,
+                StringComparison.OrdinalIgnoreCase);
+        RefreshSwatchColors(palette);
+        _loadingAppearance = false;
+    }
+
+    private void ThemeMode_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingAppearance || _appearancePreview) return;
+        ApplyAppearance(DarkThemeRadio.IsChecked == true, App.Preferences.Accent);
+    }
+
+    private void AccentSwatch_Checked(object sender, RoutedEventArgs e)
+    {
+        if (_loadingAppearance || _appearancePreview) return;
+        if (sender is not RadioButton { Tag: string accent }) return;
+        ApplyAppearance(App.Preferences.DarkTheme, accent);
+    }
+
+    private void ApplyAppearance(bool dark, string accent)
+    {
+        App.SetPreferences(App.Preferences with
+        {
+            DarkTheme = dark,
+            Accent = accent,
+            AccentHex = null
+        });
+        ThemeService.Apply(App.Preferences);
+        AppearanceStatus.Text = T("Settings.AppearanceSaved");
+    }
+
+    internal void ShowAppearanceForPreview(bool dark, string accent)
+    {
+        _appearancePreview = true;
+        _loadingAppearance = true;
+        DarkThemeRadio.IsChecked = dark;
+        LightThemeRadio.IsChecked = !dark;
+        foreach (RadioButton swatch in _accentSwatches)
+            swatch.IsChecked = string.Equals(swatch.Tag as string, accent,
+                StringComparison.OrdinalIgnoreCase);
+        RefreshSwatchColors(ThemeService.Current);
+        _loadingAppearance = false;
+        AppearanceStatus.Text = T("Settings.PreviewOnly");
     }
 
     private void LoadPreferences()
@@ -334,8 +459,19 @@ public partial class SettingsWindow : UserControl
             App.SetPreferences(App.Preferences with { LowSpaceThresholdPercent = threshold });
         }
         LowSpaceCombo.SelectedItem = selected.Item;
+        BackgroundUpdateCheck.IsChecked = App.Preferences.BackgroundUpdateDownload;
         _loadingPreferences = false;
         PreferencesStatus.Text = T("Settings.ThresholdBanner", threshold);
+    }
+
+    private void BackgroundUpdate_Changed(object sender, RoutedEventArgs e)
+    {
+        if (_loadingPreferences) return;
+        bool enabled = BackgroundUpdateCheck.IsChecked == true;
+        App.SetPreferences(App.Preferences with { BackgroundUpdateDownload = enabled });
+        PreferencesStatus.Text = T(enabled
+            ? "Settings.BackgroundUpdate.SavedOn"
+            : "Settings.BackgroundUpdate.SavedOff");
     }
 
     private void LowSpaceCombo_Changed(object sender, SelectionChangedEventArgs e)

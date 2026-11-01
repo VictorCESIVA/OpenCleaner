@@ -128,6 +128,7 @@ public class DashboardHeightConverter : IMultiValueConverter
     {
         var minimum = values.Length > 1 && values[1] is Visibility.Visible ? 940 : 820;
         if (values.Length > 2 && values[2] is Visibility.Visible) minimum += 80;
+        if (values.Length > 3 && values[3] is Visibility.Visible) minimum += 80;
         return values.Length > 0 && values[0] is double height && double.IsFinite(height)
             ? Math.Max(minimum, height - 48) : minimum;
     }

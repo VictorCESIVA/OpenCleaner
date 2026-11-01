@@ -7,7 +7,7 @@ Comparaison établie à partir des fonctions publiques de CCleaner pour Windows 
 | CCleaner | OpenCleaner | Détail |
 |---|---|---|
 | Custom Clean | Oui | Catégories système, navigateurs, applications, registre, analyse et sélection. |
-| Nettoyage des navigateurs | Oui | Chrome, Edge, Brave, Firefox, Opera, Vivaldi, y compris les canaux bêta, dev et canary ; cookies et historique sur option. |
+| Nettoyage des navigateurs | Oui | Chrome, Edge, Brave, Firefox, Opera, Vivaldi, y compris les canaux bêta, dev et canary ; cookies et historique sur option, désactivés par défaut. La suppression des cookies couvre tous ceux des profils ciblés, sans sélection par site. |
 | Health Check | Oui | Score sur 100, cinq sections mesurées, constats expliqués, actions directes, historique local des 30 derniers jours et tendance de l'espace libre. Aucune correction silencieuse : chaque action destructive reste confirmée. |
 | Corbeille | Oui | Consultation du volume et vidage explicite et irréversible. |
 | Prefetch | Oui | Cible experte, fichiers de plus de 30 jours. |
@@ -15,10 +15,10 @@ Comparaison établie à partir des fonctions publiques de CCleaner pour Windows 
 | Caches d'applications tierces | Oui | Slack, Notion, WhatsApp, Signal, Zoom, Microsoft Store, OneDrive et rapports de plantage Crashpad, uniquement des caches et journaux. |
 | Outils IA | Oui | Caches et journaux de Cursor, Claude et ChatGPT. |
 | Startup Manager | Oui | HKCU Run/RunOnce, dossier Démarrage et clés machine HKLM Run/RunOnce avec sauvegarde, autorisation administrateur et impact estimé ; le dossier Démarrage commun reste en lecture seule. |
-| Apps Uninstaller | Oui | Liste, recherche, portée, taille et lancement du désinstalleur officiel. |
+| Apps Uninstaller | Oui | Liste, recherche, portée, taille et lancement du désinstalleur officiel ; aucun nettoyage de résidus. BCU, Revo Uninstaller ou HiBit Uninstaller pour un nettoyage approfondi. |
 | Software Updater | Oui | Via `winget`, avec sortie visible, confirmation et annulation. |
-| Disk Analyzer | Oui | Carte proportionnelle, navigation instantanée dans l'arborescence scannée, liste, plus gros fichiers et vue Applications (taille mesurée ou estimée). |
-| Duplicate Finder | Oui | SHA-256 avec pré-empreinte, hachage complet parallèle, conservation vérifiée de l'original et refus des fichiers à plusieurs liens physiques. |
+| Disk Analyzer | Oui | Carte proportionnelle, navigation instantanée dans l'arborescence scannée, liste, plus gros fichiers et vue Applications (tailles logiques estimées ; estimation depuis le registre lorsqu'un dossier n'a pas été mesuré). |
+| Duplicate Finder | Oui | SHA-256 avec pré-empreinte, hachage complet parallèle, copies non cochées conservées (au moins une par groupe) et vérifiées avant suppression, refus des fichiers à plusieurs liens physiques. |
 | Registry Cleaner | Partiel | Historiques HKCU ciblés, export avant suppression, liste blanche. |
 | Exclusions | Oui | Dossiers exclus par l'utilisateur, appliqués à l'analyse et à la suppression, sous-dossiers compris. |
 | Scheduled Cleaning | Oui | Tâche Windows dans le contexte utilisateur, fichiers Safe de catégories autorisées, caches d'applications compris, avec dernière exécution et prochaine occurrence visibles. |

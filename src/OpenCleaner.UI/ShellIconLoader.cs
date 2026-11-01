@@ -12,7 +12,7 @@ internal static class ShellIconLoader
 {
     private const uint ShgfiIcon = 0x000000100;
     private const uint ShgfiLargeIcon = 0x000000000;
-    private static readonly ConcurrentDictionary<string, Lazy<ImageSource?>> Cache =
+    private static readonly ConcurrentDictionary<string, Lazy<Task<ImageSource?>>> Cache =
         new(StringComparer.OrdinalIgnoreCase);
     private static readonly BlockingCollection<IconRequest> Queue = [];
     private static readonly Thread Worker;
@@ -29,30 +29,37 @@ internal static class ShellIconLoader
         Worker.Start();
     }
 
-    public static async Task<ImageSource?> GetAsync(string? path)
+    public static Task<ImageSource?> GetAsync(string? path)
     {
-        if (string.IsNullOrWhiteSpace(path)) return null;
-        if (Cache.TryGetValue(path, out Lazy<ImageSource?>? cached)) return cached.Value;
+        if (string.IsNullOrWhiteSpace(path)) return Task.FromResult<ImageSource?>(null);
+        return Cache.GetOrAdd(path, key => new Lazy<Task<ImageSource?>>(() => LoadAsync(key))).Value;
+    }
 
+    private static Task<ImageSource?> LoadAsync(string path)
+    {
         var completion = new TaskCompletionSource<ImageSource?>(
             TaskCreationOptions.RunContinuationsAsynchronously);
-        Queue.Add(new IconRequest(path, completion));
-        return await completion.Task;
+        try { Queue.Add(new IconRequest(path, completion)); }
+        catch (Exception) { return Task.FromResult<ImageSource?>(null); }
+        return completion.Task;
     }
 
     private static void ProcessQueue()
     {
         foreach (IconRequest request in Queue.GetConsumingEnumerable())
         {
-            try { request.Completion.TrySetResult(Get(request.Path)); }
-            catch (Exception ex) { request.Completion.TrySetException(ex); }
+            ImageSource? icon = null;
+            try { icon = Load(request.Path); }
+            catch (Exception) { icon = null; }
+            request.Completion.TrySetResult(icon);
         }
     }
 
     public static ImageSource? Get(string? path)
     {
         if (string.IsNullOrWhiteSpace(path)) return null;
-        return Cache.GetOrAdd(path, key => new Lazy<ImageSource?>(() => Load(key))).Value;
+        return Cache.GetOrAdd(path, key => new Lazy<Task<ImageSource?>>(() => LoadAsync(key)))
+            .Value.GetAwaiter().GetResult();
     }
 
     private static ImageSource? Load(string path)

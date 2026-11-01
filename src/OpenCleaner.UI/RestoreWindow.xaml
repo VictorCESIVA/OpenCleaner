@@ -62,6 +62,7 @@
 
                     Padding="4">
                 <Grid><ListView x:Name="BackupsListView"
+                          AutomationProperties.Name="{loc:Translate Restore.BackupsTitle}"
                           Background="Transparent"
                           BorderThickness="0"
                           ItemContainerStyle="{StaticResource RestoreItemStyle}"

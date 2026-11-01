@@ -8,11 +8,12 @@ using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
-public partial class StartupWindow : UserControl
+public partial class StartupWindow : UserControl, IReleaseData
 {
     private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
 
     private readonly ObservableCollection<StartupItemRow> _items = [];
+    private readonly HashSet<StartupItemRow> _iconRequests = [];
     private IReadOnlyList<StartupItemRow> _all = [];
     private bool _busy;
     private bool _loaded;
@@ -48,6 +49,7 @@ public partial class StartupWindow : UserControl
         {
             IReadOnlyList<StartupItem> items = await Task.Run(StartupItemService.GetItems);
             _all = items.Select(item => new StartupItemRow(item)).ToList();
+            _iconRequests.Clear();
             ApplyFilter();
             StatusText.Text = _all.Count == 0
                 ? T("Startup.Status.None")
@@ -60,11 +62,24 @@ public partial class StartupWindow : UserControl
             StatusText.Text = T("Startup.Status.LoadFailed", ex.Message);
         }
         finally { SetBusy(false); }
-        if (_all.Count > 0) _ = LoadIconsAsync(_all);
     }
 
-    private static async Task LoadIconsAsync(IReadOnlyList<StartupItemRow> rows) =>
-        await Task.WhenAll(rows.Select(row => row.LoadIconAsync()));
+    public void ReleaseData()
+    {
+        foreach (StartupItemRow row in _all) row.Icon = null;
+        _iconRequests.Clear();
+    }
+
+    private void Row_Loaded(object sender, RoutedEventArgs e) => RequestIcon(sender);
+
+    private void Row_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e) =>
+        RequestIcon(sender);
+
+    private void RequestIcon(object sender)
+    {
+        if (sender is FrameworkElement { DataContext: StartupItemRow row } && _iconRequests.Add(row))
+            _ = row.LoadIconAsync();
+    }
 
     private void ApplyFilter()
     {

@@ -1,10 +1,11 @@
 using System.Windows;
 using System.Windows.Media;
+using OpenCleaner.Core.Theming;
 
 namespace OpenCleaner.UI;
 
 /// <summary>Anneau de score dessiné à la main, sans dépendance externe.</summary>
-public sealed class ScoreRing : FrameworkElement
+public sealed class ScoreRing : FrameworkElement, IThemeAware
 {
     public static readonly DependencyProperty ScoreProperty = DependencyProperty.Register(
         nameof(Score), typeof(int), typeof(ScoreRing),
@@ -41,6 +42,8 @@ public sealed class ScoreRing : FrameworkElement
         Width = 150;
         Height = 150;
     }
+
+    public void ApplyTheme(ThemePalette palette) => RefreshTheme();
 
     public void RefreshTheme() => InvalidateVisual();
 

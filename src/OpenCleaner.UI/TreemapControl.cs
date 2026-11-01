@@ -4,6 +4,7 @@ using System.Windows.Automation;
 using System.Windows.Input;
 using System.Windows.Media;
 using OpenCleaner.Contracts;
+using OpenCleaner.Core.Theming;
 using OpenCleaner.Core.Tools;
 using OpenCleaner.UI.Localization;
 
@@ -13,7 +14,7 @@ namespace OpenCleaner.UI;
 /// Carte proportionnelle des enfants d'un dossier. Les pavés sont calculés par
 /// <see cref="TreemapLayout"/> ; ce contrôle ne fait que dessiner et router les clics.
 /// </summary>
-public sealed class TreemapControl : FrameworkElement
+public sealed class TreemapControl : FrameworkElement, IThemeAware
 {
     private const string ResidualKey = "\u0000résidu";
     private const string AggregateKey = "\u0000agrégat";
@@ -29,6 +30,14 @@ public sealed class TreemapControl : FrameworkElement
     private List<Tile> _tiles = [];
     private Tile? _hovered;
     private DiskUsageNode? _selectedNode;
+    private DiskUsageNode? _tilesNode;
+    private double _tilesWidth = -1;
+    private double _tilesHeight = -1;
+    private string _tilesLanguage = "";
+    private readonly Dictionary<uint, SolidColorBrush> _brushCache = [];
+    private readonly Dictionary<(uint Color, double Thickness), Pen> _penCache = [];
+    private readonly Dictionary<(string Text, double FontSize, bool SemiBold, double MaxWidth,
+        double MaxHeight, uint Color, double Dpi), FormattedText> _textCache = [];
 
     public TreemapControl()
     {
@@ -56,7 +65,15 @@ public sealed class TreemapControl : FrameworkElement
     public static readonly DependencyProperty NodeProperty = DependencyProperty.Register(
         nameof(Node), typeof(DiskUsageNode), typeof(TreemapControl),
         new FrameworkPropertyMetadata(null, FrameworkPropertyMetadataOptions.AffectsRender,
-            (d, _) => ((TreemapControl)d)._selectedNode = null));
+            (d, _) =>
+            {
+                var control = (TreemapControl)d;
+                control._selectedNode = null;
+                control._tilesNode = null;
+                control._tilesLanguage = "";
+                control._tiles = [];
+                control._textCache.Clear();
+            }));
 
     public DiskUsageNode? Node
     {
@@ -69,7 +86,15 @@ public sealed class TreemapControl : FrameworkElement
 
     internal int RenderedTileCount => _tiles.Count;
 
-    public void RefreshTheme() => InvalidateVisual();
+    public void ApplyTheme(ThemePalette palette) => RefreshTheme();
+
+    public void RefreshTheme()
+    {
+        _brushCache.Clear();
+        _penCache.Clear();
+        _textCache.Clear();
+        InvalidateVisual();
+    }
 
     protected override HitTestResult? HitTestCore(PointHitTestParameters hitTestParameters) =>
         new PointHitTestResult(this, hitTestParameters.HitPoint);
@@ -77,7 +102,7 @@ public sealed class TreemapControl : FrameworkElement
     protected override void OnRender(DrawingContext drawingContext)
     {
         base.OnRender(drawingContext);
-        _tiles = BuildTiles(ActualWidth, ActualHeight);
+        EnsureTiles(ActualWidth, ActualHeight);
         if (IsKeyboardFocusWithin &&
             (_selectedNode == null || !_tiles.Any(tile => ReferenceEquals(tile.Node, _selectedNode))))
             _selectedNode = _tiles.Count > 0 ? _tiles[0].Node : null;
@@ -117,42 +142,47 @@ public sealed class TreemapControl : FrameworkElement
             if (inner.Width <= 2 || inner.Height <= 2) continue;
 
             if (hovered)
-                drawingContext.DrawRectangle(null, new Pen(Brush(WithAlpha(accent, 0.95)), 2),
+                drawingContext.DrawRectangle(null, GetPen(WithAlpha(accent, 0.95), 2),
                     Rect.Inflate(tile.Rect, -1, -1));
 
             if (inner.Width >= 46 && inner.Height >= 18)
             {
-                var label = new FormattedText(tile.Label, CultureInfo.CurrentUICulture,
-                    FlowDirection.LeftToRight, LabelTypeface, 11.5, Brush(WithAlpha(text, 1)), dpi)
-                {
-                    MaxTextWidth = Math.Max(1, inner.Width - 8),
-                    MaxTextHeight = inner.Height,
-                    Trimming = TextTrimming.CharacterEllipsis
-                };
+                var label = GetText(tile.Label, 11.5, true, WithAlpha(text, 1),
+                    Math.Max(1, inner.Width - 8), inner.Height, dpi);
                 drawingContext.DrawText(label, new Point(inner.X + 5, inner.Y + 4));
 
                 if (inner.Height >= 36 && inner.Width >= 70)
                 {
-                    var detail = new FormattedText(tile.Detail, CultureInfo.CurrentUICulture,
-                        FlowDirection.LeftToRight, DetailTypeface, 10.5, Brush(WithAlpha(text, 0.75)), dpi)
-                    {
-                        MaxTextWidth = Math.Max(1, inner.Width - 8),
-                        MaxTextHeight = Math.Max(1, inner.Height - 20),
-                        Trimming = TextTrimming.CharacterEllipsis
-                    };
+                    var detail = GetText(tile.Detail, 10.5, false, WithAlpha(text, 0.75),
+                        Math.Max(1, inner.Width - 8), Math.Max(1, inner.Height - 20), dpi);
                     drawingContext.DrawText(detail, new Point(inner.X + 5, inner.Y + 20));
                 }
             }
 
             if (!hovered)
-                drawingContext.DrawRectangle(null, new Pen(Brush(WithAlpha(
-                    tile.Node.IsProtected ? warning : border, tile.Node.IsProtected ? 0.8 : 0.9)),
+                drawingContext.DrawRectangle(null, GetPen(WithAlpha(
+                    tile.Node.IsProtected ? warning : border, tile.Node.IsProtected ? 0.8 : 0.9),
                     tile.Node.IsProtected ? 2 : 1), tile.Rect);
 
             if (IsKeyboardFocusWithin && ReferenceEquals(_selectedNode, tile.Node))
-                drawingContext.DrawRectangle(null, new Pen(Brush(WithAlpha(text, 0.95)), 2),
+                drawingContext.DrawRectangle(null, GetPen(WithAlpha(text, 0.95), 2),
                     Rect.Inflate(tile.Rect, -3, -3));
         }
+    }
+
+    private void EnsureTiles(double width, double height)
+    {
+        string language = LocalizationService.Instance.Language;
+        if (ReferenceEquals(_tilesNode, Node) && _tilesWidth.Equals(width) &&
+            _tilesHeight.Equals(height) && string.Equals(_tilesLanguage, language, StringComparison.Ordinal))
+            return;
+
+        _tilesNode = Node;
+        _tilesWidth = width;
+        _tilesHeight = height;
+        _tilesLanguage = language;
+        _textCache.Clear();
+        _tiles = BuildTiles(width, height);
     }
 
     private List<Tile> BuildTiles(double width, double height)
@@ -302,12 +332,47 @@ public sealed class TreemapControl : FrameworkElement
         return null;
     }
 
-    private static SolidColorBrush Brush(Color color)
+    private FormattedText GetText(string text, double fontSize, bool semiBold, Color color,
+        double maxWidth, double maxHeight, double dpi)
     {
+        var key = (text, fontSize, semiBold, maxWidth, maxHeight, ColorKey(color), dpi);
+        if (_textCache.TryGetValue(key, out FormattedText? cached)) return cached;
+
+        var formatted = new FormattedText(text, CultureInfo.CurrentUICulture, FlowDirection.LeftToRight,
+            semiBold ? LabelTypeface : DetailTypeface, fontSize, Brush(color), dpi)
+        {
+            MaxTextWidth = Math.Max(1, maxWidth),
+            MaxTextHeight = Math.Max(1, maxHeight),
+            Trimming = TextTrimming.CharacterEllipsis
+        };
+        _textCache[key] = formatted;
+        return formatted;
+    }
+
+    private SolidColorBrush Brush(Color color)
+    {
+        uint key = ColorKey(color);
+        if (_brushCache.TryGetValue(key, out SolidColorBrush? cached)) return cached;
+
         var brush = new SolidColorBrush(color);
         brush.Freeze();
+        _brushCache[key] = brush;
         return brush;
     }
+
+    private Pen GetPen(Color color, double thickness)
+    {
+        var key = (ColorKey(color), thickness);
+        if (_penCache.TryGetValue(key, out Pen? cached)) return cached;
+
+        var pen = new Pen(Brush(color), thickness);
+        pen.Freeze();
+        _penCache[key] = pen;
+        return pen;
+    }
+
+    private static uint ColorKey(Color color) =>
+        ((uint)color.A << 24) | ((uint)color.R << 16) | ((uint)color.G << 8) | color.B;
 
     private static Color WithAlpha(Color color, double opacity) =>
         Color.FromArgb((byte)Math.Clamp((int)Math.Round(Math.Clamp(opacity, 0, 1) * 255), 0, 255),

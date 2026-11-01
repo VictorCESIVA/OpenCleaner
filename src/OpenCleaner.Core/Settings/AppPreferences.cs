@@ -1,4 +1,5 @@
 using System.Text.Json;
+using OpenCleaner.Core.Theming;
 
 namespace OpenCleaner.Core.Settings;
 
@@ -11,13 +12,26 @@ public sealed record AppPreferences
     public bool DarkTheme { get; init; } = true;
     public string Language { get; init; } = "fr";
     public int LowSpaceThresholdPercent { get; init; } = DefaultLowSpacePercent;
+    public bool BackgroundUpdateDownload { get; init; } = true;
+    public string Accent { get; init; } = ThemeCatalog.DefaultId;
+    public string? AccentHex { get; init; }
 
-    public AppPreferences Normalize() => this with
+    public AppPreferences Normalize()
     {
-        Language = string.Equals(Language?.Trim(), "en", StringComparison.OrdinalIgnoreCase) ? "en" : "fr",
-        LowSpaceThresholdPercent = Math.Clamp(LowSpaceThresholdPercent,
-            MinimumLowSpacePercent, MaximumLowSpacePercent)
-    };
+        bool hasCustomHex = ColorMath.TryNormalizeHex(AccentHex, out string normalizedHex);
+        string accent = (Accent ?? string.Empty).Trim().ToLowerInvariant();
+        if (hasCustomHex) accent = ThemeCatalog.CustomId;
+        else if (!ThemeCatalog.IsKnown(accent)) accent = ThemeCatalog.DefaultId;
+
+        return this with
+        {
+            Language = string.Equals(Language?.Trim(), "en", StringComparison.OrdinalIgnoreCase) ? "en" : "fr",
+            LowSpaceThresholdPercent = Math.Clamp(LowSpaceThresholdPercent,
+                MinimumLowSpacePercent, MaximumLowSpacePercent),
+            Accent = accent,
+            AccentHex = hasCustomHex ? normalizedHex : null
+        };
+    }
 }
 
 /// <summary>Préférences locales (thème, seuil d'alerte). Aucune donnée personnelle.</summary>

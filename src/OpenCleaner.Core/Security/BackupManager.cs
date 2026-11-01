@@ -50,9 +50,12 @@ public sealed class BackupManager : IBackupManager, IDisposable
     public Task<string?> EnsureRecoveryCodeAsync(CancellationToken ct = default)
     {
         ct.ThrowIfCancellationRequested();
-        if (!_keys.IsKeyAvailable && (_keys.HasRecoveryEnvelope || HasEncryptedBackups()))
-            throw new BackupKeyUnavailableException("The backup key is missing; use the recovery code");
-        return Task.Run(() => _keys.EnsureRecoveryCode(createKeyIfMissing: true), ct);
+        return Task.Run(() =>
+        {
+            if (!_keys.IsKeyAvailable && (_keys.HasRecoveryEnvelope || HasEncryptedBackups()))
+                throw new BackupKeyUnavailableException("The backup key is missing; use the recovery code");
+            return _keys.EnsureRecoveryCode(createKeyIfMissing: true);
+        }, ct);
     }
 
     public Task<string> RegenerateRecoveryCodeAsync(CancellationToken ct = default)
@@ -66,11 +69,11 @@ public sealed class BackupManager : IBackupManager, IDisposable
     public async Task<bool> RecoverKeyAsync(string recoveryCode, CancellationToken ct = default)
     {
         if (string.IsNullOrWhiteSpace(recoveryCode)) return false;
-        await _gate.WaitAsync(ct);
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             ct.ThrowIfCancellationRequested();
-            return await Task.Run(() => _keys.RecoverKey(recoveryCode), ct);
+            return await Task.Run(() => _keys.RecoverKey(recoveryCode), ct).ConfigureAwait(false);
         }
         finally { _gate.Release(); }
     }
@@ -102,8 +105,8 @@ public sealed class BackupManager : IBackupManager, IDisposable
 
     public async Task<BackupInfo> CreateBackupAsync(string originalPath, CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct);
-        try { return await CreateBackupCoreAsync(originalPath, ct); }
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
+        try { return await CreateBackupCoreAsync(originalPath, ct).ConfigureAwait(false); }
         finally { _gate.Release(); }
     }
 
@@ -130,7 +133,8 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 FileShare.Read, CopyBufferSize, FileOptions.Asynchronous | FileOptions.SequentialScan);
             await using var destination = new FileStream(backupFilePath, FileMode.CreateNew, FileAccess.Write,
                 FileShare.None, CopyBufferSize, FileOptions.Asynchronous);
-            (long fileSize, string contentHash) = await BackupCipher.EncryptAsync(key, source, destination, ct);
+            (long fileSize, string contentHash) = await BackupCipher.EncryptAsync(key, source, destination, ct)
+                .ConfigureAwait(false);
 
             var metadata = new BackupMetadata
             {
@@ -146,7 +150,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 Signature = BackupCipher.ComputeMetadataSignature(key, metadata.OriginalPath, metadata.OriginalHash,
                     metadata.CreationDate, metadata.FileSize, metadata.FileName, metadata.Encrypted)
             };
-            await WriteMetadataAsync(backupDirectory, metadata, ct);
+            await WriteMetadataAsync(backupDirectory, metadata, ct).ConfigureAwait(false);
             _logger.LogInformation("Backup created: {BackupId} for {OriginalPath}", backupId, originalPath);
             return ToInfo(backupId, metadata, backupFilePath);
         }
@@ -165,7 +169,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
 
     private async Task<bool> RestoreCoreAsync(string backupId, bool onlyIfMissing, CancellationToken ct)
     {
-        await _gate.WaitAsync(ct);
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
         string? stagedFile = null;
         try
         {
@@ -199,7 +203,8 @@ public sealed class BackupManager : IBackupManager, IDisposable
                     FileShare.Read, 65536, FileOptions.Asynchronous);
                 await using var destination = new FileStream(stagedFile, FileMode.CreateNew, FileAccess.Write,
                     FileShare.None, 65536, FileOptions.Asynchronous);
-                (long fileSize, string hash) = await BackupCipher.DecryptAsync(Key, source, destination, ct);
+                (long fileSize, string hash) = await BackupCipher.DecryptAsync(Key, source, destination, ct)
+                    .ConfigureAwait(false);
                 if (fileSize != metadata.FileSize ||
                     !hash.Equals(metadata.OriginalHash, StringComparison.OrdinalIgnoreCase))
                 {
@@ -211,7 +216,8 @@ public sealed class BackupManager : IBackupManager, IDisposable
             {
                 await using var source = new FileStream(backupFile, FileMode.Open, FileAccess.Read,
                     FileShare.Read, 65536, FileOptions.Asynchronous);
-                string hash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(source, ct));
+                string hash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(source, ct)
+                    .ConfigureAwait(false));
                 if (source.Length != metadata.FileSize ||
                     !hash.Equals(metadata.OriginalHash, StringComparison.OrdinalIgnoreCase))
                 {
@@ -221,14 +227,15 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 source.Position = 0;
                 await using var destination = new FileStream(stagedFile, FileMode.CreateNew, FileAccess.Write,
                     FileShare.None, 65536, FileOptions.Asynchronous);
-                await source.CopyToAsync(destination, ct);
-                await destination.FlushAsync(ct);
+                await source.CopyToAsync(destination, ct).ConfigureAwait(false);
+                await destination.FlushAsync(ct).ConfigureAwait(false);
             }
 
             await using (var staged = new FileStream(stagedFile, FileMode.Open, FileAccess.Read,
                              FileShare.None, 65536, FileOptions.Asynchronous))
             {
-                string stagedHash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(staged, ct));
+                string stagedHash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(staged, ct)
+                    .ConfigureAwait(false));
                 if (staged.Length != metadata.FileSize ||
                     !stagedHash.Equals(metadata.OriginalHash, StringComparison.OrdinalIgnoreCase))
                 {
@@ -252,7 +259,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 stagedFile = null;
                 try
                 {
-                    await CreateBackupCoreAsync(preserved, CancellationToken.None, originalPath);
+                    await CreateBackupCoreAsync(preserved, CancellationToken.None, originalPath).ConfigureAwait(false);
                     File.Delete(preserved);
                 }
                 catch (Exception ex)
@@ -286,7 +293,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
 
     public async Task<bool> DeleteBackupAsync(string backupId, CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct);
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             string? directory = ResolveBackupDirectory(backupId);
@@ -306,7 +313,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
     public async Task CleanupOldBackupsAsync(TimeSpan maxAge, CancellationToken ct = default)
     {
         if (maxAge <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(maxAge));
-        await _gate.WaitAsync(ct);
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             DateTime cutoff = DateTime.UtcNow - maxAge;
@@ -329,7 +336,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
     public async Task<bool> VerifyBackupAsync(BackupInfo backup, CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(backup);
-        await _gate.WaitAsync(ct);
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
         try
         {
             string? directory = ResolveBackupDirectory(backup.BackupId);
@@ -345,11 +352,13 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 FileShare.Read, 65536, FileOptions.Asynchronous);
             if (metadata.Encrypted)
             {
-                (long size, string hash) = await BackupCipher.DecryptAsync(Key, source, Stream.Null, ct);
+                (long size, string hash) = await BackupCipher.DecryptAsync(Key, source, Stream.Null, ct)
+                    .ConfigureAwait(false);
                 return size == metadata.FileSize &&
                     hash.Equals(metadata.OriginalHash, StringComparison.OrdinalIgnoreCase);
             }
-            string plainHash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(source, ct));
+            string plainHash = Convert.ToHexString(await System.Security.Cryptography.SHA256.HashDataAsync(source, ct)
+                .ConfigureAwait(false));
             return source.Length == metadata.FileSize &&
                 plainHash.Equals(metadata.OriginalHash, StringComparison.OrdinalIgnoreCase);
         }
@@ -364,7 +373,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
 
     public async Task<BackupUpgradeResult> UpgradeLegacyBackupsAsync(CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct);
+        await _gate.WaitAsync(ct).ConfigureAwait(false);
         int migrated = 0;
         int quarantined = 0;
         try
@@ -396,7 +405,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
                         if (Quarantine(directory, "Missing or linked legacy payload")) quarantined++;
                         continue;
                     }
-                    string hash = await HashHelper.ComputeHashAsync(legacyPayload, ct);
+                    string hash = await HashHelper.ComputeHashAsync(legacyPayload, ct).ConfigureAwait(false);
                     if (new FileInfo(legacyPayload).Length != metadata.FileSize ||
                         !hash.Equals(metadata.OriginalHash, StringComparison.OrdinalIgnoreCase))
                     {
@@ -416,7 +425,8 @@ public sealed class BackupManager : IBackupManager, IDisposable
                     await using (var destination = new FileStream(encryptedPayload, FileMode.CreateNew, FileAccess.Write,
                                      FileShare.None, CopyBufferSize, FileOptions.Asynchronous))
                     {
-                        (long size, string encryptedHash) = await BackupCipher.EncryptAsync(Key, source, destination, ct);
+                        (long size, string encryptedHash) = await BackupCipher.EncryptAsync(Key, source, destination, ct)
+                            .ConfigureAwait(false);
                         if (size != metadata.FileSize ||
                             !encryptedHash.Equals(metadata.OriginalHash, StringComparison.OrdinalIgnoreCase))
                         {
@@ -435,7 +445,8 @@ public sealed class BackupManager : IBackupManager, IDisposable
                             upgraded.Encrypted)
                     };
                     metadataTemporary = Path.Combine(directory, "metadata.json." + Guid.NewGuid().ToString("N") + ".tmp");
-                    await File.WriteAllTextAsync(metadataTemporary, JsonSerializer.Serialize(upgraded, JsonOptions), ct);
+                    await File.WriteAllTextAsync(metadataTemporary, JsonSerializer.Serialize(upgraded, JsonOptions), ct)
+                        .ConfigureAwait(false);
                     File.Move(encryptedPayload, encryptedPath, overwrite: true);
                     encryptedPayload = null;
                     File.Move(metadataTemporary, Path.Combine(directory, "metadata.json"), overwrite: true);
@@ -506,7 +517,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
         if (!Directory.Exists(_backupsRoot))
             return [];
 
-        await _gate.WaitAsync();
+        await _gate.WaitAsync().ConfigureAwait(false);
         try
         {
             return await Task.Run(() =>
@@ -525,7 +536,7 @@ public sealed class BackupManager : IBackupManager, IDisposable
                 }
                 backups.Sort((a, b) => b.CreatedAt.CompareTo(a.CreatedAt));
                 return (IReadOnlyList<BackupInfo>)backups;
-            });
+            }).ConfigureAwait(false);
         }
         finally
         {
@@ -608,7 +619,8 @@ public sealed class BackupManager : IBackupManager, IDisposable
         string temporaryPath = metadataPath + "." + Guid.NewGuid().ToString("N") + ".tmp";
         try
         {
-            await File.WriteAllTextAsync(temporaryPath, JsonSerializer.Serialize(metadata, JsonOptions), ct);
+            await File.WriteAllTextAsync(temporaryPath, JsonSerializer.Serialize(metadata, JsonOptions), ct)
+                .ConfigureAwait(false);
             File.Move(temporaryPath, metadataPath, overwrite: true);
         }
         finally

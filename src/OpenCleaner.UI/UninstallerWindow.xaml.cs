@@ -6,11 +6,12 @@ using OpenCleaner.UI.Localization;
 
 namespace OpenCleaner.UI;
 
-public partial class UninstallerWindow : UserControl
+public partial class UninstallerWindow : UserControl, IReleaseData
 {
     private static string T(string key, params object?[] args) => LocalizationService.Instance.Get(key, args);
 
     private readonly ObservableCollection<InstalledProgramRow> _items = [];
+    private readonly HashSet<InstalledProgramRow> _iconRequests = [];
     private IReadOnlyList<InstalledProgramRow> _all = [];
     private bool _busy;
     private bool _loaded;
@@ -47,6 +48,7 @@ public partial class UninstallerWindow : UserControl
             IReadOnlyList<InstalledProgram> programs =
                 await Task.Run(InstalledProgramService.GetInstalledPrograms);
             _all = programs.Select(program => new InstalledProgramRow(program)).ToList();
+            _iconRequests.Clear();
             ApplyFilter();
             StatusText.Text = _all.Count == 0
                 ? T("Uninstall.Status.None")
@@ -59,11 +61,24 @@ public partial class UninstallerWindow : UserControl
             StatusText.Text = T("Uninstall.Status.LoadFailed", ex.Message);
         }
         finally { SetBusy(false); }
-        if (_all.Count > 0) _ = LoadIconsAsync(_all);
     }
 
-    private static async Task LoadIconsAsync(IReadOnlyList<InstalledProgramRow> rows) =>
-        await Task.WhenAll(rows.Select(row => row.LoadIconAsync()));
+    public void ReleaseData()
+    {
+        foreach (InstalledProgramRow row in _all) row.Icon = null;
+        _iconRequests.Clear();
+    }
+
+    private void Row_Loaded(object sender, RoutedEventArgs e) => RequestIcon(sender);
+
+    private void Row_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e) =>
+        RequestIcon(sender);
+
+    private void RequestIcon(object sender)
+    {
+        if (sender is FrameworkElement { DataContext: InstalledProgramRow row } && _iconRequests.Add(row))
+            _ = row.LoadIconAsync();
+    }
 
     private void ApplyFilter()
     {

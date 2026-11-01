@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using OpenCleaner.Contracts;
 using OpenCleaner.Core;
 using OpenCleaner.Core.Security;
+using OpenCleaner.Core.Theming;
 using OpenCleaner.Core.Tools;
 using OpenCleaner.Core.Transactions;
 using OpenCleaner.Plugins.System.Plugins;
@@ -17,6 +18,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Animation;
+using System.Windows.Threading;
 
 namespace OpenCleaner.UI;
 
@@ -30,6 +32,7 @@ public partial class MainWindow : Window
     private bool _loadingOptions = true;
     private SmartScanResult[]? _smartScanResults;
     private readonly Dictionary<string, UserControl> _toolViews = [];
+    private readonly DispatcherTimer _filterDebounce = new() { Interval = TimeSpan.FromMilliseconds(180) };
     private Button? _activeToolButton;
 
     private static readonly Dictionary<string, (string TitleKey, string DescKey)> PluginMeta = new()
@@ -56,15 +59,27 @@ public partial class MainWindow : Window
         UpdateSidebarSelection("system");
         UpdatePluginHeader("system");
         _loadingOptions = false;
+        _filterDebounce.Tick += (_, _) =>
+        {
+            _filterDebounce.Stop();
+            ApplyFilter();
+        };
         UiOperation.StateChanged += OnOperationStateChanged;
         LocalizationService.Instance.LanguageChanged += OnLanguageChanged;
+        UpdateService.StateChanged += OnUpdateStateChanged;
+        ThemeService.ThemeChanged += OnThemeChanged;
+        ApplyUpdateState(UpdateService.State);
         Closed += (_, _) =>
         {
+            _filterDebounce.Stop();
             UiOperation.StateChanged -= OnOperationStateChanged;
             LocalizationService.Instance.LanguageChanged -= OnLanguageChanged;
+            UpdateService.StateChanged -= OnUpdateStateChanged;
+            ThemeService.ThemeChanged -= OnThemeChanged;
         };
         Closing += (_, e) =>
         {
+            UpdateService.NotifyAppClosing();
             if (UiOperation.IsBusy)
             {
                 e.Cancel = true;
@@ -137,7 +152,7 @@ public partial class MainWindow : Window
         UpdateWindowState();
         ThemeIcon.Text = T(_isDarkTheme ? "Nav.ThemeLight" : "Nav.ThemeDark");
         ApplyFilter();
-        FilesListView.Items.Refresh();
+        ApplyUpdateState(UpdateService.State);
         if (!UiOperation.IsBusy && _foundItems.Count == 0)
             StatusText.Text = T("Main.ReadyForScan");
     }
@@ -362,7 +377,8 @@ public partial class MainWindow : Window
     private void Filter_Changed(object sender, TextChangedEventArgs e)
     {
         if (_loadingOptions) return;
-        ApplyFilter();
+        _filterDebounce.Stop();
+        _filterDebounce.Start();
     }
 
     private void RiskFilter_Changed(object sender, SelectionChangedEventArgs e)
@@ -600,55 +616,26 @@ public partial class MainWindow : Window
     private void ApplyTheme(bool dark)
     {
         _isDarkTheme = dark;
-        var palette = dark ? new Dictionary<string, string>
-        {
-            ["BgMain"]="#101215", ["BgSidebar"]="#15181C", ["BgCard"]="#191D23",
-            ["BgHover"]="#232931", ["BgSelected"]="#203B33", ["Accent"]="#9BE7C4",
-            ["AccentHover"]="#BEF4DC", ["AccentForeground"]="#102A20",
-            ["TextPrimary"]="#F3F5F7", ["TextSecond"]="#A4ADB9", ["Border"]="#2B313A",
-            ["HeroBorder"]="#355A4C", ["Violet"]="#BDA9EF", ["VioletSoft"]="#18BDA9EF", ["AccentSoft"]="#149BE7C4",
-            ["Warning"]="#F2C078", ["Danger"]="#FF929C"
-        } : new Dictionary<string, string>
-        {
-            ["BgMain"]="#F5F7F8", ["BgSidebar"]="#EDF1F2", ["BgCard"]="#FFFFFF",
-            ["BgHover"]="#E6EBEE", ["BgSelected"]="#DCEEE4", ["Accent"]="#176649",
-            ["AccentHover"]="#105139", ["AccentForeground"]="#FFFFFF",
-            ["TextPrimary"]="#202830", ["TextSecond"]="#55616D", ["Border"]="#D2D8DD",
-            ["HeroBorder"]="#43735D", ["Violet"]="#6C4BA8", ["VioletSoft"]="#126C4BA8", ["AccentSoft"]="#12176649",
-            ["Warning"]="#805211", ["Danger"]="#B7263B"
-        };
-        foreach (var (key, color) in palette)
-            SetThemeColor(key, color);
-        var additional = new Dictionary<string, string>
-        {
-            ["RiskSafe"] = dark ? "#85E0B4" : "#176649",
-            ["RiskRecommended"] = dark ? "#F4C27A" : "#805211",
-            ["RiskExpert"] = dark ? "#F5A0A4" : "#B7263B",
-            ["SizeHuge"] = dark ? "#F5A0A4" : "#B7263B",
-            ["SizeLarge"] = dark ? "#F4C27A" : "#805211",
-            ["SizeMed"] = dark ? "#E7D88A" : "#746418",
-            ["SizeSmall"] = dark ? "#85E0B4" : "#176649",
-            ["WarnColor"] = dark ? "#F4C27A" : "#805211"
-        };
-        foreach (var (key, color) in additional)
-            SetThemeColor(key, color);
-        foreach (var view in _toolViews.Values.OfType<IThemeAware>())
-            view.ApplyTheme(dark);
+        ThemeService.Apply(App.Preferences with { DarkTheme = dark });
         ThemeIcon.Text = T(dark ? "Nav.ThemeLight" : "Nav.ThemeDark");
     }
 
-    private static void SetThemeColor(string key, string hex)
+    private void OnThemeChanged(object? sender, ThemePalette palette)
     {
-        var color = (Color)ColorConverter.ConvertFromString(hex);
-        if (Application.Current.Resources[key] is SolidColorBrush { IsFrozen: false } brush)
-            brush.Color = color;
-        else Application.Current.Resources[key] = new SolidColorBrush(color);
+        _isDarkTheme = palette.IsDark;
+        ThemeIcon.Text = T(palette.IsDark ? "Nav.ThemeLight" : "Nav.ThemeDark");
+        foreach (var view in _toolViews.Values.OfType<IThemeAware>())
+            view.ApplyTheme(palette);
     }
+
+    /// <summary>Aperçu : change le thème sans enregistrer les préférences.</summary>
+    internal void ApplyPreviewTheme(bool dark, string accent) => ThemeService.ApplyPreview(dark, accent);
 
     private void ThemeToggle_Click(object sender, RoutedEventArgs e)
     {
-        ApplyTheme(!_isDarkTheme);
-        App.SetPreferences(App.Preferences with { DarkTheme = _isDarkTheme });
+        bool dark = !_isDarkTheme;
+        App.SetPreferences(App.Preferences with { DarkTheme = dark });
+        ApplyTheme(dark);
     }
     internal void ShowTool(string key, Button? button = null)
     {
@@ -665,8 +652,10 @@ public partial class MainWindow : Window
                 "shredder" => new ShredderWindow(), _ => throw new ArgumentException("Unknown tool", nameof(key))
             };
             _toolViews.Add(key, view);
-            if (view is IThemeAware themeAware) themeAware.ApplyTheme(_isDarkTheme);
+            if (view is IThemeAware themeAware) themeAware.ApplyTheme(ThemeService.Current);
         }
+        if (ToolContent.Content is IReleaseData previous && !ReferenceEquals(previous, view))
+            previous.ReleaseData();
         if (_activeToolButton != null) _activeToolButton.Style = (Style)FindResource("SidebarBtnStyle");
         _activeToolButton = button;
         if (button != null) button.Style = (Style)FindResource("SidebarBtnActiveStyle");
@@ -785,6 +774,54 @@ public partial class MainWindow : Window
         }
     }
 
-    internal void NotifyUpdateAvailable() => ActionStatus.Text = T("Main.UpdateAvailable");
+    private void OnUpdateStateChanged(UpdateSnapshot snapshot)
+    {
+        if (!Dispatcher.CheckAccess())
+        {
+            Dispatcher.BeginInvoke(new Action(() => ApplyUpdateState(snapshot)));
+            return;
+        }
+        ApplyUpdateState(snapshot);
+    }
+
+    private void ApplyUpdateState(UpdateSnapshot snapshot)
+    {
+        string? target = snapshot.TargetVersion;
+        bool show = target != null && snapshot.State is
+            UpdateState.Available or UpdateState.Downloading or UpdateState.Ready or UpdateState.Error;
+        UpdateBanner.Visibility = show ? Visibility.Visible : Visibility.Collapsed;
+        UpdateBannerProgress.Visibility = Visibility.Collapsed;
+        UpdateBannerProgress.IsIndeterminate = false;
+        if (!show) return;
+
+        switch (snapshot.State)
+        {
+            case UpdateState.Available:
+                UpdateBannerDetail.Text = T("Main.UpdateBanner.Available", target);
+                break;
+            case UpdateState.Downloading:
+                UpdateBannerDetail.Text = T("Main.UpdateBanner.Downloading", target, snapshot.Percent);
+                UpdateBannerProgress.Visibility = Visibility.Visible;
+                UpdateBannerProgress.Value = snapshot.Percent;
+                break;
+            case UpdateState.Ready:
+                UpdateBannerDetail.Text = T("Main.UpdateBanner.Ready", target);
+                break;
+            case UpdateState.Error:
+                UpdateBannerDetail.Text = T("Main.UpdateBanner.Error");
+                break;
+        }
+    }
+
+    internal void ShowUpdateBannerForPreview(UpdateSnapshot snapshot) => ApplyUpdateState(snapshot);
+
+    private void OpenUpdateDialog_Click(object sender, RoutedEventArgs e) => ShowUpdateDialog();
+
+    internal void ShowUpdateDialog()
+    {
+        if (UiOperation.IsBusy) return;
+        new AppUpdateWindow { Owner = this }.ShowDialog();
+    }
+
     private static ILogger<T> GetLogger<T>() => App.Services.GetRequiredService<ILogger<T>>();
 }
