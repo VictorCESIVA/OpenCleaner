@@ -67,11 +67,89 @@
             <Setter Property="FontSize" Value="11"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
         </Style>
+        <Style x:Key="PageEyebrow" TargetType="TextBlock" BasedOn="{StaticResource Eyebrow}">
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+        <Style x:Key="PageTitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="28"/>
+            <Setter Property="FontWeight" Value="SemiBold"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextPrimary}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+        </Style>
+        <Style x:Key="PageSubtitle" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Foreground" Value="{DynamicResource TextSecond}"/>
+            <Setter Property="TextWrapping" Value="Wrap"/>
+            <Setter Property="LineHeight" Value="22"/>
+            <Setter Property="Margin" Value="0,8,0,0"/>
+        </Style>
+        <Style x:Key="DialogTitle" TargetType="TextBlock" BasedOn="{StaticResource PageTitle}">
+            <Setter Property="FontSize" Value="24"/>
+        </Style>
+        <Style TargetType="local:PageHeader">
+            <Setter Property="SubtitleForeground" Value="{DynamicResource TextSecond}"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="local:PageHeader">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="Auto"/>
+                            </Grid.ColumnDefinitions>
+                            <StackPanel VerticalAlignment="Center">
+                                <TextBlock Text="{TemplateBinding Eyebrow}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource PageEyebrow}">
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Eyebrow, RelativeSource={RelativeSource TemplatedParent}}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Eyebrow, RelativeSource={RelativeSource TemplatedParent}}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                                <TextBlock Text="{TemplateBinding Title}" Style="{StaticResource PageTitle}"/>
+                                <TextBlock Text="{TemplateBinding Subtitle}">
+                                    <TextBlock.Style>
+                                        <Style TargetType="TextBlock" BasedOn="{StaticResource PageSubtitle}">
+                                            <Setter Property="Foreground" Value="{Binding SubtitleForeground, RelativeSource={RelativeSource TemplatedParent}}"/>
+                                            <Style.Triggers>
+                                                <DataTrigger Binding="{Binding Subtitle, RelativeSource={RelativeSource TemplatedParent}}" Value="{x:Null}">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                                <DataTrigger Binding="{Binding Subtitle, RelativeSource={RelativeSource TemplatedParent}}" Value="">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </DataTrigger>
+                                            </Style.Triggers>
+                                        </Style>
+                                    </TextBlock.Style>
+                                </TextBlock>
+                            </StackPanel>
+                            <ContentPresenter Grid.Column="1" Content="{TemplateBinding Content}" VerticalAlignment="Center">
+                                <ContentPresenter.Style>
+                                    <Style TargetType="ContentPresenter">
+                                        <Setter Property="Margin" Value="24,0,0,0"/>
+                                        <Style.Triggers>
+                                            <Trigger Property="Content" Value="{x:Null}">
+                                                <Setter Property="Visibility" Value="Collapsed"/>
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </ContentPresenter.Style>
+                            </ContentPresenter>
+                        </Grid>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
         <Style x:Key="Card" TargetType="Border">
             <Setter Property="Background" Value="{DynamicResource BgCard}"/>
             <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
             <Setter Property="BorderThickness" Value="1"/>
-            <Setter Property="CornerRadius" Value="14"/>
+            <Setter Property="CornerRadius" Value="10"/>
             <Setter Property="Padding" Value="20"/>
         </Style>
         <Style x:Key="SecondBtnStyle" TargetType="Button">
@@ -80,7 +158,7 @@
             <Setter Property="BorderBrush" Value="{DynamicResource Border}"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="Padding" Value="17,10"/>
-            <Setter Property="MinHeight" Value="42"/>
+            <Setter Property="MinHeight" Value="40"/>
             <Setter Property="HorizontalContentAlignment" Value="Center"/>
             <Setter Property="FontSize" Value="12"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
@@ -105,8 +183,8 @@
                                 </VisualStateGroup>
                             </VisualStateManager.VisualStateGroups>
                             <Border x:Name="Surface" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
-                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9"/>
-                            <Border x:Name="Hover" Background="{TemplateBinding Foreground}" CornerRadius="9" Opacity="0" IsHitTestVisible="False"/>
+                                    BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="8"/>
+                            <Border x:Name="Hover" Background="{TemplateBinding Foreground}" CornerRadius="8" Opacity="0" IsHitTestVisible="False"/>
                             <ContentPresenter Margin="{TemplateBinding Padding}" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
                                               VerticalAlignment="Center" RecognizesAccessKey="True"/>
                         </Grid>
@@ -133,9 +211,9 @@
         <Style x:Key="SidebarBtnStyle" TargetType="Button" BasedOn="{StaticResource SecondBtnStyle}">
             <Setter Property="Foreground" Value="{DynamicResource TextSecond}"/>
             <Setter Property="HorizontalContentAlignment" Value="Left"/>
-            <Setter Property="Margin" Value="0,2"/>
-            <Setter Property="Padding" Value="14,10"/>
-            <Setter Property="MinHeight" Value="38"/>
+            <Setter Property="Margin" Value="0,3"/>
+            <Setter Property="Padding" Value="14,11"/>
+            <Setter Property="MinHeight" Value="40"/>
             <Setter Property="BorderThickness" Value="1"/>
             <Setter Property="BorderBrush" Value="Transparent"/>
             <Setter Property="FontWeight" Value="Normal"/>
@@ -147,15 +225,17 @@
             <Setter Property="Foreground" Value="{DynamicResource Accent}"/>
             <Setter Property="Background" Value="{DynamicResource BgSelected}"/>
             <Setter Property="FontWeight" Value="SemiBold"/>
-            <Setter Property="BorderBrush" Value="{DynamicResource HeroBorder}"/>
+            <Setter Property="BorderBrush" Value="{DynamicResource Accent}"/>
+            <Setter Property="BorderThickness" Value="3,0,0,0"/>
+            <Setter Property="Padding" Value="11,11,14,11"/>
         </Style>
         <Style x:Key="NavigationGroup" TargetType="Expander">
             <Setter Property="Foreground" Value="{DynamicResource TextSecond}"/>
-            <Setter Property="Margin" Value="0,14,0,0"/>
+            <Setter Property="Margin" Value="0,22,0,4"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Expander">
                 <StackPanel>
                     <ToggleButton IsChecked="{Binding IsExpanded, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}"
-                                  Content="{TemplateBinding Header}" Foreground="{TemplateBinding Foreground}" FontSize="10" FontWeight="SemiBold"
+                                  Content="{TemplateBinding Header}" Foreground="{TemplateBinding Foreground}" FontSize="11" FontWeight="SemiBold"
                                   HorizontalContentAlignment="Left" AutomationProperties.Name="{Binding Header, RelativeSource={RelativeSource TemplatedParent}}">
                         <ToggleButton.Template><ControlTemplate TargetType="ToggleButton">
                             <Border x:Name="GroupSurface" Background="Transparent" CornerRadius="6" Padding="14,9">

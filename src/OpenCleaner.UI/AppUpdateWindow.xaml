@@ -52,10 +52,8 @@
                 </Grid.RowDefinitions>
 
                 <StackPanel Grid.Row="0">
-                    <TextBlock Text="{loc:Translate UpdateDialog.Heading}" FontSize="25" FontWeight="SemiBold"
-                               Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
-                    <TextBlock Text="{loc:Translate UpdateDialog.Subtitle}" FontSize="12"
-                               Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                    <TextBlock Text="{loc:Translate UpdateDialog.Heading}" Style="{StaticResource DialogTitle}"/>
+                    <TextBlock Text="{loc:Translate UpdateDialog.Subtitle}" Style="{StaticResource PageSubtitle}"/>
                 </StackPanel>
 
                 <Grid Grid.Row="1" Margin="0,16,0,0">

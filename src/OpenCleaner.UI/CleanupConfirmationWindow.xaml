@@ -8,20 +8,20 @@
     <Grid Margin="26">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <StackPanel>
-            <TextBlock Text="{loc:Translate Cleanup.Title}" FontSize="24" FontWeight="SemiBold"/>
-            <TextBlock x:Name="ContextText" Margin="0,8,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextSecond}"/>
+            <TextBlock Text="{loc:Translate Cleanup.Title}" Style="{StaticResource DialogTitle}"/>
+            <TextBlock x:Name="ContextText" Margin="0,8,0,0" TextWrapping="Wrap" FontSize="14" Foreground="{DynamicResource TextSecond}"/>
         </StackPanel>
         <StackPanel Grid.Row="1" Margin="0,22,0,0">
             <Border Style="{StaticResource Card}" Padding="16,13">
                 <StackPanel>
                     <TextBlock Text="{loc:Translate Cleanup.WithBackup}" FontWeight="SemiBold"/>
-                    <TextBlock Text="{loc:Translate Cleanup.WithBackupDetail}" Margin="0,5,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextSecond}" FontSize="12"/>
+                    <TextBlock Text="{loc:Translate Cleanup.WithBackupDetail}" Margin="0,5,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextSecond}" FontSize="14"/>
                 </StackPanel>
             </Border>
             <Border Style="{StaticResource Card}" Background="{DynamicResource WarnSoft}" BorderBrush="{DynamicResource WarnColor}" Padding="16,13" Margin="0,12,0,0">
                 <StackPanel>
                     <TextBlock Text="{loc:Translate Cleanup.WithoutBackup}" FontWeight="SemiBold" Foreground="{DynamicResource WarnColor}"/>
-                    <TextBlock Text="{loc:Translate Cleanup.WithoutBackupDetail}" Margin="0,5,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}" FontSize="12"/>
+                    <TextBlock Text="{loc:Translate Cleanup.WithoutBackupDetail}" Margin="0,5,0,0" TextWrapping="Wrap" Foreground="{DynamicResource TextPrimary}" FontSize="14"/>
                 </StackPanel>
             </Border>
         </StackPanel>

@@ -7,10 +7,8 @@
         WindowStartupLocation="CenterOwner">
     <Border Background="{DynamicResource BgMain}" Padding="24">
         <StackPanel>
-            <TextBlock x:Name="HeaderText" FontSize="22" FontWeight="SemiBold"
-                       Foreground="{DynamicResource TextPrimary}" TextWrapping="Wrap"/>
-            <TextBlock x:Name="HelpText" Margin="0,10,0,0" FontSize="12"
-                       Foreground="{DynamicResource TextSecond}" TextWrapping="Wrap"/>
+            <TextBlock x:Name="HeaderText" Style="{StaticResource DialogTitle}"/>
+            <TextBlock x:Name="HelpText" Margin="0,8,0,0" Style="{StaticResource PageSubtitle}"/>
             <TextBox x:Name="CodeBox" Margin="0,18,0,18" Height="72"
                      Background="{DynamicResource BgCard}"
                      Foreground="{DynamicResource TextPrimary}"

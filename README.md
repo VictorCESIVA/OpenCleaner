@@ -27,7 +27,7 @@
   <img src="docs/preview/readme-dark.png" width="1360" alt="Écran de nettoyage OpenCleaner : analyse rapide, catégories de fichiers et résultats à vérifier avant suppression.">
 </picture>
 
-*Captures de la version 1.7.0, disponible au téléchargement.*
+*Captures de la version 1.7.1, disponible au téléchargement.*
 
 ## Télécharger et installer
 

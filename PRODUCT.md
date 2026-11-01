@@ -47,7 +47,7 @@ Confirmed constraints: This is not an antivirus; privacy findings are leads, not
 - Product and security documentation: `README.md`.
 - Audits dated 2026-10-14, 2026-10-26, and 2026-10-29 in `docs/`, plus the 1.7.0 validation: 474 tests (362 Core, 34 plugins, 78 UI), strict Release build, WPF previews for all windows and accent modes, and a real read-only winget update list. The live read-only health, history, trend, and disk scans used for 1.4.0 remain documented. Localization design and migration status: `docs/LOCALIZATION.md`.
 - Feature comparison with CCleaner: `docs/CCLEANER-COMPARAISON.md`.
-- Release notes for 1.1.0 through 1.7.0 in `docs/releases/`.
+- Release notes for 1.1.0 through 1.7.1 in `docs/releases/`.
 - Release verification procedure: `docs/RELEASE-CHECKLIST.md` and `tools/verify-release.ps1`; dated status: the public v1.6.1 assets were observed unsigned on 2026-10-30. Local publish/startup measurements for 1.7.0: `docs/BENCHMARK-1.7.0.md`.
 - Real UI captures in `docs/preview/` and `artifacts/ui-preview/`.
 - Limits documented in the audits: some third-party cache paths remain unvalidated on real installations; tests use temporary fixtures; the SQLite transaction journal is neither encrypted nor atomic with NTFS; unsigned builds may trigger SmartScreen.

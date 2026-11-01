@@ -16,13 +16,9 @@
             </Grid.RowDefinitions>
 
             <!-- EN-TÊTE -->
-            <StackPanel Grid.Row="0" Margin="0,0,0,14">
-                <TextBlock Text="{loc:Translate Disk.Title}"
-                           FontSize="26" FontWeight="SemiBold"
-                           Foreground="{DynamicResource TextPrimary}"/>
-                <TextBlock TextWrapping="Wrap" Text="{loc:Translate Disk.Subtitle}"
-                           FontSize="12" Foreground="{DynamicResource TextSecond}" Margin="0,4,0,0"/>
-            </StackPanel>
+            <local:PageHeader Grid.Row="0" Margin="0,0,0,22"
+                              Title="{loc:Translate Disk.Title}"
+                              Subtitle="{loc:Translate Disk.Subtitle}"/>
 
             <!-- STATS -->
             <Border Grid.Row="1" Style="{StaticResource Card}"
